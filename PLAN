@@ -1,0 +1,28 @@
+Plan of Attack
+==============
+
+So we need to write some pieces, namely:
+    
+    an api to the file system
+    templating language
+    a script runner
+    virtual machine - dealer, reciever type system
+    visualization
+    figure out which tests to run
+
+
+
+
+
+NOTE KIM_ID
+    CC_DDDDDDDD_VVV
+    where CC is:
+        MO - model
+        MD - model driver
+        ME - model ensemble
+        TE - test
+        TD - test driver
+        PR - property
+        RD - reference data
+
+
