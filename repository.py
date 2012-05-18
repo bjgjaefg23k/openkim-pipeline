@@ -5,28 +5,32 @@ import sys, os, subprocess
 from contextlib import contextmanager
 import kimservice
 
-#get the kim dir
+#==============================
+# KIM FLAGS
+#===============================
+
+#get the kim directories
 KIM_DIR = os.environ["KIM_DIR"]
-
-#try to get the relevant directories
-try:
-    KIM_MODEL_DIR = os.environ["KIM_MODEL_DIR"]
-except KeyError:
-    KIM_MODEL_DIR = os.path.join(KIM_DIR,"MODELs")
-
-#try to get the tests directory
-try:
-    KIM_TEST_DIR = os.environ["KIM_TEST_DIR"]
-except KeyError:
-    KIM_TEST_DIR = os.path.join(KIM_DIR,"TESTs")
+KIM_API_DIR = os.environ.get("KIM_API_DIR",
+        os.path.join(KIM_DIR,"KIM_API"))
+KIM_MODELS_DIR = os.environ.get("KIM_MODELS_DIR",
+        os.path.join(KIM_DIR,"MODELs"))
+KIM_MODEL_DRIVERS_DIR = os.environ.get("KIM_MODEL_DRIVERS_DIR",
+        os.path.join(KIM_DIR,"MODEL_DRIVERs"))
+KIM_TESTS_DIR = os.environ.get("KIM_TESTS_DIR",
+        os.path.join(KIM_DIR,"TESTs"))
 
 #get all of the models
-KIM_MODELS = [ dir for dir in os.listdir(KIM_MODEL_DIR) if os.path.isdir(os.path.join(KIM_MODEL_DIR,dir)) ]
+KIM_MODELS = [ dir for dir in os.listdir(KIM_MODELS_DIR) if os.path.isdir(os.path.join(KIM_MODELS_DIR,dir)) ]
 #and all of the tests
-KIM_TESTS =  [ dir for dir in os.listdir(KIM_TEST_DIR) if os.path.isdir(os.path.join(KIM_TEST_DIR,dir)) ]
+KIM_TESTS =  [ dir for dir in os.listdir(KIM_TESTS_DIR) if os.path.isdir(os.path.join(KIM_TESTS_DIR,dir)) ]
 
 #get the repository dir from the symlink
 KIM_REPOSITORY_DIR = os.readlink('openkim-repository')
+
+#============================
+# Silly git stuff
+#============================
 
 @contextmanager
 def in_repo_dir():
@@ -46,9 +50,9 @@ def push(remote='origin',branch='master'):
     with in_repo_dir():
         return subprocess.call(['git','push',remote,branch])
 
-#######################################
+#======================================
 # Some kim api wrapped things
-#######################################
+#======================================
 
 def valid_match(testname,modelname):
     """ Test to see if a test and model match using the kim API, returns bool """
