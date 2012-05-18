@@ -56,6 +56,10 @@ def push(remote='origin',branch='master'):
 
 def valid_match(testname,modelname):
     """ Test to see if a test and model match using the kim API, returns bool """
+    if testname not in KIM_TESTS:
+        raise KeyError, "test {} not valid".format(testname)
+    if modelname not in KIM_MODELS:
+        raise KeyError, "model {} not valid".format(modelname)
     match, pkim = kimservice.KIM_API_init(testname,modelname)
     if match:
         kimservice.KIM_API_free(pkim)
@@ -68,3 +72,7 @@ def tests_for_model(modelname):
 
 def models_for_test(testname):
     return (model for model in KIM_MODELS if valid_match(testname,model) )
+
+def test_executable(testname):
+    """ get the executable for a test """
+    return os.path.join(KIM_TESTS_DIR,testname,testname)
