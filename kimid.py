@@ -11,6 +11,8 @@ which is of the form
         TD - Test Driver
         PR - Property
         RD - Reference data
+        *PD - Prediction
+
 """
 
 from persistentdict import PersistentDict
@@ -23,6 +25,9 @@ The dictionary of ids is a layered dictionary, or leader, then id then version
 
 NUM_DIGITS = 8
 KIM_ID_FORMAT = "{}_{:08d}_{:03d}"
+STORE_FILENAME = "kimidstore.json"
+ALLOWED_LEADERS = ["MO","MD","ME","TE","TD","PR","RD","PD"]
+
 
 def randints():
     while True:
@@ -34,7 +39,7 @@ def next_int(collection):
 
 def get_new_id(leader):
     """ Generate a new KIM ID """
-    with PersistentDict("kimidstore.pickle") as store:
+    with PersistentDict(STORE_FILENAME) as store:
         pk = next_int(store[leader])
         version = 0
         store[leader][pk] = version
@@ -42,7 +47,7 @@ def get_new_id(leader):
 
 def get_new_version(leader,pk):
     """ Get the next version number """
-    with PersistentDict("kimidstore.pickle") as store:
+    with PersistentDict(STORE_FILENAME) as store:
         version = store[leader][pk]
         version += 1
         store[leader][pk] = version
@@ -56,4 +61,11 @@ def new_kimid(leader,pk=None):
         return get_new_id(leader)
     else:
         return get_new_version(leader,pk)
+
+
+if __name__ == "__main__":
+    print "Generating empty store in {}".format(STORE_FILENAME)
+    with PersistentDict(STORE_FILENAME) as store:
+        for leader in ALLOWED_LEADERS:
+            store[leader] = {}
 
