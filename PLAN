@@ -12,8 +12,6 @@ So we need to write some pieces, namely:
 
 
 
-
-
 NOTE KIM_ID
     CC_DDDDDDDD_VVV
     where CC is:
@@ -25,4 +23,37 @@ NOTE KIM_ID
         PR - property
         RD - reference data
 
+OUTLINE
+=======
 
+    runner.py - which knows how to build and run tests and models against each other
+
+    pipeline.py - lets director and workers talk and runs everything
+        - queuing system
+        - request necessary data
+
+    repository.py - which deals with repo structure, rsync, github
+        - needs to be able to fetch data and send
+        - needs to be able to write data to the folder system
+
+    template.py - which does templating
+
+    database.py - handles the database in some form
+
+    fake.py - fake fillers
+
+    kimid.py - hands out and tracks existing kimids
+
+CONVENTIONS
+===========
+
+    Job requests are simply test, model pairs
+        as a json tuple, e.g.
+            >>> simplejson.dumps( ("test","model") )
+            '["test", "model"]'
+
+    Results are passed as a jsoned python dictionary of results
+
+    Updates from the website are received as json dictionary
+        >>> beanstalk.use("updates")
+        >>> simplejson.dumps( {"kimid": "MO_9459849_000", "priority": "high"} )

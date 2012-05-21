@@ -2,14 +2,19 @@
 Contains routines for running tests against models and vice versa
 """
 
-import time
 import repository as repo
-from subprocess import Popen, PIPE
-import urllib
 import beanstalkc as bean 
+from subprocess import Popen, PIPE
+from multiprocessing import Process
+import urllib
+import time
 import simplejson
 
 GLOBAL_PORT = 14177
+TUBE_JOBS    = "jobs"
+TUBE_RESULTS = "results"
+TUBE_ERROR   = "error"
+TUBE_UPDATE  = "update"
 
 class Director(object):
     def __init__(self):
@@ -18,33 +23,53 @@ class Director(object):
         self.timeout = 10
 
     def run(self):
-        self.start_daemon()
         self.connect_to_daemon()
-        self.get_updates()
-
-    def start_deamon(self):
-        # FIXME - error checking on open
-        self.daemon = Popen("beanstalkd -l {} -p {} -d".format(self.ip, self.host), shell=True)
-
-    def stop_daemon(self):
-        self.daemon.kill()
+        self.job_thrd  = Process(target=Director.get_updates(self))
+        self.data_thrd = Process(target=Director.get_datums(self))
 
     def connect_to_daemon(self):
         # connect to the daemon we created
-        self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
+        try:
+            self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
+        except:
+            self.daemon = Popen("screen -dm beanstalkd -l {} -p {}".format(self.ip, self.port), shell=True)
+            time.sleep(1)
+            self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
 
         # we want to get updates from the webserver on the 'update' tube
         # and post the jobs on 'jobs' tube
-        self.watch("updates")
-        self.use("jobs")
+        self.bsd.watch(TUBE_UPDATE)
+        self.bsd.watch(TUBE_RESULTS)
+        self.bsd.watch(TUBE_ERROR)
+        self.bsd.ignore("default")
+
+    def disconnect_from_daemon(self):
+        self.bsd.close()
+        self.daemon.kill()
 
     def get_updates(self):
         while 1:
-            update = self.bsd.reserve()
-            push_jobs(update.body)
+            request = self.bsd.reserve()
+            request.bury()
+
+            if request.stats()['tube'] == TUBE_UPDATE:
+                push_jobs(request.body)
+            if request.stats()['tube'] == TUBE_RESULTS:
+                print request.body
+            if request.stats()['tube'] == TUBE_ERROR:
+                print request.body
+
+            request.delete()
+
+    def get_datums(self):
+        pass
 
     def push_jobs(self, update):
+        self.bsd.use(TUBE_JOBS)
         self.bsd.put(update)
+
+    def halt(self):
+        self.disconnect_from_daemon()
 
 
 class Worker(object):
@@ -56,38 +81,52 @@ class Worker(object):
         self.port = GLOBAL_PORT
 
     def run(self):
-        self.ssh = Popen("screen -dm ssh -L{}:{}:{} {}@{}".format(self.port,self.ip,self.port,self.remote_user,self.remote_addr), shell=True)
-        time.sleep(5)
-        self.start_listen()
+        try:
+            self.start_listen()
+        except:
+            self.ssh = Popen("screen -dm ssh -L{}:{}:{} {}@{}".format(self.port,self.ip,self.port,self.remote_user,self.remote_addr), shell=True)
+            time.sleep(1)
+            self.start_listen()
+
+        print "Connected to director"
+        self.get_jobs()
 
     def start_listen(self):
         # connect to the daemon we created
         self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
 
         # we want to get jobs from the 'jobs' tube 
-        self.watch("jobs")
-
+        self.bsd.watch(TUBE_JOBS)
+        self.bsd.ignore("default")
+        
+    def get_jobs(self):
         while 1:
             job = self.bsd.reserve()
-            run_test_on_model(*job.body.split("\n"))
+            job.bury()
 
-    def run_test_on_model(testname,modelname):
-        """ run a test with the corresponding model, capture the output as a dict """
-        if testname not in repo.KIM_TESTS:
-            raise KeyError, "test <{}> not valid".format(testname)
-        if modelname not in repo.KIM_MODELS:
-            raise KeyError, "model <{}> not valid".format(modelname)
+            jobtup = simplejson.loads(job.body)
+            if len(jobtup) != 2:
+                print "Bad job length, ", jobtup, ", removing..."
+                job.delete()
+                
+                error = {"job": jobtup, "error": "length"}
+                self.bsd.use(TUBE_ERROR)
+                self.bsd.put(error)
+            else:
+                print "Running ", jobtup[0], "with", jobtup[1], "..."
+                try:
+                    result = run_test_on_model(*jobtup)
+                    self.bsd.use(TUBE_RESULTS)
+                    self.bsd.put(result)
+                    job.delete()
+                except Exception as e:
+                    print "Run failed, removing..."
+                    
+                    error = {"job": jobtup, "error": e}
+                    self.bsd.use(TUBE_ERROR)
+                    self.bsd.put(error)
+                    job.delete()
 
-        executable = repo.test_executable(testname)
-        process = Popen(executable,stdin=PIPE,stdout=PIPE)
-        stdout, stderr = process.communicate(modelname)
-
-        if process.poll() is None:
-            process.kill()
-            raise RuntimeError, "your test didn't terminate nicely"
-
-        data_string = stdout.splitlines()[-1]
-        return simplejson.loads(data_string)
 
 
 if __name__ == "__main__":
