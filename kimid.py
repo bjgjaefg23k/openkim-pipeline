@@ -16,7 +16,7 @@ which is of the form
 """
 
 from persistentdict import PersistentDict
-import random
+import random, sys
 
 """ 
 The dictionary of ids is a layered dictionary, or leader, then id then version
@@ -24,22 +24,22 @@ The dictionary of ids is a layered dictionary, or leader, then id then version
 
 
 NUM_DIGITS = 8
-KIM_ID_FORMAT = "{}_{:08d}_{:03d}"
+KIM_ID_FORMAT = "{}_{}_{:03d}"
 STORE_FILENAME = "kimidstore.json"
 ALLOWED_LEADERS = ["MO","MD","ME","TE","TD","PR","RD","PD"]
-
+FORMAT = "json"
 
 def randints():
     while True:
         yield random.randint(0,10**NUM_DIGITS-1)
 
 def next_int(collection):
-    return next( x for x in randints() if x not in collection )
+    return next( "{:08d}".format(x) for x in randints() if x not in collection )
 
 
 def get_new_id(leader):
     """ Generate a new KIM ID """
-    with PersistentDict(STORE_FILENAME) as store:
+    with PersistentDict(STORE_FILENAME, format=FORMAT) as store:
         pk = next_int(store[leader])
         version = 0
         store[leader][pk] = version
@@ -47,10 +47,24 @@ def get_new_id(leader):
 
 def get_new_version(leader,pk):
     """ Get the next version number """
-    with PersistentDict(STORE_FILENAME) as store:
+    pk = str(pk)
+    with PersistentDict(STORE_FILENAME, format=FORMAT) as store:
         version = store[leader][pk]
         version += 1
         store[leader][pk] = version
+    return KIM_ID_FORMAT.format(leader,pk,version)
+
+
+def get_current_version(leader,pk):
+    """ Get the current version number """
+    pk = str(pk)
+    with PersistentDict(STORE_FILENAME, format=FORMAT, flag='r') as store:
+        version = store[leader][pk]
+    return version
+
+def format_kimid(leader,pk,version):
+    if isinstance(pk,int):
+        pk = "{:08d}".format(pk)
     return KIM_ID_FORMAT.format(leader,pk,version)
 
 
@@ -64,8 +78,10 @@ def new_kimid(leader,pk=None):
 
 
 if __name__ == "__main__":
-    print "Generating empty store in {}".format(STORE_FILENAME)
-    with PersistentDict(STORE_FILENAME) as store:
-        for leader in ALLOWED_LEADERS:
-            store[leader] = {}
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "init":
+            print "Generating empty store in {}".format(STORE_FILENAME)
+            with PersistentDict(STORE_FILENAME, format=FORMAT) as store:
+                for leader in ALLOWED_LEADERS:
+                    store[leader] = {}
 

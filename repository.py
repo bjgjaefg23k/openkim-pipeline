@@ -3,8 +3,9 @@ with the repository structure """
 
 import sys, os, subprocess, simplejson
 from contextlib import contextmanager
-import kimservice
+import kimservice, kimid
 from persistentdict import PersistentDict
+
 
 #==============================
 # KIM FLAGS
@@ -104,15 +105,17 @@ def test_executable(testname):
 # Results in repo
 #==========================================
 
-def write_result_to_file(results):
-    """ Given a dictionary of results, write it to the corresponding folder """
+def write_result_to_file(results, pk=None):
+    """ Given a dictionary of results, write it to the corresponding file, or create a new id """
+    outputfilename = kimid.new_kimid("PD",pk)
+    testname = results["_testname"]
+    modelname = results["_modelname"]
+
     with in_repo_dir("PREDICTIONs"):
-        testname = results["_testname"]
-        modelname = results["_modelname"]
-        outputfilename = "{}-{}".format(testname,modelname)
         with open(outputfilename,"w") as fobj:
             simplejson.dump(results,fobj)
-        print "Wrote results in: {}".format(os.path.abspath(outputfilename))
+    
+    print "Wrote results in: {}".format(os.path.abspath(outputfilename))
 
 
 #===========================================
