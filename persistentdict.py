@@ -77,9 +77,4 @@ class PersistentDict(dict):
                 pass
         raise ValueError('File not in a supported format')
 
-if __name__ == "__main__":
-    # initialize empty store
-    with PersistentDict("kimidstore.pickle") as store:
-        for leader in ["MO","MD","ME","TE","TD","PR","RD"]:
-            store[leader] = {}
 

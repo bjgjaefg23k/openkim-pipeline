@@ -4,23 +4,32 @@ Contains routines for running tests against models and vice versa
 
 import repository as repo
 import beanstalkc as bean 
-from subprocess import Popen, PIPE
+from subprocess import check_call, Popen, PIPE
 from multiprocessing import Process
+import runner
 import urllib
 import time
 import simplejson
 
 GLOBAL_PORT = 14177
+GLOBAL_USER = "sethnagroup"
+GLOBAL_HOST = "cerbo.ccmr.cornell.edu"
+
 TUBE_JOBS    = "jobs"
 TUBE_RESULTS = "results"
 TUBE_ERROR   = "error"
 TUBE_UPDATE  = "update"
+
+def rsync_update():
+    #check_call("rsync -avz -e ssh {}@{}:remotedir localdir".format(GLOBAL_USER,GLOBAL_HOST))
+    pass
 
 class Director(object):
     def __init__(self):
         self.ip = "127.0.0.1" 
         self.port = GLOBAL_PORT 
         self.timeout = 10
+        self.msg_size = 2**16
 
     def run(self):
         self.connect_to_daemon()
@@ -32,7 +41,7 @@ class Director(object):
         try:
             self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
         except:
-            self.daemon = Popen("screen -dm beanstalkd -l {} -p {}".format(self.ip, self.port), shell=True)
+            self.daemon = Popen("screen -dm beanstalkd -l {} -p {} -v {}".format(self.ip, self.port, self.msg_size), shell=True)
             time.sleep(1)
             self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
 
@@ -42,6 +51,14 @@ class Director(object):
         self.bsd.watch(TUBE_RESULTS)
         self.bsd.watch(TUBE_ERROR)
         self.bsd.ignore("default")
+
+        # put some dummy jobs, one bogus, some not
+        self.bsd.use(TUBE_JOBS)
+        self.bsd.put(simplejson.dumps(["hello"]))
+        self.bsd.put(simplejson.dumps(["test_lattice_const", "ex_model_Ar_P_LJ"]))
+
+        self.bsd.use(TUBE_UPDATE)
+        self.bsd.put("test_lattice_const")
 
     def disconnect_from_daemon(self):
         self.bsd.close()
@@ -53,20 +70,29 @@ class Director(object):
             request.bury()
 
             if request.stats()['tube'] == TUBE_UPDATE:
-                push_jobs(request.body)
+                # update the repository, try to compile the file
+                # send it out as a job to compute
+                repo.rsync_update()
+                self.push_jobs(request.body)
+
             if request.stats()['tube'] == TUBE_RESULTS:
                 print request.body
+
             if request.stats()['tube'] == TUBE_ERROR:
                 print request.body
 
             request.delete()
 
-    def get_datums(self):
-        pass
-
     def push_jobs(self, update):
         self.bsd.use(TUBE_JOBS)
-        self.bsd.put(update)
+        if update in repo.KIM_TESTS:
+            for model in repo.models_for_test(update):
+                self.bsd.put(simplejson.dumps([update,model]))
+        elif update in repo.KIM_MODELS:
+            for test in repo.tests_for_model(update):
+                self.bsd.put(simplejson.dumps([test,update]))
+        else:
+            print "Tried to update invalid KIM ID!"
 
     def halt(self):
         self.disconnect_from_daemon()
@@ -81,6 +107,8 @@ class Worker(object):
         self.port = GLOBAL_PORT
 
     def run(self):
+        # if we can't already connect to the daemon on localhost,
+        # open an ssh tunnel to the daemon and start the beanstalk
         try:
             self.start_listen()
         except:
@@ -104,28 +132,25 @@ class Worker(object):
             job = self.bsd.reserve()
             job.bury()
 
+            # got a job -----
+            # update the repository, attempt to run the job
+            # and return the results to the director
+            repo.rsync_update()
             jobtup = simplejson.loads(job.body)
-            if len(jobtup) != 2:
-                print "Bad job length, ", jobtup, ", removing..."
+            try:
+                print "Running ", jobtup, "..."
+                result = runner.run_test_on_model(*jobtup)
+                result = {"job": jobtup, "result": result}
+                self.bsd.use(TUBE_RESULTS)
+                self.bsd.put(simplejson.dumps(result))
                 job.delete()
-                
-                error = {"job": jobtup, "error": "length"}
+            
+            except Exception as e:
+                print "Run failed, removing..."
+                error = {"job": jobtup, "error": str(e)}
                 self.bsd.use(TUBE_ERROR)
-                self.bsd.put(error)
-            else:
-                print "Running ", jobtup[0], "with", jobtup[1], "..."
-                try:
-                    result = run_test_on_model(*jobtup)
-                    self.bsd.use(TUBE_RESULTS)
-                    self.bsd.put(result)
-                    job.delete()
-                except Exception as e:
-                    print "Run failed, removing..."
-                    
-                    error = {"job": jobtup, "error": e}
-                    self.bsd.use(TUBE_ERROR)
-                    self.bsd.put(error)
-                    job.delete()
+                self.bsd.put(simplejson.dumps(error))
+                job.delete()
 
 
 

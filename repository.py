@@ -1,9 +1,10 @@
 """ This should contain some nice functions and methods for dealing
 with the repository structure """
 
-import sys, os, subprocess
+import sys, os, subprocess, simplejson
 from contextlib import contextmanager
 import kimservice
+from persistentdict import PersistentDict
 
 #==============================
 # KIM FLAGS
@@ -33,10 +34,10 @@ KIM_REPOSITORY_DIR = os.readlink('openkim-repository')
 #============================
 
 @contextmanager
-def in_repo_dir():
+def in_repo_dir(subdir=None):
     """Change to repo directory to execute code, then change back"""
     cwd = os.getcwd()
-    os.chdir(KIM_REPOSITORY_DIR)
+    os.chdir(os.path.join(KIM_REPOSITORY_DIR,subdir or ""))
     yield
     os.chdir(cwd)
 
@@ -88,11 +89,34 @@ def valid_match(testname,modelname):
         return False
 
 def tests_for_model(modelname):
+    """ Return a generator of all valid tests for a model """
     return (test for test in KIM_TESTS if valid_match(test,modelname) )
 
 def models_for_test(testname):
+    """ Return a generator of all valid models for a test """
     return (model for model in KIM_MODELS if valid_match(testname,model) )
 
 def test_executable(testname):
     """ get the executable for a test """
     return os.path.join(KIM_TESTS_DIR,testname,testname)
+
+#==========================================
+# Results in repo
+#==========================================
+
+def write_result_to_file(results):
+    """ Given a dictionary of results, write it to the corresponding folder """
+    with in_repo_dir("PREDICTIONs"):
+        testname = results["_testname"]
+        modelname = results["_modelname"]
+        outputfilename = "{}-{}".format(testname,modelname)
+        with open(outputfilename,"w") as fobj:
+            simplejson.dump(results,fobj)
+        print "Wrote results in: {}".format(os.path.abspath(outputfilename))
+
+
+#===========================================
+# rsync utilities
+#===========================================
+def rsync_update():
+    pass
