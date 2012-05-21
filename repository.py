@@ -45,10 +45,30 @@ def pull(remote='origin',branch='master'):
     with in_repo_dir():
         return subprocess.call(['git','pull',remote,branch])
 
+def status():
+    """ get git status"""
+    with in_repo_dir():
+        return subprocess.call(['git','status'])
+
+def add():
+    """ do a git add """
+    with in_repo_dir():
+        return subprocess.call(['git','add','.'])
+
+def commit(mesg=''):
+    with in_repo_dir():
+        return subprocess.call(['git','commit','-a','--allow-empty-message','-m',mesg])
+
 def push(remote='origin',branch='master'):
     """ do a git push """
     with in_repo_dir():
         return subprocess.call(['git','push',remote,branch])
+
+def update(mesg="",remote='origin',branch='master'):
+    """ update the repo with an add commit and push """
+    add()
+    commit(mesg)
+    push(remote,branch)
 
 #======================================
 # Some kim api wrapped things
