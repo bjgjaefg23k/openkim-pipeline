@@ -46,7 +46,7 @@ class Director(object):
             self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
 
         # we want to get updates from the webserver on the 'update' tube
-        # and post the jobs on 'jobs' tube
+        # and post the jobs on 'jobs' tube, receive on the 'results' and 'error' tube
         self.bsd.watch(TUBE_UPDATE)
         self.bsd.watch(TUBE_RESULTS)
         self.bsd.watch(TUBE_ERROR)
@@ -55,7 +55,6 @@ class Director(object):
         # put some dummy jobs, one bogus, some not
         self.bsd.use(TUBE_JOBS)
         self.bsd.put(simplejson.dumps(["hello"]))
-        self.bsd.put(simplejson.dumps(["test_lattice_const", "ex_model_Ar_P_LJ"]))
 
         self.bsd.use(TUBE_UPDATE)
         self.bsd.put("test_lattice_const")
@@ -69,22 +68,31 @@ class Director(object):
             request = self.bsd.reserve()
             request.bury()
 
+            # got a request to update a model or test
+            # from the website (or other trusted place)
             if request.stats()['tube'] == TUBE_UPDATE:
                 # update the repository, try to compile the file
                 # send it out as a job to compute
                 repo.rsync_update()
                 self.push_jobs(request.body)
 
+            # got word from a worker that a job is complete
             if request.stats()['tube'] == TUBE_RESULTS:
-                print request.body
+                ret = simplejson.loads(request.body)
+                repo.write_result_to_file(ret['result'])
+                print "Finished", ret['job'], "..."
 
+            # got word from a worker that a job errored out
             if request.stats()['tube'] == TUBE_ERROR:
-                print request.body
+                ret = simplejson.loads(request.body)
+                print "Error on job", ret['job'], " = ", ret["error"]
 
             request.delete()
 
     def push_jobs(self, update):
         self.bsd.use(TUBE_JOBS)
+
+        # is it a test that was updated or a model?
         if update in repo.KIM_TESTS:
             for model in repo.models_for_test(update):
                 self.bsd.put(simplejson.dumps([update,model]))
@@ -100,8 +108,8 @@ class Director(object):
 
 class Worker(object):
     def __init__(self):
-        self.remote_user = "sethnagroup"
-        self.remote_addr = "cerbo.ccmr.cornell.edu"
+        self.remote_user = GLOBAL_USER 
+        self.remote_addr = GLOBAL_HOST 
         self.ip = "127.0.0.1"
         self.timeout = 10
         self.port = GLOBAL_PORT
