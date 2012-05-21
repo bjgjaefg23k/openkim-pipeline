@@ -123,3 +123,6 @@ def write_result_to_file(results, pk=None):
 #===========================================
 def rsync_update():
     pass
+
+def test_model_to_priority(test, model):
+    return 1
