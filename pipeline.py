@@ -11,22 +11,25 @@ import urllib
 import time
 import simplejson
 
+GLOBAL_IP   = "127.0.0.1"
 GLOBAL_PORT = 14177
+
 GLOBAL_USER = "sethnagroup"
 GLOBAL_HOST = "cerbo.ccmr.cornell.edu"
+GLOBAL_DIR  = "/home/vagrant/openkim-repository/"
 
 TUBE_JOBS    = "jobs"
 TUBE_RESULTS = "results"
-TUBE_ERROR   = "error"
-TUBE_UPDATE  = "update"
+TUBE_ERROR   = "errors"
+TUBE_UPDATE  = "updates"
 
 def rsync_update():
-    #check_call("rsync -avz -e ssh {}@{}:remotedir localdir".format(GLOBAL_USER,GLOBAL_HOST))
+    #check_call("rsync -avz -e ssh {}@{}:{} {}".format(GLOBAL_USER,GLOBAL_HOST,GLOBAL_DIR,GLOBAL_DIR))
     pass
 
 class Director(object):
     def __init__(self):
-        self.ip = "127.0.0.1" 
+        self.ip   = GLOBAL_IP 
         self.port = GLOBAL_PORT 
         self.timeout = 10
         self.msg_size = 2**16
@@ -41,10 +44,11 @@ class Director(object):
         try:
             self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
         except:
-            self.daemon = Popen("screen -dm beanstalkd -l {} -p {} -v {}".format(self.ip, self.port, self.msg_size), shell=True)
+            self.daemon = Popen("screen -dm beanstalkd -l {} -p {} -z {}".format(self.ip, self.port, self.msg_size), shell=True)
             time.sleep(1)
             self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
 
+        print "Director ready"
         # we want to get updates from the webserver on the 'update' tube
         # and post the jobs on 'jobs' tube, receive on the 'results' and 'error' tube
         self.bsd.watch(TUBE_UPDATE)
@@ -57,7 +61,7 @@ class Director(object):
         self.bsd.put(simplejson.dumps(["hello"]))
 
         self.bsd.use(TUBE_UPDATE)
-        self.bsd.put("test_lattice_const")
+        self.bsd.put(simplejson.dumps({"kimid": "test_lattice_const", "priority": "high"}))
 
     def disconnect_from_daemon(self):
         self.bsd.close()
@@ -74,7 +78,7 @@ class Director(object):
                 # update the repository, try to compile the file
                 # send it out as a job to compute
                 repo.rsync_update()
-                self.push_jobs(request.body)
+                self.push_jobs(simplejson.loads(request.body))
 
             # got word from a worker that a job is complete
             if request.stats()['tube'] == TUBE_RESULTS:
@@ -89,16 +93,29 @@ class Director(object):
 
             request.delete()
 
+    def priority_to_number(self,priority):
+        priorities = {"immediate": 0, "very high": 0.01, "high": 0.1, 
+                      "normal": 1, "low": 10, "very low": 100}
+        if priority not in priorities.keys():
+            priority = "normal"
+        return priorities[priority]
+
     def push_jobs(self, update):
         self.bsd.use(TUBE_JOBS)
+        kimid = update['kimid']
+        priority_factor = self.priority_to_number(update['priority'])
 
         # is it a test that was updated or a model?
-        if update in repo.KIM_TESTS:
-            for model in repo.models_for_test(update):
-                self.bsd.put(simplejson.dumps([update,model]))
-        elif update in repo.KIM_MODELS:
-            for test in repo.tests_for_model(update):
-                self.bsd.put(simplejson.dumps([test,update]))
+        if kimid in repo.KIM_TESTS:
+            for model in repo.models_for_test(kimid):
+                priority = int(priority_factor*repo.test_model_to_priority(kimid,model) * 2**15)
+                print "Submitting job <%s, %s> priority %i" % (kimid, model, priority)
+                self.bsd.put(simplejson.dumps([kimid,model]), priority=priority)
+        elif kimid in repo.KIM_MODELS:
+            for test in repo.tests_for_model(kimid):
+                priority = int(priority_factor*repo.test_model_to_priority(kimid,model) * 2**15)
+                print "Submitting job <%s, %s> priority %i" % (kimid, model, priority)
+                self.bsd.put(simplejson.dumps([test,kimid]))
         else:
             print "Tried to update invalid KIM ID!"
 
@@ -110,7 +127,7 @@ class Worker(object):
     def __init__(self):
         self.remote_user = GLOBAL_USER 
         self.remote_addr = GLOBAL_HOST 
-        self.ip = "127.0.0.1"
+        self.ip          = GLOBAL_IP 
         self.timeout = 10
         self.port = GLOBAL_PORT
 
