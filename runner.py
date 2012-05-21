@@ -12,10 +12,11 @@ def run_test_on_model(testname,modelname):
     if modelname not in repo.KIM_MODELS:
         raise KeyError, "model <{}> not valid".format(modelname)
 
-    executable = repo.test_executable(testname)
-    
+    executable = [repo.test_executable(testname)]
+    timeblock = ["/usr/bin/time","--format={\"_usertime\":%U,\"_memmax\":%M,\"_memavg\":%K}"]
+
     start_time = time.time()
-    process = Popen(executable,stdin=PIPE,stdout=PIPE)
+    process = Popen(timeblock+ executable,stdin=PIPE,stdout=PIPE,stderr=PIPE)
     stdout, stderr = process.communicate(modelname)
     end_time = time.time()
 
@@ -28,6 +29,10 @@ def run_test_on_model(testname,modelname):
     data["_testname"] = testname
     data["_modelname"] = modelname
     data["_time"] = end_time-start_time
+    time_str = stderr.splitlines()[-1]
+    time_dat = simplejson.loads(time_str)
+
+    data.update(time_dat)
 
     return data
 
