@@ -5,32 +5,8 @@ import sys, os, subprocess, simplejson
 from contextlib import contextmanager
 import kimservice, kimid
 from persistentdict import PersistentDict
+from config import *
 
-
-#==============================
-# KIM FLAGS
-#===============================
-
-#get the kim directories
-KIM_DIR = os.environ["KIM_DIR"]
-KIM_API_DIR = os.environ.get("KIM_API_DIR",
-        os.path.join(KIM_DIR,"KIM_API"))
-KIM_MODELS_DIR = os.environ.get("KIM_MODELS_DIR",
-        os.path.join(KIM_DIR,"MODELs"))
-KIM_MODEL_DRIVERS_DIR = os.environ.get("KIM_MODEL_DRIVERS_DIR",
-        os.path.join(KIM_DIR,"MODEL_DRIVERs"))
-KIM_TESTS_DIR = os.environ.get("KIM_TESTS_DIR",
-        os.path.join(KIM_DIR,"TESTs"))
-
-#get all of the models
-KIM_MODELS = [ dir for dir in os.listdir(KIM_MODELS_DIR) if os.path.isdir(os.path.join(KIM_MODELS_DIR,dir)) ]
-#and all of the tests
-KIM_TESTS =  [ dir for dir in os.listdir(KIM_TESTS_DIR) if os.path.isdir(os.path.join(KIM_TESTS_DIR,dir)) ]
-
-#get the repository dir from the symlink
-KIM_REPOSITORY_DIR = os.readlink('openkim-repository')
-
-PIPELINE_INFO_FILE = ".pipelineinfo"
 
 #============================
 # Silly git stuff
@@ -140,15 +116,25 @@ def write_info_file_at(directory,info):
     with open(filepath, "w") as fl:
         simplejson.dump(info,fl)
 
-def persistant_info_file(filename,*args,**kwargs):
+def persistent_info_file(filename,*args,**kwargs):
     return PersistentDict(filename,*args,format="json",**kwargs)
 
+def test_info(testname,*args,**kwargs):
+    """ load the info file for the corresponding test """
+    location = os.path.join(test_dir(testname), PIPELINE_INFO_FILE)
+    return persistent_info_file(location,*args,**kwargs)
+
+def model_info(modelname, *args, **kwargs):
+    """ load the info file for the corresponding model """
+    location = os.path.join(model_dir(modelname), PIPELINE_INFO_FILE)
+    return persistent_info_file(location,*args,**kwargs)
 
 #===========================================
 # rsync utilities
 #===========================================
+
 def rsync_update():
-    pass
+    check_call("rsync -avz -e ssh {}@{}:{} {}".format(GLOBAL_USER,GLOBAL_HOST,GLOBAL_DIR,GLOBAL_DIR))
 
 def test_model_to_priority(test, model):
     return 1

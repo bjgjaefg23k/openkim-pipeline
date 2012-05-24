@@ -6,13 +6,8 @@ import runner
 import urllib
 import time
 import simplejson
+from config import *
 
-GLOBAL_IP   = "127.0.0.1"
-GLOBAL_PORT = 14177
-
-GLOBAL_USER = "sethnagroup"
-GLOBAL_HOST = "cerbo.ccmr.cornell.edu"
-GLOBAL_DIR  = "/home/vagrant/openkim-repository/"
 
 TUBE_JOBS    = "jobs"
 TUBE_RESULTS = "results"
