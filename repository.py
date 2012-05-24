@@ -30,6 +30,8 @@ KIM_TESTS =  [ dir for dir in os.listdir(KIM_TESTS_DIR) if os.path.isdir(os.path
 #get the repository dir from the symlink
 KIM_REPOSITORY_DIR = os.readlink('openkim-repository')
 
+PIPELINE_INFO_FILE = ".pipelineinfo"
+
 #============================
 # Silly git stuff
 #============================
@@ -99,7 +101,15 @@ def models_for_test(testname):
 
 def test_executable(testname):
     """ get the executable for a test """
-    return os.path.join(KIM_TESTS_DIR,testname,testname)
+    return os.path.join(test_dir(testname),testname)
+
+def test_dir(testname):
+    """ Get the directory of corresponding testname """
+    return os.path.join(KIM_TESTS_DIR,testname)
+
+def model_dir(modelname):
+    """ Get the model directory given model name """
+    return os.path.join(KIM_MODELS_DIR,modelname)
 
 #==========================================
 # Results in repo
@@ -116,6 +126,22 @@ def write_result_to_file(results, pk=None):
             simplejson.dump(results,fobj)
     
     print "Wrote results in: {}".format(os.path.abspath(outputfilename))
+
+
+def load_info_file(filename):
+    """ loat a kim json pipeline info file """
+    with open(filename) as fl:
+        info = simplejson.load(fl)
+    return info
+
+def write_info_file_at(directory,info):
+    """ write the dictionary to the corresponding directory """
+    filepath = os.path.join(directory,PIPELINE_INFO_FILE)
+    with open(filepath, "w") as fl:
+        simplejson.dump(info,fl)
+
+def persistant_info_file(filename,*args,**kwargs):
+    return PersistentDict(filename,*args,format="json",**kwargs)
 
 
 #===========================================
