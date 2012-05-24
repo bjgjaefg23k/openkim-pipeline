@@ -1,7 +1,3 @@
-"""
-Contains routines for running tests against models and vice versa
-"""
-
 import repository as repo
 import beanstalkc as bean 
 from subprocess import check_call, Popen, PIPE
@@ -24,7 +20,7 @@ TUBE_ERROR   = "errors"
 TUBE_UPDATE  = "updates"
 
 def rsync_update():
-    #check_call("rsync -avz -e ssh {}@{}:{} {}".format(GLOBAL_USER,GLOBAL_HOST,GLOBAL_DIR,GLOBAL_DIR))
+    check_call("rsync -avz -e ssh {}@{}:{} {}".format(GLOBAL_USER,GLOBAL_HOST,GLOBAL_DIR,GLOBAL_DIR))
     pass
 
 class Director(object):
@@ -33,6 +29,8 @@ class Director(object):
         self.port = GLOBAL_PORT 
         self.timeout = 10
         self.msg_size = 2**16
+        self.remote_user = GLOBAL_USER
+        self.remote_addr = GLOBAL_HOST
 
     def run(self):
         self.connect_to_daemon()
@@ -40,11 +38,15 @@ class Director(object):
         self.data_thrd = Process(target=Director.get_datums(self))
 
     def connect_to_daemon(self):
-        # connect to the daemon we created
+        print "Connecting to beanstalkd"
         try:
             self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
         except:
-            self.daemon = Popen("screen -dm beanstalkd -l {} -p {} -z {}".format(self.ip, self.port, self.msg_size), shell=True)
+            print "No daemon found, starting on", self.remote_addr
+            self.daemon = Popen("ssh {}@{} \"screen -dm beanstalkd -l {} -p {} -z {}\"".format(
+                self.remote_user, self.remote_addr, self.ip, self.port, self.msg_size), shell=True)
+            self.ssh = Popen("screen -dm ssh -L{}:{}:{} {}@{}".format(
+                self.port,self.ip,self.port,self.remote_user,self.remote_addr), shell=True)
             time.sleep(1)
             self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
 
@@ -137,7 +139,8 @@ class Worker(object):
         try:
             self.start_listen()
         except:
-            self.ssh = Popen("screen -dm ssh -L{}:{}:{} {}@{}".format(self.port,self.ip,self.port,self.remote_user,self.remote_addr), shell=True)
+            self.ssh = Popen("screen -dm ssh -L{}:{}:{} {}@{}".format(
+                self.port,self.ip,self.port,self.remote_user,self.remote_addr), shell=True)
             time.sleep(1)
             self.start_listen()
 
