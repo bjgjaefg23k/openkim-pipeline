@@ -11,6 +11,16 @@ So we need to write some pieces, namely:
     figure out which tests to run
 
 
+Predictions are not IDs but TESTs and MODELs and versions of api and box.
+Push depedencies to input files.  
+Predictions can be pictures.
+
+Things for next week:
+ * Installing new models
+ * Visualization
+ * Working Pipeline
+ * upload of tests
+ * reference data
 
 NOTE KIM_ID
     CC_DDDDDDDD_VVV

@@ -36,3 +36,15 @@ def run_test_on_model(testname,modelname):
 
     return data
 
+
+#run all the tests on all the models
+def update_repo():
+    for test in repo.KIM_TESTS:
+        for model in repo.models_for_test(test):
+            if not repo.prediction_exists(test,model):
+                print "Running {} vs {}".format(test,model)
+                results = run_test_on_model(test,model)
+                repo.write_result_to_file(results)
+            else:
+                print "{} vs {} seems current".format(test,model)
+

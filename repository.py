@@ -6,7 +6,7 @@ from contextlib import contextmanager
 import kimservice, kimid
 from persistentdict import PersistentDict
 from config import *
-
+from subprocess import check_call
 
 #============================
 # Silly git stuff
@@ -91,11 +91,14 @@ def model_dir(modelname):
 # Results in repo
 #==========================================
 
+PREDICTION_FORM = "{}-{}"
+
 def write_result_to_file(results, pk=None):
     """ Given a dictionary of results, write it to the corresponding file, or create a new id """
-    outputfilename = kimid.new_kimid("PD",pk)
     testname = results["_testname"]
     modelname = results["_modelname"]
+    
+    outputfilename = PREDICTION_FORM.format(testname,modelname)
 
     with in_repo_dir("PREDICTIONs"):
         with open(outputfilename,"w") as fobj:
@@ -103,6 +106,13 @@ def write_result_to_file(results, pk=None):
     
     print "Wrote results in: {}".format(os.path.abspath(outputfilename))
 
+
+def prediction_exists(testname,modelname):
+    outputfilename = PREDICTION_FORM.format(testname,modelname)
+    with in_repo_dir("PREDICTIONs"):
+        if os.path.exists(outputfilename):
+            return True
+    return False
 
 def load_info_file(filename):
     """ loat a kim json pipeline info file """
@@ -128,6 +138,21 @@ def model_info(modelname, *args, **kwargs):
     """ load the info file for the corresponding model """
     location = os.path.join(model_dir(modelname), PIPELINE_INFO_FILE)
     return persistent_info_file(location,*args,**kwargs)
+
+def test_kimid(testname):
+    #See if id exists
+    try:
+        return test_info(testname)["kimid"]
+    except KeyError:
+        #generate a new kimid
+        newid = kimid.new_kimid("TE")
+        infodict = test_info(testname)
+        infodict["kimid"] = newid
+        infodict.sync()
+        return newid
+
+def model_kimid(modelname):
+    return model_info(modelname)["kimid"]
 
 #===========================================
 # rsync utilities

@@ -40,6 +40,6 @@ GLOBAL_PORT = 14177
 
 GLOBAL_USER = "sethnagroup"
 GLOBAL_HOST = "cerbo.ccmr.cornell.edu"
-GLOBAL_DIR  = "/home/vagrant/openkim-repository/"
+GLOBAL_DIR  = "/home/sethnagroup/vagrant/openkim-repository/"
 
 
