@@ -9,7 +9,8 @@ which is of the form
         ME - Model Ensemble
         TE - Test
         TD - Test Driver
-        PR - Property
+        PR - Prediction
+        PO - Property
         RD - Reference data
 
 """
@@ -25,7 +26,7 @@ The dictionary of ids is a layered dictionary, or leader, then id then version
 NUM_DIGITS = 8
 KIM_ID_FORMAT = "{}_{}_{:03d}"
 STORE_FILENAME = "kimidstore.json"
-ALLOWED_LEADERS = ["MO","MD","ME","TE","TD","PR","RD"]
+ALLOWED_LEADERS = ["MO","MD","ME","TE","TD","PR","PO","RD"]
 FORMAT = "json"
 
 def randints():
