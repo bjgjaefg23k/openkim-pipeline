@@ -28,7 +28,7 @@ KIM_TESTS =  [ dir for dir in os.listdir(KIM_TESTS_DIR) if os.path.isdir(os.path
 #get the repository dir from the symlink
 KIM_REPOSITORY_DIR = os.readlink('openkim-repository')
 
-PIPELINE_INFO_FILE = ".pipelineinfo"
+PIPELINE_INFO_FILE = "pipelineinfo.json"
 
 
 #============================
