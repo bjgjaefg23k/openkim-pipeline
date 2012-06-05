@@ -7,6 +7,7 @@ Also, this dict behaves like a defaultdict of dicts
 """
 
 import pickle, json, csv, os, shutil
+from collections import defaultdict
 
 class PersistentDict(dict):
     ''' Persistent dictionary with an API compatible with shelve and anydbm.
@@ -22,7 +23,7 @@ class PersistentDict(dict):
 
     '''
 
-    def __init__(self, filename, flag='c', mode=None, format='pickle', *args, **kwds):
+    def __init__(self, filename, flag='c', mode=None, format='json', *args, **kwds):
         self.flag = flag                    # r=readonly, c=create, or n=new
         self.mode = mode                    # None or an octal triple like 0644
         self.format = format                # 'csv', 'json', or 'pickle'
@@ -80,4 +81,8 @@ class PersistentDict(dict):
                 pass
         raise ValueError('File not in a supported format')
 
+class PersistentDefaultDict(PersistentDict, defaultdict):
+    def __init__(self,*args,**kwargs):
+        super(PersistentDefaultDict,self).__init__(*args,**kwargs)
+        self.default_factory = dict
 
