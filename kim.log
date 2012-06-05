@@ -1,5 +1,2 @@
-* Error (KIM_API_model::do_AtomsTypes_match): The following symbol: Ar in test_lattice_const is not found in ex_model_Ne_P_fastLJ
-* Error (KIM_API_model::is_it_match): Test-Model AtomsTypes do not match:
-* Error (KIM_API_model::is_it_match): (virial,particleVirial,hessian,process_d1/2Edr) do not match:
-* Error (KIM_API_model::do_flag_match): Model descriptor file requres Neigh_IterAccess.
-Do not match  ex_model_Ne_P_fastLJ and test_lattice_const
+* Error (KIM_API_model::get_model_kim_str): Cannot find Model shared library file for Model name: ex_model_Ar_P_LJ
+/home/vagrant/openkim-api-v1.0.1/MODELs/ex_model_Ar_P_LJ/ex_model_Ar_P_LJ.so: cannot open shared object file: No such file or directory

@@ -7,18 +7,28 @@ import repository as repo
 
 def run_test_on_model(testname,modelname):
     """ run a test with the corresponding model, capture the output as a dict """
+    
+    #do a sanity check, see if the test and model exist
     if testname not in repo.KIM_TESTS:
         raise KeyError, "test <{}> not valid".format(testname)
     if modelname not in repo.KIM_MODELS:
         raise KeyError, "model <{}> not valid".format(modelname)
 
+    #grab the executable
     executable = [repo.test_executable(testname)]
+    #profiling time thing
     timeblock = ["/usr/bin/time","--format={\"_usertime\":%U,\"_memmax\":%M,\"_memavg\":%K}"]
 
-    start_time = time.time()
-    process = Popen(timeblock+ executable,stdin=PIPE,stdout=PIPE,stderr=PIPE)
-    stdout, stderr = process.communicate(modelname)
-    end_time = time.time()
+    test_dir = repo.test_dir(testname)
+    # run the test in its own directory
+    with repo.in_repo_dir(test_dir):
+        #grab the input file
+        with open(INPUT_FILE) as fl:
+            with template.process(fl) as kim_stdin:
+                start_time = time.time()
+                process = Popen(timeblock+ executable,stdin=PIPE,stdout=PIPE,stderr=PIPE)
+                stdout, stderr = process.communicate(kim_stdin)
+                end_time = time.time()
 
     if process.poll() is None:
         process.kill()
@@ -29,9 +39,9 @@ def run_test_on_model(testname,modelname):
     data["_testname"] = testname
     data["_modelname"] = modelname
     data["_time"] = end_time-start_time
+    data["_created_at"] = time.time()
     time_str = stderr.splitlines()[-1]
     time_dat = simplejson.loads(time_str)
-
     data.update(time_dat)
 
     return data
