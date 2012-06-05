@@ -1,6 +1,9 @@
 """
 Persistant Dictionary recipe stolen from:
     http://code.activestate.com/recipes/576642-persistent-dict-with-multiple-standard-file-format/
+
+Also, this dict behaves like a defaultdict of dicts
+
 """
 
 import pickle, json, csv, os, shutil
