@@ -23,6 +23,7 @@ def run_test_on_model(testname,modelname):
     # run the test in its own directory
     with repo.in_repo_dir(test_dir):
         #grab the input file
+        output_info = repo.load_info(OUTPUT_FILE)
         with open(INPUT_FILE) as fl:
             with template.process(fl) as kim_stdin:
                 start_time = time.time()
@@ -36,6 +37,9 @@ def run_test_on_model(testname,modelname):
 
     data_string = stdout.splitlines()[-1]
     data = simplejson.loads(data_string)
+
+    data = { output_info[key]:val for key,val in data.iteritems() }
+
     data["_testname"] = testname
     data["_modelname"] = modelname
     data["_time"] = end_time-start_time
