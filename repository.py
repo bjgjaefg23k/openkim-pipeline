@@ -94,7 +94,7 @@ def model_dir(modelname):
 
 def files_from_results(result):
     """ Given a dictionary of results, return the filenames for any files contained in the results """
-    files = [ template.get_file(val) for key,val in results.iteritems() ]
+    files = [ template.get_file(val) for key,val in results.iteritems() if template.get_file(val) ]
         
 
 def write_result_to_file(results, pk=None):
