@@ -17,6 +17,7 @@ which is of the form
 
 from persistentdict import PersistentDict
 import random, sys
+from config import *
 
 """ 
 The dictionary of ids is a layered dictionary, or leader, then id then version
@@ -25,7 +26,7 @@ The dictionary of ids is a layered dictionary, or leader, then id then version
 
 NUM_DIGITS = 12
 KIM_ID_FORMAT = "{}_{}_{:03d}"
-STORE_FILENAME = "kimidstore.json"
+STORE_FILENAME = KIMID_STORE
 ALLOWED_LEADERS = ["MO","MD","ME","TE","TD","PR","PO","RD"]
 FORMAT = "json"
 
@@ -67,10 +68,19 @@ def format_kimid(leader,pk,version):
         pk = "{:08d}".format(pk)
     return KIM_ID_FORMAT.format(leader,pk,version)
 
+def parse_kimid(kimid):
+    """given an id return a tuple of its parts"""
+    parts = kimid.split("_")
+    leader, pk, version = parts
+    version = int(version)
+    return (leader,pk,version)
 
 def new_kimid(leader,pk=None):
     """ Generate a new kim id, if only the leader is given generate a new id number,
-    if the id number is given, increment the version number """
+    if the id number is given, increment the version number
+        
+        meant to be the main method of this class 
+    """
     if pk is None:
         return get_new_id(leader)
     else:
