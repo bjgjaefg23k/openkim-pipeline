@@ -1,10 +1,10 @@
 """ This should contain some nice functions and methods for dealing
 with the repository structure """
 
-import sys, os, subprocess, simplejson
+import sys, os, subprocess, simplejson, shutil
 from contextlib import contextmanager
 import kimservice, kimid
-from persistentdict import PersistentDict
+from persistentdict import PersistentDict, PersistentDefaultDict
 from config import *
 from subprocess import check_call
 
@@ -13,10 +13,10 @@ from subprocess import check_call
 #============================
 
 @contextmanager
-def in_repo_dir(subdir=None):
+def in_repo_dir(dir=None):
     """Change to repo directory to execute code, then change back"""
     cwd = os.getcwd()
-    os.chdir(os.path.join(KIM_REPOSITORY_DIR,subdir or ""))
+    os.chdir(dir or KIM_REPOSITORY_DIR)
     yield
     os.chdir(cwd)
 
@@ -91,31 +91,56 @@ def model_dir(modelname):
 # Results in repo
 #==========================================
 
-PREDICTION_FORM = "{}-{}"
+
+def files_from_results(result):
+    """ Given a dictionary of results, return the filenames for any files contained in the results """
+    files = [ template.get_file(val) for key,val in results.iteritems() ]
+        
 
 def write_result_to_file(results, pk=None):
-    """ Given a dictionary of results, write it to the corresponding file, or create a new id """
+    """ Given a dictionary of results, write it to the corresponding file, or create a new id
+        
+        This assumes the results already have the proper output Property IDs
+        Write the property json file in its corresponding location
+        and copy any files associated with it
+
+        Also, update the property store for fast lookups
+    
+    """
     testname = results["_testname"]
     modelname = results["_modelname"]
     
-    outputfilename = PREDICTION_FORM.format(testname,modelname)
+    pr_id = kimid.new_kimid("PR")
+    outputfolder = pr_id
+    outputfilename = outputfolder
 
-    with in_repo_dir("PREDICTIONs"):
-        with open(outputfilename,"w") as fobj:
+    with in_repo_dir(KIM_PREDICTIONS_DIR):
+        os.mkdir(outputfolder)
+        with open(os.path.join(outputfolder,outputfilename),"w") as fobj:
             simplejson.dump(results,fobj)
+
+        #copy any corresponding files to the predictions directory
+        files = files_from_results(results):
+        if files:
+            test_dir = test_dir(testname)
+            for src in files:
+                shutil.copy(os.path.join(test_dir,src),outputfolder)
     
+    with prediction_store() as store:
+        store[testname][modelname] = pr_id
+
     print "Wrote results in: {}".format(os.path.abspath(outputfilename))
 
 
 def prediction_exists(testname,modelname):
-    outputfilename = PREDICTION_FORM.format(testname,modelname)
-    with in_repo_dir("PREDICTIONs"):
-        if os.path.exists(outputfilename):
-            return True
+    with prediction_store() as store:
+        if testname in store:
+            if modelname in store[testname]:
+                return True
     return False
 
 def load_info_file(filename):
-    """ loat a kim json pipeline info file """
+    """ load a kim json pipeline info file """
     with open(filename) as fl:
         info = simplejson.load(fl)
     return info
@@ -139,20 +164,6 @@ def model_info(modelname, *args, **kwargs):
     location = os.path.join(model_dir(modelname), PIPELINE_INFO_FILE)
     return persistent_info_file(location,*args,**kwargs)
 
-def test_kimid(testname):
-    #See if id exists
-    try:
-        return test_info(testname)["kimid"]
-    except KeyError:
-        #generate a new kimid
-        newid = kimid.new_kimid("TE")
-        infodict = test_info(testname)
-        infodict["kimid"] = newid
-        infodict.sync()
-        return newid
-
-def model_kimid(modelname):
-    return model_info(modelname)["kimid"]
 
 #===========================================
 # rsync utilities
