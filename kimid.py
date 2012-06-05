@@ -25,6 +25,7 @@ The dictionary of ids is a layered dictionary, or leader, then id then version
 
 
 NUM_DIGITS = 12
+VERSION_DIGITS = 3
 KIM_ID_FORMAT = "{}_{}_{:03d}"
 STORE_FILENAME = KIMID_STORE
 ALLOWED_LEADERS = ["MO","MD","ME","TE","TD","PR","PO","RD"]
@@ -62,6 +63,17 @@ def get_current_version(leader,pk):
     with PersistentDict(STORE_FILENAME, format=FORMAT, flag='r') as store:
         version = store[leader][pk]
     return version
+
+def promote_kimid(kid):
+    """ Given a kimid {kid}, with or without the version number,
+        ensure it goes out with the version number """
+    if len(kid) == 2+1+NUM_DIGITS:
+        #we have a short id
+        leader,pk = kid.split("_")
+        version = get_current_version(leader,pk)
+        return format_kimid(leader,pk,version)
+    return kid
+
 
 def format_kimid(leader,pk,version):
     if isinstance(pk,int):

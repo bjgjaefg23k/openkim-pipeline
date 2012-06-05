@@ -87,14 +87,40 @@ def model_dir(modelname):
     """ Get the model directory given model name """
     return os.path.join(KIM_MODELS_DIR,modelname)
 
+def model_driver_dir(modeldrivername):
+    """ Get the model driver directory """
+    return os.path.join(KIM_MODEL_DRIVERS_DIR,modeldrivername)
+
+def test_driver_dir(testdrivername):
+    """ Get the test driver directory """
+    return os.path.join(KIM_TEST_DRIVERS_DIR,testdrivername)
+
+def test_driver_executable(testdrivername):
+    """ Get the test driver executable """
+    return os.path.join(test_driver_dir(testdrivername),testdrivername)
+
+def reference_data_dir(referencedataname):
+    """ Get the reference data directory """
+    return os.path.join(KIM_REFERENCE_DATA_DIR,referencedataname)
+
+def prediction_dir(predictionname):
+    """ Get the prediction directory """
+    return os.path.join(KIM_PREDICTIONS_DIR,predictionname)
+
+def prediction_info(predictionname):
+    """ Get the prediction file """
+    return os.path.join(prediction_dir(predictionname), predictionname)
+
 #==========================================
 # Results in repo
 #==========================================
 
 
-def files_from_results(result):
+def files_from_results(results):
     """ Given a dictionary of results, return the filenames for any files contained in the results """
-    files = filter(None,(template.get_file(val) for key,val in results.iteritems()))
+    testname = results["_testname"]
+    testdir = test_dir(testname)
+    files = filter(None,(template.get_file(val,testdir) for key,val in results.iteritems()))
     return files
         
 
@@ -168,6 +194,49 @@ def model_info(modelname, *args, **kwargs):
 def prediction_store():
     """ return the prediction store """
     return PersistentDefaultDict(PREDICTION_STORE)
+
+def prediction_info(pr):
+    prpath = prediction_file(pr)
+    return load_info_file(prpath)
+
+
+#==========================================
+# Processor helper files
+#==========================================
+
+def get_path(kid):
+    """ Given a kimid give the path to the corresponding place """
+    leader,pk,version = kimid.parse_kimid(kid)
+
+    if leader=="TE":
+        return test_executable(kid)
+    if leader=="MO":
+        return model_dir(kid)
+    if leader=="MD":
+        return model_driver_dir(kid)
+    if leader=="TD":
+        return test_driver_executable(kid)
+    if leader=="RD":
+        return reference_data_dir(kid)
+    if leader=="PR":
+        return prediction_dir(kid)
+
+
+def data_from_rd(rd):
+    """ Get the data for the rd id """
+
+
+def data_from_pr_po(pr,po):
+    """ Get data from a pr id and po id """
+    info = prediction_info(pr)
+    return info[po]
+
+
+def data_from_te_mo_po(te,mo,po):
+    """ Get data from a te, mo, po """
+    with prediction_store() as store:
+        pr = store[te][mo]
+    return data_from_pr_po(pr,po)
 
 #===========================================
 # rsync utilities
