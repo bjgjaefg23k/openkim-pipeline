@@ -14,10 +14,6 @@ TUBE_RESULTS = "results"
 TUBE_ERROR   = "errors"
 TUBE_UPDATE  = "updates"
 
-def rsync_update():
-    check_call("rsync -avz -e ssh {}@{}:{} {}".format(GLOBAL_USER,GLOBAL_HOST,GLOBAL_DIR,GLOBAL_DIR))
-    pass
-
 class Director(object):
     def __init__(self):
         self.ip   = GLOBAL_IP 
