@@ -94,7 +94,8 @@ def model_dir(modelname):
 
 def files_from_results(result):
     """ Given a dictionary of results, return the filenames for any files contained in the results """
-    files = [ template.get_file(val) for key,val in results.iteritems() ]
+    files = filter(None,(template.get_file(val) for key,val in results.iteritems()))
+    return files
         
 
 def write_result_to_file(results, pk=None):
@@ -120,7 +121,7 @@ def write_result_to_file(results, pk=None):
             simplejson.dump(results,fobj)
 
         #copy any corresponding files to the predictions directory
-        files = files_from_results(results):
+        files = files_from_results(results)
         if files:
             test_dir = test_dir(testname)
             for src in files:
@@ -164,6 +165,9 @@ def model_info(modelname, *args, **kwargs):
     location = os.path.join(model_dir(modelname), PIPELINE_INFO_FILE)
     return persistent_info_file(location,*args,**kwargs)
 
+def prediction_store():
+    """ return the prediction store """
+    return PersistentDefaultDict(PREDICTION_STORE)
 
 #===========================================
 # rsync utilities
