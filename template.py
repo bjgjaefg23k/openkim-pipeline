@@ -40,19 +40,19 @@ def data_from_match(match):
         data = repo.data_from_rd(rd)
         return str(data)
     if len(groups) == 3:
-        # a 3 call is PR, PO
-        part, pr, po = groups
+        # a 3 call is TR, PR
+        part, tr, pr = groups
+        tr = kimid.promote_kimid(tr)
         pr = kimid.promote_kimid(pr)
-        po = kimid.promote_kimid(po)
-        data = repo.data_from_pr_po(pr,po)
+        data = repo.data_from_tr_pr(tr,pr)
         return str(data)
     if len(groups) == 4:
-        # a 4 call is part,te,mo,po
-        part, te, mo, po = groups
+        # a 4 call is part,te,mo,pr
+        part, te, mo, pr = groups
         te = kimid.promote_kimid(te)
         mo = kimid.promote_kimid(mo)
-        po = kimid.promote_kimid(po)
-        data = repo.data_from_te_mo_po(te,mo,po)
+        pr = kimid.promote_kimid(pr)
+        data = repo.data_from_te_mo_pr(te,mo,pr)
         return str(data)
     raise KeyError, "I don't understand how to parse this"
 

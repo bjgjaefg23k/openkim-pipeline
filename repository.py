@@ -266,19 +266,19 @@ def data_from_rd(rd):
     """ Get the data for the rd id """
 
 
-def data_from_pr_po(pr,po):
+def data_from_tr_pr(tr,pr):
     """ Get data from a pr id and po id """
-    logger.debug("getting data for %r,%r",pr,po)
-    info = prediction_info(pr)
-    return info[po]
+    logger.debug("getting data for %r,%r",tr,pr)
+    info = prediction_info(tr)
+    return info[pr]
 
 
-def data_from_te_mo_po(te,mo,po):
+def data_from_te_mo_po(te,mo,pr):
     """ Get data from a te, mo, po """
     logger.debug("getting data for %r,%r,%r",te,mo,po)
     with prediction_store() as store:
-        pr = store[te][mo]
-    return data_from_pr_po(pr,po)
+        tr = store[te][mo]
+    return data_from_tr_pr(tr,pr)
 
 #===========================================
 # rsync utilities
