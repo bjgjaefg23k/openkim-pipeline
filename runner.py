@@ -5,6 +5,7 @@ import time, simplejson, signal
 from subprocess import Popen, PIPE
 import repository as repo
 from config import *
+logger = logger.getChild("runner")
 
 class TimedOut(Exception):
     pass
@@ -14,11 +15,13 @@ def timeout_handler(signum, frame):
 
 def run_test_on_model(testname,modelname):
     """ run a test with the corresponding model, capture the output as a dict """
-    
+    logger.info("running %r with %r",testname,modelname)
     #do a sanity check, see if the test and model exist
     if testname not in repo.KIM_TESTS:
+        logger.error("test %r not valid",testname)
         raise KeyError, "test <{}> not valid".format(testname)
     if modelname not in repo.KIM_MODELS:
+        logger.error("model %r not valid",modelname)
         raise KeyError, "model <{}> not valid".format(modelname)
 
     #grab the executable
@@ -35,7 +38,7 @@ def run_test_on_model(testname,modelname):
             with template.process(fl) as kim_stdin:
                 start_time = time.time()
                 process = Popen(timeblock+ executable,stdin=PIPE,stdout=PIPE,stderr=PIPE)
-
+                logger.info("launching run...")
                 try:
                     old_handler = signal.signal(signal.SIGALRM, timeout_handler)
                     signal.alarm(RUNNER_TIMEOUT)
@@ -45,6 +48,7 @@ def run_test_on_model(testname,modelname):
                         signal.signal(signal.SIGALRM, old_handler)
                     signal.alarm(0)
                 except TimedOut:
+                    logger.error("test %r timed out",testname)
                     raise RuntimeError, "your test timed out"
                 
                 end_time = time.time()
@@ -66,11 +70,13 @@ def run_test_on_model(testname,modelname):
     time_dat = simplejson.loads(time_str)
     data.update(time_dat)
 
+    logger.debug("got data %r",data)
     return data
 
 
 #run all the tests on all the models
 def update_repo():
+    logger.info("attempting to update repo...")
     for test in repo.KIM_TESTS:
         for model in repo.models_for_test(test):
             if not repo.prediction_exists(test,model):
