@@ -63,7 +63,7 @@ def CreateBatch(template, prefix):
         for symbol in symbols:
             newname = template+"_copy"
             finname = prefix+"_"+lattice+"_"+symbol
-            testsource = EnglishToKIMID("test_lattice_"+lattice+"_"+symbol)
+            testsource = EnglishToKIMID("test_lattice_const_"+lattice+"_"+symbol)
             if testsource is not None:
                 shutil.copytree(template, newname) 
                 ConvertName(newname, finname, {"SYMBOL": symbol, "LATTICE": lattice, "LATTICETEST": testsource})
