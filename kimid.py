@@ -29,7 +29,7 @@ NUM_DIGITS = 12
 VERSION_DIGITS = 3
 KIM_ID_FORMAT = "{}_{}_{:03d}"
 STORE_FILENAME = KIMID_STORE
-ALLOWED_LEADERS = ["MO","MD","ME","TE","TD","PR","PO","RD"]
+ALLOWED_LEADERS = ["MO","MD","ME","TE","TD","PR","TR","RD"]
 FORMAT = "json"
 
 def randints():
