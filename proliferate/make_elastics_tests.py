@@ -6,7 +6,6 @@ import tempfile
 import datetime
 import simplejson
 from contextlib import nested
-import repository as repo
 
 def CreateMetaData(name, oldname, driver):
     dic = {"kim_code": name, "title": oldname, "is_model_param": True, 
@@ -49,11 +48,11 @@ def ConvertBatch(prefix, outprefix):
         index = index + 1
 
 def EnglishToKIMID(eng):
-    with repo.in_repo_dir():
-        for f in glob.glob("te/*/metadata.json"):
-            dic = simplejson.load(open(f))
-            if dic['title'] == eng:
-                return dic['kim_code']
+    for f in glob.glob("/home/vagrant/openkim-repository/te/*/metadata.json"):
+        dic = simplejson.load(open(f))
+        if dic['title'] == eng:
+            return dic['kim_code']
+    return None
 
 def CreateBatch(template, prefix):
     import ase.data
@@ -64,12 +63,14 @@ def CreateBatch(template, prefix):
         for symbol in symbols:
             newname = template+"_copy"
             finname = prefix+"_"+lattice+"_"+symbol
-            testsoruce = "test_lattice_"+lattice+"_"+symbol
-            shutil.copytree(template, newname) 
-            ConvertName(newname, finname, {"SYMBOL": symbol, "LATTICE": lattice, "LATTICETEST": EnglishToKIMID(testsource)})
-   
-"""
+            testsource = EnglishToKIMID("test_lattice_"+lattice+"_"+symbol)
+            if testsource is not None:
+                shutil.copytree(template, newname) 
+                ConvertName(newname, finname, {"SYMBOL": symbol, "LATTICE": lattice, "LATTICETEST": testsource})
+            else:
+                print "no english name"
+
 if __name__ == "__main__":
     CreateBatch("test_elastics", "test_elastic_consts")
-    ConvertBatch("test_elastics_consts", "TE_222222222")
-"""
+    ConvertBatch("test_elastic_consts", "TE_222222222")
+
