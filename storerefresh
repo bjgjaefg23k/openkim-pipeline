@@ -5,6 +5,7 @@ import kimid
 from persistentdict import PersistentDict, PersistentDefaultDict
 from config import *
 import repository as repo
+import os
 
 allkimids = []
 for dir in KIM_REPO_DIRS:
@@ -26,10 +27,11 @@ with PersistentDefaultDict(KIMID_STORE) as store:
 #try to populate the prediction store
 with PersistentDefaultDict(PREDICTION_STORE) as store:
     for pred in os.listdir(KIM_PREDICTIONS_DIR):
-        info = repo.load_info_file(os.path.join(KIM_PREDICTIONS_DIR,pred,pred))
-        testname = info["_testname"]
-        modelname = info["_modelname"]
-        store[testname][modelname] = pred
+        if os.path.isdir(pred):
+            info = repo.load_info_file(os.path.join(KIM_PREDICTIONS_DIR,pred,pred))
+            testname = info["_testname"]
+            modelname = info["_modelname"]
+            store[testname][modelname] = pred
 
 
 
