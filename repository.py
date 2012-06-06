@@ -121,14 +121,17 @@ def test_driver_executable(testdrivername):
 
 def reference_data_dir(referencedataname):
     """ Get the reference data directory """
+    logger.debug("getting dir for RD %r",referencedataname)
     return os.path.join(KIM_REFERENCE_DATA_DIR,referencedataname)
 
 def prediction_dir(predictionname):
     """ Get the prediction directory """
+    logger.debug("getting dir for PR %r",predictionname)
     return os.path.join(KIM_PREDICTIONS_DIR,predictionname)
 
 def prediction_info(predictionname):
     """ Get the prediction file """
+    logger.debug("getting file for PR %r",predictionname)
     return os.path.join(prediction_dir(predictionname), predictionname)
 
 #==========================================
@@ -137,7 +140,9 @@ def prediction_info(predictionname):
 
 
 def files_from_results(results):
-    """ Given a dictionary of results, return the filenames for any files contained in the results """
+    """ Given a dictionary of results, 
+    return the filenames for any files contained in the results """
+    logger.debug("parsing results for file directives")
     testname = results["_testname"]
     testdir = test_dir(testname)
     files = filter(None,(template.get_file(val,testdir) for key,val in results.iteritems()))
@@ -154,6 +159,7 @@ def write_result_to_file(results, pk=None):
         Also, update the property store for fast lookups
     
     """
+    logger.info("writing result file for results: %r",results)
     testname = results["_testname"]
     modelname = results["_modelname"]
     
@@ -169,17 +175,21 @@ def write_result_to_file(results, pk=None):
         #copy any corresponding files to the predictions directory
         files = files_from_results(results)
         if files:
+            logger.debug("found files to move")
             test_dir = test_dir(testname)
             for src in files:
+                logger.debug("copying %r over", src)
                 shutil.copy(os.path.join(test_dir,src),outputfolder)
     
     with prediction_store() as store:
+        logger.debug("updating prediction store")
         store[testname][modelname] = pr_id
 
     print "Wrote results in: {}".format(os.path.abspath(outputfilename))
 
 
 def prediction_exists(testname,modelname):
+    logger.debug("seeing if prediction exists for %r, %r",testname,modelname)
     with prediction_store() as store:
         if testname in store:
             if modelname in store[testname]:
@@ -188,34 +198,41 @@ def prediction_exists(testname,modelname):
 
 def load_info_file(filename):
     """ load a kim json pipeline info file """
+    logger.debug("loading info file for %r",filename)
     with open(filename) as fl:
         info = simplejson.load(fl)
     return info
 
 def write_info_file_at(directory,info):
     """ write the dictionary to the corresponding directory """
+    logger.debug("writing info file %r at %r",info,directory)
     filepath = os.path.join(directory,PIPELINE_INFO_FILE)
     with open(filepath, "w") as fl:
         simplejson.dump(info,fl)
 
 def persistent_info_file(filename,*args,**kwargs):
+    logger.debug("requested persistent info file")
     return PersistentDict(filename,*args,format="json",**kwargs)
 
 def test_info(testname,*args,**kwargs):
     """ load the info file for the corresponding test """
+    logger.debug("requested test info for %r",testname)
     location = os.path.join(test_dir(testname), PIPELINE_INFO_FILE)
     return persistent_info_file(location,*args,**kwargs)
 
 def model_info(modelname, *args, **kwargs):
     """ load the info file for the corresponding model """
+    logger.debug("requested model info for %r",modelname)
     location = os.path.join(model_dir(modelname), PIPELINE_INFO_FILE)
     return persistent_info_file(location,*args,**kwargs)
 
 def prediction_store():
     """ return the prediction store """
+    logger.debug("loading prediction store")
     return PersistentDefaultDict(PREDICTION_STORE)
 
 def prediction_info(pr):
+    logger.debug("requested pr info for %r",pr)
     prpath = prediction_file(pr)
     return load_info_file(prpath)
 
@@ -227,6 +244,7 @@ def prediction_info(pr):
 def get_path(kid):
     """ Given a kimid give the path to the corresponding place """
     leader,pk,version = kimid.parse_kimid(kid)
+    logger.debug("someone requested path for %r",kid)
 
     if leader=="TE":
         return test_executable(kid)
@@ -248,12 +266,14 @@ def data_from_rd(rd):
 
 def data_from_pr_po(pr,po):
     """ Get data from a pr id and po id """
+    logger.debug("getting data for %r,%r",pr,po)
     info = prediction_info(pr)
     return info[po]
 
 
 def data_from_te_mo_po(te,mo,po):
     """ Get data from a te, mo, po """
+    logger.debug("getting data for %r,%r,%r",te,mo,po)
     with prediction_store() as store:
         pr = store[te][mo]
     return data_from_pr_po(pr,po)
@@ -263,6 +283,7 @@ def data_from_te_mo_po(te,mo,po):
 #===========================================
 
 def rsync_update():
+    logger.info("attempting rsync")
     check_call("rsync -avz -e ssh {}@{}:{} {}".format(GLOBAL_USER,GLOBAL_HOST,GLOBAL_DIR,GLOBAL_DIR))
 
 def test_model_to_priority(test, model):
