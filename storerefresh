@@ -6,16 +6,21 @@ from persistentdict import PersistentDict, PersistentDefaultDict
 from config import *
 import repository as repo
 import os
+logger = logger.getChild("storerefresh")
+
+logger.info("running store refresh")
 
 allkimids = []
 for dir in KIM_REPO_DIRS:
     for kimid in (subdir for subdir in os.listdir(dir) if os.path.isdir(subdir)):
+        logger.debug("found %r",kimid)
         allkimids.append(kimid)
 
 #try to populate all of the kimids
 with PersistentDefaultDict(KIMID_STORE) as store:
-    for kimid in allkimids:
-        leader,pk,version = kimid.parse_kimid(kimid)
+    for kid in allkimids:
+        logger.debug("adding %r",kid)
+        leader,pk,version = kimid.parse_kimid(kid)
         
         substore = store[leader]
         if pk in store[leader]:
@@ -28,6 +33,7 @@ with PersistentDefaultDict(KIMID_STORE) as store:
 with PersistentDefaultDict(PREDICTION_STORE) as store:
     for pred in os.listdir(KIM_PREDICTIONS_DIR):
         if os.path.isdir(pred):
+            logger.debug("found pred %r",pred)
             info = repo.load_info_file(os.path.join(KIM_PREDICTIONS_DIR,pred,pred))
             testname = info["_testname"]
             modelname = info["_modelname"]
