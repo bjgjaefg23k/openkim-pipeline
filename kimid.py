@@ -36,7 +36,7 @@ def randints():
     while True:
         yield random.randint(0,10**NUM_DIGITS-1)
 
-randints_gen = randint()
+randints_gen = randints()
 
 def next_int(collection):
     return next( "{:08d}".format(x) for x in randints_gen if x not in collection )
