@@ -1,4 +1,4 @@
-TEST_NAME :=test_template_copy
+TEST_NAME :=test_lattices_copy
 Unit_length :=A
 Unit_energy :=eV
 Unit_charge :=e
