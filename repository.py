@@ -8,6 +8,7 @@ from persistentdict import PersistentDict, PersistentDefaultDict
 from config import *
 from subprocess import check_call
 
+logger = logger.getChild("repository")
 #============================
 # Silly git stuff
 #============================
@@ -17,11 +18,13 @@ def in_repo_dir(dir=None):
     """Change to repo directory to execute code, then change back"""
     cwd = os.getcwd()
     os.chdir(dir or KIM_REPOSITORY_DIR)
+    logger.debug("moved to dir: {}".format(os.getcwd()))
     yield
     os.chdir(cwd)
 
 def pull(remote='origin',branch='master'):
     """ do a git pull """
+    logger.info("doing a git pull")
     with in_repo_dir():
         return subprocess.call(['git','pull',remote,branch])
 
@@ -32,20 +35,24 @@ def status():
 
 def add():
     """ do a git add """
+    logger.info("doing a git add")
     with in_repo_dir():
         return subprocess.call(['git','add','.'])
 
 def commit(mesg=''):
+    logger.info("doing a git commit")
     with in_repo_dir():
         return subprocess.call(['git','commit','-a','--allow-empty-message','-m',mesg])
 
 def push(remote='origin',branch='master'):
     """ do a git push """
+    logger.info("doing a git push")
     with in_repo_dir():
         return subprocess.call(['git','push',remote,branch])
 
 def update(mesg="",remote='origin',branch='master'):
     """ update the repo with an add commit and push """
+    logger.info("doing a git update")
     add()
     commit(mesg)
     push(remote,branch)
@@ -56,12 +63,17 @@ def update(mesg="",remote='origin',branch='master'):
 
 def valid_match(testname,modelname):
     """ Test to see if a test and model match using the kim API, returns bool """
+    logger.debug("attempting to match %r with %r",testname,modelname)
     if testname not in KIM_TESTS:
+        logger.error("test %r not valid",testname)
         raise KeyError, "test {} not valid".format(testname)
     if modelname not in KIM_MODELS:
+        logger.error("model %r not valid", modelname)
         raise KeyError, "model {} not valid".format(modelname)
+    logger.debug("invoking KIMAPI")
     match, pkim = kimservice.KIM_API_init(testname,modelname)
     if match:
+        logger.debug("freeing KIMAPI")
         kimservice.KIM_API_free(pkim)
         return True
     else:
@@ -69,34 +81,42 @@ def valid_match(testname,modelname):
 
 def tests_for_model(modelname):
     """ Return a generator of all valid tests for a model """
+    logger.debug("all tests for model %r",modelname)
     return (test for test in KIM_TESTS if valid_match(test,modelname) )
 
 def models_for_test(testname):
     """ Return a generator of all valid models for a test """
+    logger.debug("all models for test %r",testname)
     return (model for model in KIM_MODELS if valid_match(testname,model) )
 
 def test_executable(testname):
     """ get the executable for a test """
+    logger.debug("getting executable for %r",testname)
     return os.path.join(test_dir(testname),testname)
 
 def test_dir(testname):
     """ Get the directory of corresponding testname """
+    logger.debug("getting dir for test %r",testname)
     return os.path.join(KIM_TESTS_DIR,testname)
 
 def model_dir(modelname):
     """ Get the model directory given model name """
+    logger.debug("getting dir for model %r",modelname)
     return os.path.join(KIM_MODELS_DIR,modelname)
 
 def model_driver_dir(modeldrivername):
     """ Get the model driver directory """
+    logger.debug("getting dir for model driver %r",modeldrivername)
     return os.path.join(KIM_MODEL_DRIVERS_DIR,modeldrivername)
 
 def test_driver_dir(testdrivername):
     """ Get the test driver directory """
+    logger.debug("getting dir for test driver %r",testdrivername)
     return os.path.join(KIM_TEST_DRIVERS_DIR,testdrivername)
 
 def test_driver_executable(testdrivername):
     """ Get the test driver executable """
+    logger.debug("getting exec for test driver %r", testdrivername)
     return os.path.join(test_driver_dir(testdrivername),testdrivername)
 
 def reference_data_dir(referencedataname):
