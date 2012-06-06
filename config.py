@@ -35,7 +35,7 @@ TEMP_INPUT_FILE = "pipeline.in.tmp"
 # Directory codes
 #===========================
 
-KIM_PREDICTIONS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"pr"))
+KIM_TEST_RESULTS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"tr"))
 KIM_REFERENCE_DATA_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"rd"))
 KIM_MODELS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"mo"))
 KIM_MODEL_DRIVERS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"md"))
