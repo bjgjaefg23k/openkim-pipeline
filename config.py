@@ -71,6 +71,11 @@ GLOBAL_DIR  = "/home/sethnagroup/vagrant/openkim-repository/"
 KIMID_STORE = "kimidstore.json"
 PREDICTION_STORE = "predictionstore.json"
 
+#============================
+# Runner Internals
+#============================
+
+RUNNER_TIMEOUT = 300
 
 #=============================
 # Logging stuff
