@@ -1,9 +1,16 @@
 """ 
 Some scripts that let us run tests and the like
 """
-import time, simplejson
+import time, simplejson, signal
 from subprocess import Popen, PIPE
 import repository as repo
+from config import *
+
+class TimedOut(Exception):
+    pass
+
+def timeout_handler(signum, frame):
+    raise TimedOut()
 
 def run_test_on_model(testname,modelname):
     """ run a test with the corresponding model, capture the output as a dict """
@@ -28,7 +35,18 @@ def run_test_on_model(testname,modelname):
             with template.process(fl) as kim_stdin:
                 start_time = time.time()
                 process = Popen(timeblock+ executable,stdin=PIPE,stdout=PIPE,stderr=PIPE)
-                stdout, stderr = process.communicate(kim_stdin)
+
+                try:
+                    old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+                    signal.alarm(RUNNER_TIMEOUT)
+                    try:
+                        stdout, stderr = process.communicate(kim_stdin)
+                    finally:
+                        signal.signal(signal.SIGALRM, old_handler)
+                    signal.alarm(0)
+                except TimedOut:
+                    raise RuntimeError, "your test timed out"
+                
                 end_time = time.time()
 
     if process.poll() is None:
