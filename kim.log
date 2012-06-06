@@ -1,2 +1,3 @@
-* Error (KIM_API_model::get_model_kim_str): Cannot find Model shared library file for Model name: ex_model_Ar_P_LJ
-/home/vagrant/openkim-api-v1.0.1/MODELs/ex_model_Ar_P_LJ/ex_model_Ar_P_LJ.so: cannot open shared object file: No such file or directory
+* Error (KIM_API_model::do_AtomsTypes_match): The following symbol: No in TE_000000000193_000 is not found in MO_607867530901_000
+* Error (KIM_API_model::is_it_match): Test-Model AtomsTypes do not match:
+Do not match  MO_607867530901_000 and TE_000000000193_000

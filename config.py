@@ -28,6 +28,7 @@ KIM_REPOSITORY_DIR = os.readlink('openkim-repository')
 PIPELINE_INFO_FILE = "pipelineinfo.json"
 INPUT_FILE = "pipeline.in"
 OUTPUT_FILE = "pipeline.out"    #with their words : property ids
+STDOUT_FILE = "pipeline.stdout"
 TEMP_INPUT_FILE = "pipeline.in.tmp"
 
 #===========================
