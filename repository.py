@@ -7,6 +7,7 @@ import kimservice, kimid
 from persistentdict import PersistentDict, PersistentDefaultDict
 from config import *
 from subprocess import check_call
+import template
 
 logger = logger.getChild("repository")
 #============================
@@ -145,7 +146,8 @@ def files_from_results(results):
     logger.debug("parsing results for file directives")
     testname = results["_testname"]
     testdir = test_dir(testname)
-    files = filter(None,(template.get_file(val,testdir) for key,val in results.iteritems()))
+    #get only those files that match the file directive, needs strings to process
+    files = filter(None,(template.get_file(str(val),testdir) for key,val in results.iteritems()))
     return files
         
 
@@ -163,7 +165,7 @@ def write_result_to_file(results, pk=None):
     testname = results["_testname"]
     modelname = results["_modelname"]
     
-    pr_id = kimid.new_kimid("PR")
+    pr_id = kimid.new_kimid("TR")
     outputfolder = pr_id
     outputfilename = outputfolder
 
@@ -176,10 +178,10 @@ def write_result_to_file(results, pk=None):
         files = files_from_results(results)
         if files:
             logger.debug("found files to move")
-            test_dir = test_dir(testname)
+            testdir = test_dir(testname)
             for src in files:
                 logger.debug("copying %r over", src)
-                shutil.copy(os.path.join(test_dir,src),outputfolder)
+                shutil.copy(os.path.join(testdir,src),outputfolder)
     
     with prediction_store() as store:
         logger.debug("updating prediction store")

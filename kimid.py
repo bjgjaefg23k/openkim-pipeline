@@ -29,14 +29,14 @@ NUM_DIGITS = 12
 VERSION_DIGITS = 3
 KIM_ID_FORMAT = "{}_{}_{:03d}"
 STORE_FILENAME = KIMID_STORE
-ALLOWED_LEADERS = ["MO","MD","ME","TE","TD","PR","PO","RD"]
+ALLOWED_LEADERS = ["MO","MD","ME","TE","TD","PR","TR","RD"]
 FORMAT = "json"
 
 def randints():
     while True:
         yield random.randint(0,10**NUM_DIGITS-1)
 
-randints_gen = randint()
+randints_gen = randints()
 
 def next_int(collection):
     return next( "{:08d}".format(x) for x in randints_gen if x not in collection )
