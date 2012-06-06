@@ -128,7 +128,7 @@ def reference_data_dir(referencedataname):
 def prediction_dir(predictionname):
     """ Get the prediction directory """
     logger.debug("getting dir for PR %r",predictionname)
-    return os.path.join(KIM_PREDICTIONS_DIR,predictionname)
+    return os.path.join(KIM_TEST_RESULTS_DIR,predictionname)
 
 def prediction_info(predictionname):
     """ Get the prediction file """
@@ -169,7 +169,7 @@ def write_result_to_file(results, pk=None):
     outputfolder = pr_id
     outputfilename = outputfolder
 
-    with in_repo_dir(KIM_PREDICTIONS_DIR):
+    with in_repo_dir(KIM_TEST_RESULTS_DIR):
         os.mkdir(outputfolder)
         with open(os.path.join(outputfolder,outputfilename),"w") as fobj:
             simplejson.dump(results,fobj)
