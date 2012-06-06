@@ -5,6 +5,7 @@ import re, shutil, os
 import repository as repo
 import kimid
 from config import *
+logger = logger.getChild("template")
 
 #==========================
 # Keywords
@@ -26,6 +27,7 @@ def get_file(string,testdir):
     match = re.match(RE_FILE,string)
     if match:
         part, filename = match.groups()
+        logger.debug("Found @FILE directive match for %r",filename)
         return os.path.join(testdir,filename)
 
 
@@ -56,6 +58,7 @@ def data_from_match(match):
 
 def path_from_match(match):
     part,kid = match.groups()
+    logger.debug("got a @PATH directive request for %r",kid)
     kid = kimid.promote_kimid(kid)
     return repo.get_path(kid)
 
@@ -85,6 +88,7 @@ def process_line(*args):
 
 def process(inp, model, test):
     """ takes in a file like object and retuns a processed file like object """
+    logger.info("attempting to process %r for (%r,%r)",inp,model,test)
     with open(TEMP_INPUT_FILE,'w') as out:
         for line in inp:
             newline = process_line(line,model,test)
