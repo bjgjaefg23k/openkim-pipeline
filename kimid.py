@@ -19,6 +19,7 @@ from persistentdict import PersistentDict
 import random, sys
 from config import *
 
+logger = logger.getChild("kimid")
 """ 
 The dictionary of ids is a layered dictionary, or leader, then id then version
 """
@@ -35,8 +36,10 @@ def randints():
     while True:
         yield random.randint(0,10**NUM_DIGITS-1)
 
+randints_gen = randint()
+
 def next_int(collection):
-    return next( "{:08d}".format(x) for x in randints() if x not in collection )
+    return next( "{:08d}".format(x) for x in randints_gen if x not in collection )
 
 
 def get_new_id(leader):
@@ -45,7 +48,9 @@ def get_new_id(leader):
         pk = next_int(store[leader])
         version = 0
         store[leader][pk] = version
-    return KIM_ID_FORMAT.format(leader,pk,version)
+    newkimid = KIM_ID_FORMAT.format(leader,pk,version)
+    logger.info("Generated new KIMID: {}".format(newkimid))
+    return newkimid
 
 def get_new_version(leader,pk):
     """ Get the next version number """
@@ -54,7 +59,9 @@ def get_new_version(leader,pk):
         version = store[leader][pk]
         version += 1
         store[leader][pk] = version
-    return KIM_ID_FORMAT.format(leader,pk,version)
+    newkimid = KIM_ID_FORMAT.format(leader,pk,version)
+    logger.info("Requested new version KIMID: {}".format(newkimid))
+    return newkimid
 
 
 def get_current_version(leader,pk):
@@ -93,6 +100,7 @@ def new_kimid(leader,pk=None):
         
         meant to be the main method of this class 
     """
+    logger.debug("inside new_kimid")
     if pk is None:
         return get_new_id(leader)
     else:
@@ -102,7 +110,7 @@ def new_kimid(leader,pk=None):
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         if sys.argv[1] == "init":
-            print "Generating empty store in {}".format(STORE_FILENAME)
+            logger.info("Generating empty store in {}".format(STORE_FILENAME))
             with PersistentDict(STORE_FILENAME, format=FORMAT) as store:
                 for leader in ALLOWED_LEADERS:
                     store[leader] = {}
