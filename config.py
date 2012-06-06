@@ -70,3 +70,32 @@ GLOBAL_DIR  = "/home/sethnagroup/vagrant/openkim-repository/"
 
 KIMID_STORE = "kimidstore.json"
 PREDICTION_STORE = "predictionstore.json"
+
+
+#=============================
+# Logging stuff
+#=============================
+
+import logging, logging.handlers
+
+logger = logging.getLogger("pipeline")
+logger.setLevel(logging.DEBUG)
+
+#formatter
+log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+#create a rotating file handler
+rotfile_handler = logging.handlers.RotatingFileHandler(os.path.join("logs",
+        "pipeline.log"),mode='a',
+        backupCount=5,maxBytes=10*1024*1024)
+rotfile_handler.setLevel(logging.DEBUG)
+rotfile_handler.setFormatter(log_formatter)
+logger.addHandler(rotfile_handler)
+
+#create a console logger
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.ERROR)
+console_handler.setFormatter(log_formatter)
+logger.addHandler(console_handler)
+
+
