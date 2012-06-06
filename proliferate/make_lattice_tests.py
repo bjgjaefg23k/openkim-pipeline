@@ -61,5 +61,5 @@ def CreateBatch(template, prefix):
             ConvertName(newname, finname, {"SYMBOL": symbol, "LATTICE": lattice})
     
 if __name__ == "__main__":
-    CreateBatch("test_template", "test_lattice")
-    ConvertBatch("test_lattice", "TE_000000000")
+    CreateBatch("test_lattices", "test_lattice_const")
+    ConvertBatch("test_lattice_const", "TE_000000000")
