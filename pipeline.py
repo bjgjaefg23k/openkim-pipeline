@@ -7,7 +7,7 @@ import urllib
 import time
 import simplejson
 from config import *
-
+logger = logger.getChild("pipeline")
 
 TUBE_JOBS    = "jobs"
 TUBE_RESULTS = "results"
@@ -22,6 +22,7 @@ class Director(object):
         self.msg_size = 2**16
         self.remote_user = GLOBAL_USER
         self.remote_addr = GLOBAL_HOST
+        logger = logger.getChild("director")
 
     def run(self):
         self.connect_to_daemon()
@@ -49,13 +50,6 @@ class Director(object):
         self.bsd.watch(TUBE_ERROR)
         self.bsd.ignore("default")
 
-        # put some dummy jobs, one bogus, some not
-        self.bsd.use(TUBE_JOBS)
-        self.bsd.put(simplejson.dumps(["hello"]))
-
-        self.bsd.use(TUBE_UPDATE)
-        self.bsd.put(simplejson.dumps({"kimid": "test_lattice_const", "priority": "high"}))
-
     def disconnect_from_daemon(self):
         self.bsd.close()
         self.daemon.kill()
@@ -70,7 +64,7 @@ class Director(object):
             if request.stats()['tube'] == TUBE_UPDATE:
                 # update the repository, try to compile the file
                 # send it out as a job to compute
-                repo.rsync_update()
+                #repo.rsync_update()
                 self.push_jobs(simplejson.loads(request.body))
 
             # got word from a worker that a job is complete
@@ -123,6 +117,7 @@ class Worker(object):
         self.ip          = GLOBAL_IP 
         self.timeout = 10
         self.port = GLOBAL_PORT
+        logger = logger.getChild("worker")
 
     def run(self):
         # if we can't already connect to the daemon on localhost,
@@ -154,7 +149,7 @@ class Worker(object):
             # got a job -----
             # update the repository, attempt to run the job
             # and return the results to the director
-            repo.rsync_update()
+            #repo.rsync_update()
             jobtup = simplejson.loads(job.body)
             try:
                 print "Running ", jobtup, "..."
