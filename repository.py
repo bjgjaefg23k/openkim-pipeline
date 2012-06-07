@@ -178,7 +178,7 @@ def files_from_results(results):
     return files
         
 
-def write_result_to_file(results, pk=None):
+def write_result_to_file(results, tr_id, pk=None):
     """ Given a dictionary of results, write it to the corresponding file, or create a new id
         
         This assumes the results already have the proper output Property IDs
@@ -191,8 +191,10 @@ def write_result_to_file(results, pk=None):
     logger.info("writing result file for results: %r",results)
     testname = results["_testname"]
     modelname = results["_modelname"]
-    
-    tr_id = kimid.new_kimid("TR")
+   
+    if tr_id == None: 
+        tr_id = kimid.new_kimid("TR")
+        logger.debug("Making a TR ID up...", tr_id)
     outputfolder = tr_id
     outputfilename = outputfolder
     outputpath = os.path.join(outputfolder,outputfilename)

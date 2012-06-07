@@ -112,7 +112,7 @@ def update_repo(force=False):
                 
                 try:
                     results = run_test_on_model(test,model)
-                    repo.write_result_to_file(results)
+                    repo.write_result_to_file(results, None)
                 except:
                     logger.error("WE HAD an error on (%r,%r) with:\n%r",test,model,sys.exc_info()[0])
             else:
