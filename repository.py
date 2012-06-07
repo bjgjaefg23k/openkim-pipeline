@@ -77,10 +77,29 @@ def valid_match(testname,modelname):
             return store[str((testname,modelname))]
 
         logger.debug("invoking KIMAPI for (%r,%r)",testname,modelname)
-        match, pkim = kimservice.KIM_API_init(testname,modelname)
+        pid = os.fork()
+        if (pid==0):
+            logger.debug("in fork")
+            match, pkim = kimservice.KIM_API_init(testname,modelname)
+            if match:
+                kimservice.KIM_API_free(pkim)
+                sys.exit(0)
+            sys.exit(1)
+
+        # try to get the exit code from the kim api process
+        exitcode = os.waitpid(pid,0)[1]/256
+        if exitcode == 0:
+            match = True
+        elif exitcode == 1:
+            match = False
+        else:
+            logger.error("We seem to have a Kim init error on (%r,%r)", testname, modelname)
+            #raise KIMRuntimeError
+            match = False
+
         if match:
             logger.debug("freeing KIMAPI")
-            kimservice.KIM_API_free(pkim)
+            #kimservice.KIM_API_free(pkim)
             store[str((testname,modelname))] = True
             return True
         else:
