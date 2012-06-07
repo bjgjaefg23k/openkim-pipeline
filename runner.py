@@ -74,8 +74,14 @@ def run_test_on_model(testname,modelname):
 
     
     #look backwards in the stdout for the first non whitespaced line
-    data_string = next(itertools.ifilter(line_filter,reversed(stdout.splitlines())))
-    logger.debug("we have a data_string: %r",data_string)
+    try:
+        data_string = next(itertools.ifilter(line_filter,reversed(stdout.splitlines())))
+        logger.debug("we have a data_string: %r",data_string)
+    except StopIteration:
+        #there was no output
+        #likely a kim error
+        logger.error("We probably had a KIM error")
+        raise KIMRuntimeError
     try:
         data = simplejson.loads(data_string)
     except simplejson.JSONDecodeError:
