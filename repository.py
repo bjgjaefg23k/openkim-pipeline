@@ -174,7 +174,6 @@ def write_result_to_file(results, pk=None):
     
     tr_id = kimid.new_kimid("TR")
     outputfolder = tr_id
-    fullpathfolder = os.path.abspath(outputfolder)
     outputfilename = outputfolder
     outputpath = os.path.join(outputfolder,outputfilename)
 
@@ -196,7 +195,7 @@ def write_result_to_file(results, pk=None):
         logger.debug("updating test result store")
         store[testname][modelname] = tr_id
 
-    print "Wrote results in: {}".format(fullpathfolder)
+    print "Wrote results in: {}".format(outputfilename)
 
 
 def test_result_exists(testname,modelname):
