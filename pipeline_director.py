@@ -69,7 +69,8 @@ class Director(object):
                 ret = simplejson.loads(request.body)
                 #repo.write_result_to_file(ret['result'])
                 self.logger.info("Finished %r ...", ret['job'])
-
+                self.logger.info("Results returned: %r", ret["result"])
+                    
             if request.stats()['tube'] == TUBE_ERRORS:
                 ret = simplejson.loads(request.body)
                 self.logger.error("Errors occured: %r", ret['error'])
