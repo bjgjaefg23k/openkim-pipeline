@@ -155,7 +155,7 @@ def dependency_check(inp,model,test):
             logger.debug("found a candidate dependency: %r", cand)
 
     if not cands:
-        return (True, [])
+        return (True, None, None)
     
     #cheap transpose
     candstranspose = zip(*cands)
