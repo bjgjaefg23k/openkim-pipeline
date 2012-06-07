@@ -60,11 +60,12 @@ def data_from_match(match):
     raise PipelineTemplateError, "I don't understand how to parse this: {}".format(match.groups())
 
 def path_from_match(match):
+    """ return the appropriate path for a match """
     part,kid = match.groups()
-    logger.debug("got a @PATH directive request for %r",kid)
+    #logger.debug("got a @PATH directive request for %r",kid)
     kid = kimid.promote_kimid(kid)
     path =  repo.get_path(kid)
-    logger.debug("thinks the path is %r",path)
+    #logger.debug("thinks the path is %r",path)
     return path
 
 def path_processor(line,model,test):
@@ -97,9 +98,9 @@ def process(inp, model, test):
     logger.info("attempting to process %r for (%r,%r)",inp,model,test)
     with open(TEMP_INPUT_FILE,'w') as out:
         for line in inp:
-            logger.debug("line to process is:\n\t %r",line)
+            #logger.debug("line to process is:\n\t %r",line)
             newline = process_line(line,model,test)
-            logger.debug("new line is:\n\t %r",newline)
+            #logger.debug("new line is:\n\t %r",newline)
             out.write(newline)
 
     return open(TEMP_INPUT_FILE)
