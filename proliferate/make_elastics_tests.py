@@ -54,9 +54,16 @@ def EnglishToKIMID(eng):
             return dic['kim_code']
     return None
 
+def EnglishToKIMID2(eng):
+    for f in glob.glob("/home/vagrant/openkim-repository/mo/*/metadata.json"):
+        dic = simplejson.load(open(f))
+        if dic['title'] == eng:
+            return dic['kim_code']
+    return None
+
 def CreateBatch(template, prefix):
     import ase.data
-    symbols  = ['Al', 'Au', 'Pt', 'Pd', 'Ar', 'V'] #ase.data.chemical_symbols
+    symbols  = ['Al', 'Au', 'Pt', 'Pd', 'W', 'V'] #ase.data.chemical_symbols
     lattices = ['sc', 'fcc', 'bcc', 'diamond']
     index = 0
     for lattice in lattices:
@@ -64,10 +71,15 @@ def CreateBatch(template, prefix):
             newname = template+"_copy"
             finname = prefix+"_"+lattice+"_"+symbol
             testsource = EnglishToKIMID("test_lattice_const_"+lattice+"_"+symbol)
-            if testsource is not None:
+            testmodel = EnglishToKIMID2("ex_model_"+symbol+"_P_LJ")
+            testproperty = "PR_000000000001_000"
+            if testsource is not None and testmodel is not None:
                 shutil.copytree(template, newname) 
-                ConvertName(newname, finname, {"SYMBOL": symbol, "LATTICE": lattice, "LATTICETEST": testsource})
+                ConvertName(newname, finname, {"SYMBOL": symbol, 
+                    "LATTICE": lattice, "FILLINTEST": testsource, 
+                    "FILLINMODEL": testmodel, "FILLINPROPERTY": testproperty})
             else:
+                print testsource, testmodel, testproperty
                 print "no english name"
 
 if __name__ == "__main__":
