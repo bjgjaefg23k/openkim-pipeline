@@ -50,9 +50,10 @@ with PersistentDefaultDict(KIMID_STORE) as store:
 #try to populate the test result store
 with PersistentDefaultDict(TEST_RESULT_STORE) as store:
     for pred in os.listdir(KIM_TEST_RESULTS_DIR):
-        if os.path.isdir(pred):
+        predpath = os.path.join(KIM_TEST_RESULTS_DIR,pred)
+        if os.path.isdir(predpath):
             logger.debug("found pred %r",pred)
-            info = repo.load_info_file(os.path.join(KIM_TEST_RESULTS_DIR,pred,pred))
+            info = repo.load_info_file(os.path.join(predpath,pred))
             testname = info["_testname"]
             modelname = info["_modelname"]
             store[testname][modelname] = pred

@@ -97,11 +97,11 @@ def run_test_on_model(testname,modelname):
 
 
 #run all the tests on all the models
-def update_repo():
+def update_repo(force=False):
     logger.info("attempting to update repo...")
     for test in repo.KIM_TESTS:
         for model in repo.models_for_test(test):
-            if not repo.test_result_exists(test,model):
+            if force or not repo.test_result_exists(test,model):
                 print "Running {} vs {}".format(test,model)
                 
                 try:
