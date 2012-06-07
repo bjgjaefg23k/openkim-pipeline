@@ -7,6 +7,7 @@ import kimservice, kimid
 from persistentdict import PersistentDict, PersistentDefaultDict
 from config import *
 from subprocess import check_call
+import template
 
 logger = logger.getChild("repository")
 #============================
@@ -127,7 +128,7 @@ def reference_data_dir(referencedataname):
 def prediction_dir(predictionname):
     """ Get the prediction directory """
     logger.debug("getting dir for PR %r",predictionname)
-    return os.path.join(KIM_PREDICTIONS_DIR,predictionname)
+    return os.path.join(KIM_TEST_RESULTS_DIR,predictionname)
 
 def prediction_info(predictionname):
     """ Get the prediction file """
@@ -145,7 +146,8 @@ def files_from_results(results):
     logger.debug("parsing results for file directives")
     testname = results["_testname"]
     testdir = test_dir(testname)
-    files = filter(None,(template.get_file(val,testdir) for key,val in results.iteritems()))
+    #get only those files that match the file directive, needs strings to process
+    files = filter(None,(template.get_file(str(val),testdir) for key,val in results.iteritems()))
     return files
         
 
@@ -163,11 +165,11 @@ def write_result_to_file(results, pk=None):
     testname = results["_testname"]
     modelname = results["_modelname"]
     
-    pr_id = kimid.new_kimid("PR")
+    pr_id = kimid.new_kimid("TR")
     outputfolder = pr_id
     outputfilename = outputfolder
 
-    with in_repo_dir(KIM_PREDICTIONS_DIR):
+    with in_repo_dir(KIM_TEST_RESULTS_DIR):
         os.mkdir(outputfolder)
         with open(os.path.join(outputfolder,outputfilename),"w") as fobj:
             simplejson.dump(results,fobj)
@@ -176,10 +178,10 @@ def write_result_to_file(results, pk=None):
         files = files_from_results(results)
         if files:
             logger.debug("found files to move")
-            test_dir = test_dir(testname)
+            testdir = test_dir(testname)
             for src in files:
                 logger.debug("copying %r over", src)
-                shutil.copy(os.path.join(test_dir,src),outputfolder)
+                shutil.copy(os.path.join(testdir,src),outputfolder)
     
     with prediction_store() as store:
         logger.debug("updating prediction store")
@@ -264,19 +266,19 @@ def data_from_rd(rd):
     """ Get the data for the rd id """
 
 
-def data_from_pr_po(pr,po):
+def data_from_tr_pr(tr,pr):
     """ Get data from a pr id and po id """
-    logger.debug("getting data for %r,%r",pr,po)
-    info = prediction_info(pr)
-    return info[po]
+    logger.debug("getting data for %r,%r",tr,pr)
+    info = prediction_info(tr)
+    return info[pr]
 
 
-def data_from_te_mo_po(te,mo,po):
+def data_from_te_mo_po(te,mo,pr):
     """ Get data from a te, mo, po """
     logger.debug("getting data for %r,%r,%r",te,mo,po)
     with prediction_store() as store:
-        pr = store[te][mo]
-    return data_from_pr_po(pr,po)
+        tr = store[te][mo]
+    return data_from_tr_pr(tr,pr)
 
 #===========================================
 # rsync utilities

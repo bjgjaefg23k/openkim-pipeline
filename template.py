@@ -40,19 +40,19 @@ def data_from_match(match):
         data = repo.data_from_rd(rd)
         return str(data)
     if len(groups) == 3:
-        # a 3 call is PR, PO
-        part, pr, po = groups
+        # a 3 call is TR, PR
+        part, tr, pr = groups
+        tr = kimid.promote_kimid(tr)
         pr = kimid.promote_kimid(pr)
-        po = kimid.promote_kimid(po)
-        data = repo.data_from_pr_po(pr,po)
+        data = repo.data_from_tr_pr(tr,pr)
         return str(data)
     if len(groups) == 4:
-        # a 4 call is part,te,mo,po
-        part, te, mo, po = groups
+        # a 4 call is part,te,mo,pr
+        part, te, mo, pr = groups
         te = kimid.promote_kimid(te)
         mo = kimid.promote_kimid(mo)
-        po = kimid.promote_kimid(po)
-        data = repo.data_from_te_mo_po(te,mo,po)
+        pr = kimid.promote_kimid(pr)
+        data = repo.data_from_te_mo_pr(te,mo,pr)
         return str(data)
     raise KeyError, "I don't understand how to parse this"
 
@@ -60,7 +60,9 @@ def path_from_match(match):
     part,kid = match.groups()
     logger.debug("got a @PATH directive request for %r",kid)
     kid = kimid.promote_kimid(kid)
-    return repo.get_path(kid)
+    path =  repo.get_path(kid)
+    logger.debug("thinks the path is %r",path)
+    return path
 
 def path_processor(line,model,test):
     """replace all path directives with the appropriate path"""
@@ -80,10 +82,11 @@ def testname_processor(line,model,test):
 
 processors = [testname_processor, path_processor, data_processor, modelname_processor]
 
-def process_line(*args):
+def process_line(line,*args):
     """ Takes a string for the line and processes it """
     for processor in processors:
-        line = processor(*args)
+        line = processor(line,*args)
+        #logger.debug("current line is: %r",line)
     return line
 
 def process(inp, model, test):
@@ -91,8 +94,10 @@ def process(inp, model, test):
     logger.info("attempting to process %r for (%r,%r)",inp,model,test)
     with open(TEMP_INPUT_FILE,'w') as out:
         for line in inp:
+            logger.debug("line to process is:\n\t %r",line)
             newline = process_line(line,model,test)
-            out.write(line)
+            logger.debug("new line is:\n\t %r",newline)
+            out.write(newline)
 
     return open(TEMP_INPUT_FILE)
 
