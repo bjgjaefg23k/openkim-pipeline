@@ -67,10 +67,10 @@ def valid_match(testname,modelname):
     logger.debug("attempting to match %r with %r",testname,modelname)
     if testname not in KIM_TESTS:
         logger.error("test %r not valid",testname)
-        raise KeyError, "test {} not valid".format(testname)
+        raise PipelineFileMissing, "test {} not valid".format(testname)
     if modelname not in KIM_MODELS:
         logger.error("model %r not valid", modelname)
-        raise KeyError, "model {} not valid".format(modelname)
+        raise PipelineFileMissing, "model {} not valid".format(modelname)
     logger.debug("invoking KIMAPI")
     match, pkim = kimservice.KIM_API_init(testname,modelname)
     if match:
@@ -125,15 +125,15 @@ def reference_data_dir(referencedataname):
     logger.debug("getting dir for RD %r",referencedataname)
     return os.path.join(KIM_REFERENCE_DATA_DIR,referencedataname)
 
-def prediction_dir(predictionname):
-    """ Get the prediction directory """
-    logger.debug("getting dir for PR %r",predictionname)
-    return os.path.join(KIM_TEST_RESULTS_DIR,predictionname)
+def test_result_dir(testresultname):
+    """ Get the test result directory """
+    logger.debug("getting dir for TR %r",testresultname)
+    return os.path.join(KIM_TEST_RESULTS_DIR,testresultname)
 
-def prediction_info(predictionname):
-    """ Get the prediction file """
-    logger.debug("getting file for PR %r",predictionname)
-    return os.path.join(prediction_dir(predictionname), predictionname)
+def test_result_info(testresultname):
+    """ Get the test result file """
+    logger.debug("getting file for TR %r",testresultname)
+    return os.path.join(test_result_dir(testresultname), testresultname)
 
 #==========================================
 # Results in repo
@@ -165,8 +165,8 @@ def write_result_to_file(results, pk=None):
     testname = results["_testname"]
     modelname = results["_modelname"]
     
-    pr_id = kimid.new_kimid("TR")
-    outputfolder = pr_id
+    tr_id = kimid.new_kimid("TR")
+    outputfolder = tr_id
     outputfilename = outputfolder
 
     with in_repo_dir(KIM_TEST_RESULTS_DIR):
@@ -174,7 +174,7 @@ def write_result_to_file(results, pk=None):
         with open(os.path.join(outputfolder,outputfilename),"w") as fobj:
             simplejson.dump(results,fobj)
 
-        #copy any corresponding files to the predictions directory
+        #copy any corresponding files to the test results directory
         files = files_from_results(results)
         if files:
             logger.debug("found files to move")
@@ -183,16 +183,16 @@ def write_result_to_file(results, pk=None):
                 logger.debug("copying %r over", src)
                 shutil.copy(os.path.join(testdir,src),outputfolder)
     
-    with prediction_store() as store:
-        logger.debug("updating prediction store")
-        store[testname][modelname] = pr_id
+    with test_result_store() as store:
+        logger.debug("updating test result store")
+        store[testname][modelname] = tr_id
 
     print "Wrote results in: {}".format(os.path.abspath(outputfilename))
 
 
-def prediction_exists(testname,modelname):
-    logger.debug("seeing if prediction exists for %r, %r",testname,modelname)
-    with prediction_store() as store:
+def test_result_exists(testname,modelname):
+    logger.debug("seeing if test result exists for %r, %r",testname,modelname)
+    with test_result_store() as store:
         if testname in store:
             if modelname in store[testname]:
                 return True
@@ -228,15 +228,15 @@ def model_info(modelname, *args, **kwargs):
     location = os.path.join(model_dir(modelname), PIPELINE_INFO_FILE)
     return persistent_info_file(location,*args,**kwargs)
 
-def prediction_store():
-    """ return the prediction store """
-    logger.debug("loading prediction store")
-    return PersistentDefaultDict(PREDICTION_STORE)
+def test_result_store():
+    """ return the test result store """
+    logger.debug("loading test result store")
+    return PersistentDefaultDict(TEST_RESULT_STORE)
 
-def prediction_info(pr):
-    logger.debug("requested pr info for %r",pr)
-    prpath = prediction_file(pr)
-    return load_info_file(prpath)
+def test_result_info(tr):
+    logger.debug("requested tr info for %r",tr)
+    trpath = test_result_file(tr)
+    return load_info_file(trpath)
 
 
 #==========================================
@@ -258,8 +258,9 @@ def get_path(kid):
         return test_driver_executable(kid)
     if leader=="RD":
         return reference_data_dir(kid)
-    if leader=="PR":
-        return prediction_dir(kid)
+    if leader=="TR":
+        return test_result_dir(kid)
+    raise PipelineFileMissing, "don't understand kid: {}".format(kid)
 
 
 def data_from_rd(rd):
@@ -267,16 +268,16 @@ def data_from_rd(rd):
 
 
 def data_from_tr_pr(tr,pr):
-    """ Get data from a pr id and po id """
+    """ Get data from a tr id and pr id """
     logger.debug("getting data for %r,%r",tr,pr)
-    info = prediction_info(tr)
+    info = test_result_info(tr)
     return info[pr]
 
 
 def data_from_te_mo_po(te,mo,pr):
-    """ Get data from a te, mo, po """
+    """ Get data from a te, mo, pr """
     logger.debug("getting data for %r,%r,%r",te,mo,po)
-    with prediction_store() as store:
+    with test_result_store() as store:
         tr = store[te][mo]
     return data_from_tr_pr(tr,pr)
 

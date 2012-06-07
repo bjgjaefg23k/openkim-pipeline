@@ -41,7 +41,7 @@ KIM_MODELS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"mo"))
 KIM_MODEL_DRIVERS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"md"))
 KIM_TESTS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"te"))
 KIM_TEST_DRIVERS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"td"))
-KIM_REPO_DIRS = [KIM_PREDICTIONS_DIR,KIM_REFERENCE_DATA_DIR,
+KIM_REPO_DIRS = [KIM_TEST_RESULTS_DIR,KIM_REFERENCE_DATA_DIR,
         KIM_MODELS_DIR,KIM_MODEL_DRIVERS_DIR,KIM_TESTS_DIR,KIM_TEST_DRIVERS_DIR]
 
 
@@ -70,7 +70,7 @@ GLOBAL_DIR  = "/home/sethnagroup/vagrant/openkim-repository/"
 #============================
 
 KIMID_STORE = "kimidstore.json"
-PREDICTION_STORE = "predictionstore.json"
+TEST_RESULT_STORE = "testresultstore.json"
 
 #============================
 # Runner Internals
@@ -104,4 +104,21 @@ console_handler.setLevel(logging.ERROR)
 console_handler.setFormatter(log_formatter)
 logger.addHandler(console_handler)
 
+#====================================
+# KIM ERRORS
+#====================================
 
+class KIMRuntimeError(Exception):
+    """ General purpose KIM Api Error """
+
+class PiplineFileMissing(Exception):
+    """ If a file we rely on is missing """
+
+class PipelineTimeout(Exception):
+    """ If a test time outs """
+
+class PipelineDataMissing(Exception):
+    """ If requested data doesn't exist """
+
+class PipelineTemplateError(Exception):
+    """ some kind of templating format is wrong """
