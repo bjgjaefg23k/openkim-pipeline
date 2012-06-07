@@ -1,0 +1,47 @@
+#!/usr/bin/python
+import ase
+from ase.structure import bulk
+from ase.lattice.cubic import FaceCenteredCubic
+import numpy as np
+from chooseSurfaces import *
+from surface import *
+from kimcalculator import *
+import simplejson
+
+symbol  = raw_input()
+surface = raw_input()
+model   = raw_input()
+
+sa = int(surface[0])
+sb = int(surface[1])
+sc = int(surface[2])
+
+def sweepSurfaces(calc):
+
+    surfaceEnergyDict = {}
+    list_of_indices = getIndexList(5)
+    atoms = FaceCenteredCubic(symbol,directions=[[sa,0,0],[0,sb,0],[0,0,sc]],size=(3,3,3))
+    atoms.set_calculator(calc)
+    unit_e_bulk = atoms.get_potential_energy()/atoms.get_number_of_atoms()
+    for miller in list_of_indices:
+        E_unrelaxed, E_relaxed = getSurfaceEnergy(miller, calc, unit_e_bulk)
+        surfaceEnergyDict['Surface Energy ' +str(miller)] = E_relaxed
+    
+    return surfaceEnergyDict
+
+def getSurfaceEnergy(miller, calc, unit_e_bulk):
+    
+    surf = makeSurface(symbol,'fcc',miller,size = (3, 3, 10))
+    e_unrelaxed, e_relaxed = surface_energy(surf, calc)
+    e_bulk = unit_e_bulk*surf.get_number_of_atoms()
+    surface_vector = np.cross(surf.cell[0],surf.cell[1])
+    surface_area = np.sqrt(np.dot(surface_vector,surface_vector))
+    E_unrelaxed = (e_unrelaxed-e_bulk)/(2*surface_area)
+    E_relaxed = (e_relaxed-e_bulk)/(2*surface_area)
+    
+    return E_unrelaxed, E_relaxed
+
+calc = KIMCalculator(model)
+results = sweepSurfaces(calc)
+print simplejson.dumps({"surface_energy": results})
+

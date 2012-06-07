@@ -4,12 +4,17 @@ HERE=`pwd`
 
 # remove the old models and tests
 cd $REPO
+git commit -a -m "storing what you have"
 git rm -r ./te/*
 git rm -r ./mo/*
+git rm -r ./md/*
+git rm -r ./td/*
 cd $HERE
 
 mkdir -p $REPO/mo/
 mkdir -p $REPO/te/
+mkdir -p $REPO/td/
+mkdir -p $REPO/md/
 
 tar zxvf FullLJ.tgz
 python make_models.py
@@ -24,3 +29,16 @@ mv TE_2* $REPO/te/
 python make_surface_tests.py
 mv TE_1* $REPO/te/
 
+cp -r test_drivers/* $REPO/td/
+cp -r model_drivers/* $REPO/md/
+cp -r test_singles/* $REPO/te/
+cp -r model_singles/* $REPO/mo/
+
+cd $KIM_DIR
+make
+cd $HERE
+
+cd $REPO
+git add .
+git commit -m "done building"
+cd $HERE
