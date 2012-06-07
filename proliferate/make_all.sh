@@ -34,6 +34,11 @@ cp -r model_drivers/* $REPO/md/
 cp -r test_singles/* $REPO/te/
 cp -r model_singles/* $REPO/mo/
 
+cd $REPO
+cd te; for i in `ls`; do chmod +x $i/$i; done; cd ..
+cd td; for i in `ls`; do chmod +x $i/$i; done; cd ..
+cd $HERE
+
 cd $KIM_DIR
 make
 cd $HERE
