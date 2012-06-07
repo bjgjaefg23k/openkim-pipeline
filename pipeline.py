@@ -22,7 +22,7 @@ class Director(object):
         self.msg_size = 2**16
         self.remote_user = GLOBAL_USER
         self.remote_addr = GLOBAL_HOST
-        logger = logger.getChild("director")
+        self.logger = logger.getChild("director")
 
     def run(self):
         self.connect_to_daemon()
@@ -117,7 +117,7 @@ class Worker(object):
         self.ip          = GLOBAL_IP 
         self.timeout = 10
         self.port = GLOBAL_PORT
-        logger = logger.getChild("worker")
+        self.logger = logger.getChild("worker")
 
     def run(self):
         # if we can't already connect to the daemon on localhost,
