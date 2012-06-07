@@ -7,6 +7,7 @@ import urllib
 import time
 import simplejson
 from config import *
+from pipeline_global import *
 logger = logger.getChild("pipeline")
 
 class Worker(object):
@@ -49,19 +50,21 @@ class Worker(object):
             # update the repository, attempt to run the job
             # and return the results to the director
             #repo.rsync_update()
-            jobtup = simplejson.loads(job.body)
+            jobmsg = Message(string=job.body)
             try:
-                self.logger.info("Running %r ...", jobtup)
-                result = runner.run_test_on_model(*jobtup)
-                result = {"job": jobtup, "result": result}
+                self.logger.info("Running %r ...", jobmsg.jobid)
+                result = runner.run_test_on_model(*jobmsg.job)
+                repo.write_result_to_file(result, jobmsg.jobid)
+
+                resultmsg = {"job": jobmsg.job, "result": result}
                 self.bsd.use(TUBE_RESULTS)
-                self.bsd.put(simplejson.dumps(result))
+                self.bsd.put(simplejson.dumps(resultmsg))
                 job.delete()
             
             except Exception as e:
-                self.logger.error("Run failed, removing...")
-                error = {"job": jobtup, "error": str(e)}
-                self.bsd.use(TUBE_RESULTS)
+                self.logger.error("Run failed, removing... %r" % e)
+                error = {"job": jobmsg.job, "error": str(e)}
+                self.bsd.use(TUBE_ERRORS)
                 self.bsd.put(simplejson.dumps(error))
                 job.delete()
 

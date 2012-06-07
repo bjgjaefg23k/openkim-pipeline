@@ -6,7 +6,9 @@ import runner
 import urllib
 import time
 import simplejson
+import template
 from config import *
+from pipeline_global import *
 logger = logger.getChild("pipeline")
 
 class Director(object):
@@ -51,10 +53,18 @@ class Director(object):
         self.bsd.close()
         self.daemon.kill()
 
+    def get_tr_id(self):
+        bsd  bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
+        bsd.watch(TUBE_TR_IDS)
+        request = bsd.reserve()
+        tr_id = request.body
+        request.delete()
+        bsd.close()
+        return tr_id
+
     def get_updates(self):
         while 1:
             request = self.bsd.reserve()
-            request.bury()
 
             # got a request to update a model or test
             # from the website (or other trusted place)
@@ -91,17 +101,42 @@ class Director(object):
 
         # is it a test that was updated or a model?
         if kimid in repo.KIM_TESTS:
-            for model in repo.models_for_test(kimid):
-                priority = int(priority_factor*repo.test_model_to_priority(kimid,model) * 2**15)
-                self.logger.info("Submitting job <%s, %s> priority %i" % (kimid, model, priority))
-                self.bsd.put(simplejson.dumps([kimid,model]), priority=priority)
+            tests = [kimid]
+            models = repo.models_for_test(kimid)
         elif kimid in repo.KIM_MODELS:
-            for test in repo.tests_for_model(kimid):
-                priority = int(priority_factor*repo.test_model_to_priority(test,kimid) * 2**15)
-                self.logger.info("Submitting job <%s, %s> priority %i" % (test, kimid, priority))
-                self.bsd.put(simplejson.dumps([test,kimid]))
+            models = [kimid]
+            tests = repo.tests_for_model(kimid)
         else:
             self.logger.error("Tried to update invalid KIM ID!")
+
+        for test in tests:
+            for model in models: 
+                priority = int(priority_factor*repo.test_model_to_priority(test,model) * 2**15)
+                self.check_dependencies_and_push(test,model)
+
+    def check_dependencies_and_push(self, test, model, child=None):
+        test_dir = repo.test_dir(testname)
+        # run the test in its own directory
+        with repo.in_repo_dir(test_dir):
+            #grab the input file
+            with open(INPUT_FILE) as fl:
+                ready, TRs, PAIRs = template.dependency_check(fl,model,test)
+
+                self.logger.info("Submitting job <%s, %s> priority %i" % (test, model, priority))
+
+                trid = self.get_tr_id()
+
+                if not ready:
+                    # Some test results are required
+                    depids = []
+                    for (t,m) in PAIRs:
+                        self.logger.info("Submitting dependency <%s, %s>" % (t, m))
+                        # FIXME - Maybe force higher priority?
+                        depids.append(self.check_dependencies_and_push(t,m,child=(test,model,trid)))
+                    # Delayed-put and bury, wait for dependencies to resolve FIXME
+                    self.bsd.put(repr(Message(job=(test,model),jobid=trid, child=child, depends=TRs+tuple(depids))), priority=priority)
+                else:
+                    self.bsd.put(repr(Message(job=(test,model),jobid=trid, child=child, depends=TRs)), priority=priority)
 
     def halt(self):
         self.disconnect_from_daemon()
