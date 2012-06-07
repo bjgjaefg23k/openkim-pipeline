@@ -70,7 +70,7 @@ GLOBAL_DIR  = "/home/sethnagroup/vagrant/openkim-repository/"
 #============================
 
 KIMID_STORE = "kimidstore.json"
-PREDICTION_STORE = "predictionstore.json"
+TEST_RESULT_STORE = "testresultstore.json"
 
 #============================
 # Runner Internals
@@ -104,4 +104,21 @@ console_handler.setLevel(logging.ERROR)
 console_handler.setFormatter(log_formatter)
 logger.addHandler(console_handler)
 
+#====================================
+# KIM ERRORS
+#====================================
 
+class KIMRuntimeError(Exception):
+    """ General purpose KIM Api Error """
+
+class PiplineFileMissing(Exception):
+    """ If a file we rely on is missing """
+
+class PipelineTimeout(Exception):
+    """ If a test time outs """
+
+class PipelineDataMissing(Exception):
+    """ If requested data doesn't exist """
+
+class PipelineTemplateError(Exception):
+    """ some kind of templating format is wrong """

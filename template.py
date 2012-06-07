@@ -54,7 +54,7 @@ def data_from_match(match):
         pr = kimid.promote_kimid(pr)
         data = repo.data_from_te_mo_pr(te,mo,pr)
         return str(data)
-    raise KeyError, "I don't understand how to parse this"
+    raise PipelineTemplateError, "I don't understand how to parse this: {}".format(match.groups())
 
 def path_from_match(match):
     part,kid = match.groups()
