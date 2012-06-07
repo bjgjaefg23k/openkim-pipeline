@@ -24,6 +24,11 @@ try:
 except OSError:
     pass
 
+try:
+    os.remove(TEST_RESULT_STORE)
+except OSError:
+    pass
+
 subprocess.call("python kimid.py init",shell=True)
 
 allkimids = []
