@@ -71,14 +71,21 @@ def valid_match(testname,modelname):
     if modelname not in KIM_MODELS:
         logger.error("model %r not valid", modelname)
         raise PipelineFileMissing, "model {} not valid".format(modelname)
-    logger.debug("invoking KIMAPI")
-    match, pkim = kimservice.KIM_API_init(testname,modelname)
-    if match:
-        logger.debug("freeing KIMAPI")
-        kimservice.KIM_API_free(pkim)
-        return True
-    else:
-        return False
+    
+    with PersistentDict(MATCH_STORE) as store:
+        if str((testname,modelname)) in store:
+            return store[str((testname,modelname))]
+
+        logger.debug("invoking KIMAPI")
+        match, pkim = kimservice.KIM_API_init(testname,modelname)
+        if match:
+            logger.debug("freeing KIMAPI")
+            kimservice.KIM_API_free(pkim)
+            store[str((testname,modelname))] = True
+            return True
+        else:
+            store[str((testname,modelname))] = False
+            return False
 
 def tests_for_model(modelname):
     """ Return a generator of all valid tests for a model """
