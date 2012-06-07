@@ -50,7 +50,7 @@ def ConvertBatch(prefix, outprefix):
 
 def CreateBatch(template, prefix):
     import ase.data
-    symbols  = ['Al', 'Au', 'Pt', 'Pd', 'Ar', 'V'] #ase.data.chemical_symbols
+    symbols  = ['Al', 'Au', 'Pt', 'Pd', 'W', 'V'] #ase.data.chemical_symbols
     lattices = ['sc', 'fcc', 'bcc', 'diamond']
     
     for lattice in lattices:
