@@ -6,9 +6,20 @@ from persistentdict import PersistentDict, PersistentDefaultDict
 from config import *
 import repository as repo
 import os
+import subprocess
 logger = logger.getChild("storerefresh")
 
+
+
 logger.info("running store refresh")
+
+
+try:
+    os.remove(KIMID_STORE)
+except OSError:
+    pass
+
+subprocess.call("python kimid.py init",shell=True)
 
 allkimids = []
 for dir in KIM_REPO_DIRS:
@@ -31,16 +42,16 @@ with PersistentDefaultDict(KIMID_STORE) as store:
         else:
             store[leader][pk] = version
 
-#try to populate the prediction store
-with PersistentDefaultDict(PREDICTION_STORE) as store:
-    for pred in os.listdir(KIM_PREDICTIONS_DIR):
+#try to populate the test result store
+with PersistentDefaultDict(TEST_RESULT_STORE) as store:
+    for pred in os.listdir(KIM_TEST_RESULTS_DIR):
         if os.path.isdir(pred):
             logger.debug("found pred %r",pred)
-            info = repo.load_info_file(os.path.join(KIM_PREDICTIONS_DIR,pred,pred))
+            info = repo.load_info_file(os.path.join(KIM_TEST_RESULTS_DIR,pred,pred))
             testname = info["_testname"]
             modelname = info["_modelname"]
             store[testname][modelname] = pred
 
-
+logger.info("finished store refresh")
 
 
