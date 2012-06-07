@@ -24,6 +24,7 @@ KIM_API_DIR = os.environ.get("KIM_API_DIR",
 
 #get the repository dir from the symlink
 KIM_REPOSITORY_DIR = os.readlink('openkim-repository')
+KIM_PIPELINE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 PIPELINE_INFO_FILE = "pipelineinfo.json"
 INPUT_FILE = "pipeline.in"
@@ -69,9 +70,9 @@ GLOBAL_DIR  = "/home/sethnagroup/vagrant/openkim-repository/"
 # Stores
 #============================
 
-KIMID_STORE = "kimidstore.json"
-TEST_RESULT_STORE = "testresultstore.json"
-MATCH_STORE = "matchstore.json"
+KIMID_STORE = os.path.join(KIM_PIPELINE_DIR,"kimidstore.json")
+TEST_RESULT_STORE = os.path.join(KIM_PIPELINE_DIR,"testresultstore.json")
+MATCH_STORE = os.path.join(KIM_PIPELINE_DIR,"matchstore.json")
 
 #============================
 # Runner Internals

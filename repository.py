@@ -137,7 +137,7 @@ def test_result_dir(testresultname):
     logger.debug("getting dir for TR %r",testresultname)
     return os.path.join(KIM_TEST_RESULTS_DIR,testresultname)
 
-def test_result_info(testresultname):
+def test_result_file(testresultname):
     """ Get the test result file """
     logger.debug("getting file for TR %r",testresultname)
     return os.path.join(test_result_dir(testresultname), testresultname)
@@ -174,11 +174,13 @@ def write_result_to_file(results, pk=None):
     
     tr_id = kimid.new_kimid("TR")
     outputfolder = tr_id
+    fullpathfolder = os.path.abspath(outputfolder)
     outputfilename = outputfolder
+    outputpath = os.path.join(outputfolder,outputfilename)
 
     with in_repo_dir(KIM_TEST_RESULTS_DIR):
         os.mkdir(outputfolder)
-        with open(os.path.join(outputfolder,outputfilename),"w") as fobj:
+        with open(outputpath,"w") as fobj:
             simplejson.dump(results,fobj)
 
         #copy any corresponding files to the test results directory
@@ -194,7 +196,7 @@ def write_result_to_file(results, pk=None):
         logger.debug("updating test result store")
         store[testname][modelname] = tr_id
 
-    print "Wrote results in: {}".format(os.path.abspath(outputfilename))
+    print "Wrote results in: {}".format(fullpathfolder)
 
 
 def test_result_exists(testname,modelname):
@@ -281,9 +283,9 @@ def data_from_tr_pr(tr,pr):
     return info[pr]
 
 
-def data_from_te_mo_po(te,mo,pr):
+def data_from_te_mo_pr(te,mo,pr):
     """ Get data from a te, mo, pr """
-    logger.debug("getting data for %r,%r,%r",te,mo,po)
+    logger.debug("getting data for %r,%r,%r",te,mo,pr)
     with test_result_store() as store:
         tr = store[te][mo]
     return data_from_tr_pr(tr,pr)
