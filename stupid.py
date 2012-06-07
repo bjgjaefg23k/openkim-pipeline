@@ -1,11 +1,10 @@
+#! /usr/bin/env python
 from repository import *
 
-model = KIM_MODELS[2]
-tests = list(tests_for_model(model))
-
-print tests
+test = 'TE_333333333333_000'
+model = 'MO_607867530928_000'
 
 
 import runner
-foo = runner.run_test_on_model(tests[2],model)
+foo = valid_match(test,model)
 print foo

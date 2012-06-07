@@ -118,3 +118,8 @@ def update_repo(force=False):
             else:
                 print "{} vs {} seems current".format(test,model)
 
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "update":
+            update_repo()
