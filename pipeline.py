@@ -1,6 +1,6 @@
 from config import *
-from pipeline_director import * 
-from pipeline_worker import * 
+from pipeline_director import Director 
+from pipeline_worker import Worker
 
 if __name__ == "__main__":
     from optparse import OptionParser
