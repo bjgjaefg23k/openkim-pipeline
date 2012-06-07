@@ -1,18 +1,16 @@
 """ 
 Some scripts that let us run tests and the like
 """
-import time, simplejson, signal, itertools
+import time, simplejson, signal, itertools, sys
 from subprocess import Popen, PIPE
 import repository as repo
 from config import *
 logger = logger.getChild("runner")
 import template
 
-class TimedOut(Exception):
-    pass
 
 def timeout_handler(signum, frame):
-    raise TimedOut()
+    raise PipelineTimeout()
 
 
 def outfile_to_dict(outfile):
@@ -33,10 +31,10 @@ def run_test_on_model(testname,modelname):
     #do a sanity check, see if the test and model exist
     if testname not in repo.KIM_TESTS:
         logger.error("test %r not valid",testname)
-        raise KeyError, "test <{}> not valid".format(testname)
+        raise PipelineFileMissing, "test <{}> not valid".format(testname)
     if modelname not in repo.KIM_MODELS:
         logger.error("model %r not valid",modelname)
-        raise KeyError, "model <{}> not valid".format(modelname)
+        raise PipelineFileMissing, "model <{}> not valid".format(modelname)
 
     #grab the executable
     executable = [repo.test_executable(testname)]
@@ -62,9 +60,9 @@ def run_test_on_model(testname,modelname):
                     finally:
                         signal.signal(signal.SIGALRM, old_handler)
                     signal.alarm(0)
-                except TimedOut:
+                except PipelineTimeout:
                     logger.error("test %r timed out",testname)
-                    raise RuntimeError, "your test timed out"
+                    raise PipelineTimeout, "your test timed out"
                 
                 end_time = time.time()
             with open(STDOUT_FILE,"w") as stdout_file:
@@ -72,7 +70,7 @@ def run_test_on_model(testname,modelname):
 
     if process.poll() is None:
         process.kill()
-        raise RuntimeError, "your test didn't terminate nicely"
+        raise KIMRuntimeError, "your test didn't terminate nicely"
 
     
     #look backwards in the stdout for the first non whitespaced line
@@ -82,7 +80,7 @@ def run_test_on_model(testname,modelname):
         data = simplejson.loads(data_string)
     except simplejson.JSONDecodeError:
         logger.error("We didn't get JSON back!")
-        raise RuntimeError, "test didn't return JSON"
+        raise PipelineTemplateError, "test didn't return JSON"
 
     data = { output_info[key]:val for key,val in data.iteritems() }
     data["_stdout"] = "@FILE[{}]".format(STDOUT_FILE)
@@ -103,10 +101,14 @@ def update_repo():
     logger.info("attempting to update repo...")
     for test in repo.KIM_TESTS:
         for model in repo.models_for_test(test):
-            if not repo.prediction_exists(test,model):
+            if not repo.test_result_exists(test,model):
                 print "Running {} vs {}".format(test,model)
-                results = run_test_on_model(test,model)
-                repo.write_result_to_file(results)
+                
+                try:
+                    results = run_test_on_model(test,model)
+                    repo.write_result_to_file(results)
+                except:
+                    logger.error("WE HAD an error on (%r,%r) with:\n%r",test,model,sys.exc_info[0])
             else:
                 print "{} vs {} seems current".format(test,model)
 
