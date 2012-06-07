@@ -18,6 +18,7 @@ which is of the form
 from persistentdict import PersistentDict
 import random, sys
 from config import *
+import repository
 
 logger = logger.getChild("kimid")
 """ 

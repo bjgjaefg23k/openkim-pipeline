@@ -33,27 +33,30 @@ def get_file(string,testdir):
 
 def data_from_match(match):
     groups = match.groups()
-    if len(groups) == 2:
-        #a 2 call is an rd
-        part, rd = groups
-        rd = kimid.promote_kimid(rd)
-        data = repo.data_from_rd(rd)
-        return str(data)
-    if len(groups) == 3:
-        # a 3 call is TR, PR
-        part, tr, pr = groups
-        tr = kimid.promote_kimid(tr)
-        pr = kimid.promote_kimid(pr)
-        data = repo.data_from_tr_pr(tr,pr)
-        return str(data)
-    if len(groups) == 4:
-        # a 4 call is part,te,mo,pr
-        part, te, mo, pr = groups
-        te = kimid.promote_kimid(te)
-        mo = kimid.promote_kimid(mo)
-        pr = kimid.promote_kimid(pr)
-        data = repo.data_from_te_mo_pr(te,mo,pr)
-        return str(data)
+    try:
+        if len(groups) == 2:
+            #a 2 call is an rd
+            part, rd = groups
+            rd = kimid.promote_kimid(rd)
+            data = repo.data_from_rd(rd)
+            return str(data)
+        if len(groups) == 3:
+            # a 3 call is TR, PR
+            part, tr, pr = groups
+            tr = kimid.promote_kimid(tr)
+            pr = kimid.promote_kimid(pr)
+            data = repo.data_from_tr_pr(tr,pr)
+            return str(data)
+        if len(groups) == 4:
+            # a 4 call is part,te,mo,pr
+            part, te, mo, pr = groups
+            te = kimid.promote_kimid(te)
+            mo = kimid.promote_kimid(mo)
+            pr = kimid.promote_kimid(pr)
+            data = repo.data_from_te_mo_pr(te,mo,pr)
+            return str(data)
+    except KeyError:
+        raise PipelineDataMissing, "We couldn't get the requested data"
     raise PipelineTemplateError, "I don't understand how to parse this: {}".format(match.groups())
 
 def path_from_match(match):
