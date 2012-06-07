@@ -64,7 +64,7 @@ def update(mesg="",remote='origin',branch='master'):
 
 def valid_match(testname,modelname):
     """ Test to see if a test and model match using the kim API, returns bool """
-    logger.debug("attempting to match %r with %r",testname,modelname)
+    #logger.debug("attempting to match %r with %r",testname,modelname)
     if testname not in KIM_TESTS:
         logger.error("test %r not valid",testname)
         raise PipelineFileMissing, "test {} not valid".format(testname)
@@ -76,7 +76,7 @@ def valid_match(testname,modelname):
         if str((testname,modelname)) in store:
             return store[str((testname,modelname))]
 
-        logger.debug("invoking KIMAPI")
+        logger.debug("invoking KIMAPI for (%r,%r)",testname,modelname)
         match, pkim = kimservice.KIM_API_init(testname,modelname)
         if match:
             logger.debug("freeing KIMAPI")
@@ -190,7 +190,11 @@ def write_result_to_file(results, pk=None):
             for src in files:
                 logger.debug("copying %r over", src)
                 shutil.copy(os.path.join(testdir,src),outputfolder)
-    
+        
+        #make symlinks
+        #os.symlink(test_dir(testname),os.path.join(outputfolder,testname))
+        #os.symlink(model_dir(modelname),os.path.join(outputfolder,modelname))
+
     with test_result_store() as store:
         logger.debug("updating test result store")
         store[testname][modelname] = tr_id
