@@ -37,7 +37,7 @@ def ConvertName(src, dst, replacements=None):
         InFileTextReplacement(f, src, dst)
         for key,val in replacements.iteritems():
             InFileTextReplacement(f, key, val)
-    CreateMetaData(dst, src, "TD_000000000001_000")
+    CreateMetaData(dst, src, "TD_111111111111_000")
     os.chdir("..")
 
 
@@ -50,16 +50,16 @@ def ConvertBatch(prefix, outprefix):
 
 def CreateBatch(template, prefix):
     import ase.data
-    symbols  = ['Al', 'Au', 'Pt', 'Pd', 'Ar', 'V'] #ase.data.chemical_symbols
-    lattices = ['sc', 'fcc', 'bcc', 'diamond']
+    symbols  = ['Cu', 'Ag', 'Au', 'Ni', 'Pd', 'Pt']
+    surfaces = ['111', '112', '137']
     
-    for lattice in lattices:
+    for surface in surfaces:
         for symbol in symbols:
             newname = template+"_copy"
-            finname = prefix+"_"+lattice+"_"+symbol
+            finname = prefix+"_"+surface+"_"+symbol
             shutil.copytree(template, newname) 
-            ConvertName(newname, finname, {"SYMBOL": symbol, "LATTICE": lattice})
+            ConvertName(newname, finname, {"SYMBOL": symbol, "SURFACE": surface})
     
 if __name__ == "__main__":
-    CreateBatch("test_lattices", "test_lattice_const")
-    ConvertBatch("test_lattice_const", "TE_000000000")
+    CreateBatch("test_surfaces", "test_surface_energy")
+    ConvertBatch("test_surface_energy", "TE_111111111")

@@ -56,7 +56,7 @@ def EnglishToKIMID(eng):
 
 def CreateBatch(template, prefix):
     import ase.data
-    symbols  = ase.data.chemical_symbols
+    symbols  = ['Al', 'Au', 'Pt', 'Pd', 'Ar', 'V'] #ase.data.chemical_symbols
     lattices = ['sc', 'fcc', 'bcc', 'diamond']
     index = 0
     for lattice in lattices:
