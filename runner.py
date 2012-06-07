@@ -1,17 +1,31 @@
 """ 
 Some scripts that let us run tests and the like
 """
-import time, simplejson, signal
+import time, simplejson, signal, itertools
 from subprocess import Popen, PIPE
 import repository as repo
 from config import *
 logger = logger.getChild("runner")
+import template
 
 class TimedOut(Exception):
     pass
 
 def timeout_handler(signum, frame):
     raise TimedOut()
+
+
+def outfile_to_dict(outfile):
+    outdata = open(outfile).read()
+    lines = outdata.splitlines()
+    data = {}
+    for line in lines:
+        front,back = line.split(":")
+        data.update({ front.strip(): back.strip()})
+    return data
+
+def line_filter(line):
+    return bool(line.strip())
 
 def run_test_on_model(testname,modelname):
     """ run a test with the corresponding model, capture the output as a dict """
@@ -33,9 +47,10 @@ def run_test_on_model(testname,modelname):
     # run the test in its own directory
     with repo.in_repo_dir(test_dir):
         #grab the input file
-        output_info = repo.load_info(OUTPUT_FILE)
+        output_info = outfile_to_dict(OUTPUT_FILE)
         with open(INPUT_FILE) as fl:
-            with template.process(fl) as kim_stdin:
+            with template.process(fl,modelname,testname) as kim_stdin_file:
+                kim_stdin = kim_stdin_file.read()
                 start_time = time.time()
                 process = Popen(timeblock+ executable,stdin=PIPE,stdout=PIPE,stderr=PIPE)
                 logger.info("launching run...")
@@ -52,16 +67,25 @@ def run_test_on_model(testname,modelname):
                     raise RuntimeError, "your test timed out"
                 
                 end_time = time.time()
+            with open(STDOUT_FILE,"w") as stdout_file:
+                stdout_file.write(stdout)
 
     if process.poll() is None:
         process.kill()
         raise RuntimeError, "your test didn't terminate nicely"
 
-    data_string = stdout.splitlines()[-1]
-    data = simplejson.loads(data_string)
+    
+    #look backwards in the stdout for the first non whitespaced line
+    data_string = next(itertools.ifilter(line_filter,reversed(stdout.splitlines())))
+    logger.debug("we have a data_string: %r",data_string)
+    try:
+        data = simplejson.loads(data_string)
+    except simplejson.JSONDecodeError:
+        logger.error("We didn't get JSON back!")
+        raise RuntimeError, "test didn't return JSON"
 
     data = { output_info[key]:val for key,val in data.iteritems() }
-
+    data["_stdout"] = "@FILE[{}]".format(STDOUT_FILE)
     data["_testname"] = testname
     data["_modelname"] = modelname
     data["_time"] = end_time-start_time

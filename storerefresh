@@ -12,9 +12,11 @@ logger.info("running store refresh")
 
 allkimids = []
 for dir in KIM_REPO_DIRS:
-    for kimid in (subdir for subdir in os.listdir(dir) if os.path.isdir(subdir)):
-        logger.debug("found %r",kimid)
-        allkimids.append(kimid)
+    logger.debug("in dir %r",dir)
+    for kid in (subdir for subdir in os.listdir(dir) if os.path.isdir(os.path.join(dir,subdir))):
+        logger.debug("found %r",kid)
+        allkimids.append(kid)
+logger.debug("allkimids %r",allkimids)
 
 #try to populate all of the kimids
 with PersistentDefaultDict(KIMID_STORE) as store:
