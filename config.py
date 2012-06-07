@@ -65,6 +65,13 @@ GLOBAL_USER = "sethnagroup"
 GLOBAL_HOST = "cerbo.ccmr.cornell.edu"
 GLOBAL_DIR  = "/home/sethnagroup/vagrant/openkim-repository/"
 
+PIPELINE_TIMEOUT = 10
+PIPELINE_MSGSIZE = 2**20
+TUBE_JOBS    = "jobs"
+TUBE_RESULTS = "results"
+TUBE_UPDATE  = "updates"
+TUBE_ERRORS  = "errors"
+
 
 #============================
 # Stores
