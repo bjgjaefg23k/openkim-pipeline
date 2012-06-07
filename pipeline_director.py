@@ -67,7 +67,7 @@ class Director(object):
             # got word from a worker that a job is complete
             if request.stats()['tube'] == TUBE_RESULTS:
                 ret = simplejson.loads(request.body)
-                repo.write_result_to_file(ret['result'])
+                #repo.write_result_to_file(ret['result'])
                 self.logger.info("Finished %r ...", ret['job'])
 
             if request.stats()['tube'] == TUBE_ERRORS:
