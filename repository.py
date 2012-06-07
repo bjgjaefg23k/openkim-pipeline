@@ -162,6 +162,10 @@ def test_result_file(testresultname):
     logger.debug("getting file for TR %r",testresultname)
     return os.path.join(test_result_dir(testresultname), testresultname)
 
+def test_result_exists(testresultname):
+    tr_path = test_result_file(testresultname)
+    return os.path.exists(tr_path)
+
 #==========================================
 # Results in repo
 #==========================================
@@ -306,11 +310,18 @@ def data_from_tr_pr(tr,pr):
     return info[pr]
 
 
+def tr_for_te_mo(te,mo):
+    try:
+        with test_result_store() as store:
+            tr = store[te][mo]
+    except KeyError:
+        raise PipelineDataMissing, "no tr found for ({},{})".format(te,mo)
+    return tr
+
 def data_from_te_mo_pr(te,mo,pr):
     """ Get data from a te, mo, pr """
     logger.debug("getting data for %r,%r,%r",te,mo,pr)
-    with test_result_store() as store:
-        tr = store[te][mo]
+    tr = tr_for_te_mo(te,mo)
     return data_from_tr_pr(tr,pr)
 
 #===========================================
