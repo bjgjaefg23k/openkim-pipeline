@@ -2,19 +2,32 @@
 Message format for the queue system:
     "jobid":    id assigned from the director 
     "priority": a string priority
-    "job":      an array of tuples of (testid, modelid, testresult id)
+    "job":      (testid, modelid, testresult id)
     "results":  the json message produced by the run
     "errors":   the exception caught and returned as a string
+    "depends":  a list of tuples of jobs
 """
+PIPELINE_TIMEOUT = 10
+PIPELINE_MSGSIZE = 2**20
+TUBE_JOBS    = "jobs"
+TUBE_RESULTS = "results"
+TUBE_UPDATE  = "updates"
+TUBE_ERRORS  = "errors"
+TUBE_TR_IDS  = "tr_ids"
+TUBE_VR_IDS  = "vr_ids"
+
 KEY_JOBID    = "jobid"
 KEY_PRIORITY = "priority"
 KEY_JOB      = "job"
 KEY_RESULTS  = "results"
 KEY_ERRORS   = "errors"
 KEY_DEPENDS  = "depends"
+KEY_CHILDS   = "childs"
 
 def Message(object):
-    def __init__(self, string=None, jobid=None, priority=None, job=None, results=None, errors=None, depends=None):
+    def __init__(self, string=None, jobid=None, 
+            priority=None, job=None, results=None, 
+            errors=None, depends=None, childs=None):
         if string is not None:
             self.msg_from_string(string)
         else:
@@ -24,10 +37,12 @@ def Message(object):
             self.results = results
             self.errors = errors
             self.depends = depends
+            self.childs = childs
 
     def __repr__(self):
         return simplejson.dumps({KEY_JOBID: self.jobid, KEY_PRIORITY: self.priority,
-            KEY_JOB: self.job, KEY_RESULTS: self.results, KEY_ERRORS: self.errors, KEY_DEPENDS: self.depends})
+            KEY_JOB: self.job, KEY_RESULTS: self.results, KEY_ERRORS: self.errors, 
+            KEY_DEPENDS: self.depends, KEY_CHILDS: self.childs})
 
     def msg_from_string(self,string):
         dic = simplejson.loads(string)
@@ -37,3 +52,4 @@ def Message(object):
         self.results = dic[KEY_RESULTS]
         self.errors = dic[KEY_ERRORS]
         self.depends = dic[KEY_DEPENDS]
+        self.childs = dic[KEY_CHILDS]
