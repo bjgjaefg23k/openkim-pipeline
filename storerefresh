@@ -14,9 +14,12 @@ logger = logger.getChild("storerefresh")
 logger.info("running store refresh")
 
 
-os.remove(KIMID_STORE)
+try:
+    os.remove(KIMID_STORE)
+except OSError:
+    pass
 
-subprocess.call("python kimid.py init")
+subprocess.call("python kimid.py init",shell=True)
 
 allkimids = []
 for dir in KIM_REPO_DIRS:
@@ -49,6 +52,6 @@ with PersistentDefaultDict(TEST_RESULT_STORE) as store:
             modelname = info["_modelname"]
             store[testname][modelname] = pred
 
-
+logger.info("finished store refresh")
 
 
