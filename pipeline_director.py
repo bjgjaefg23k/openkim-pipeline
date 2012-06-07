@@ -7,7 +7,6 @@ import urllib
 import time
 import simplejson
 from config import *
-from pipeline import *
 logger = logger.getChild("pipeline")
 
 class Director(object):
