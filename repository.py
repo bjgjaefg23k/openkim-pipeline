@@ -88,6 +88,7 @@ def valid_match(testname,modelname):
 
         # try to get the exit code from the kim api process
         exitcode = os.waitpid(pid,0)[1]/256
+        logger.debug("got exitcode: %r" , exitcode )
         if exitcode == 0:
             match = True
         elif exitcode == 1:
