@@ -22,7 +22,7 @@ class Director(object):
         self.msg_size = 2**16
         self.remote_user = GLOBAL_USER
         self.remote_addr = GLOBAL_HOST
-        logger = logger.getChild("director")
+        self.logger = logger.getChild("director")
 
     def run(self):
         self.connect_to_daemon()
@@ -49,6 +49,8 @@ class Director(object):
         self.bsd.watch(TUBE_RESULTS)
         self.bsd.watch(TUBE_ERROR)
         self.bsd.ignore("default")
+
+        self.push_jobs({"kimid": "MO_607867530901_000", "priority": "normal"})
 
     def disconnect_from_daemon(self):
         self.bsd.close()
@@ -100,8 +102,8 @@ class Director(object):
                 self.bsd.put(simplejson.dumps([kimid,model]), priority=priority)
         elif kimid in repo.KIM_MODELS:
             for test in repo.tests_for_model(kimid):
-                priority = int(priority_factor*repo.test_model_to_priority(kimid,model) * 2**15)
-                print "Submitting job <%s, %s> priority %i" % (kimid, model, priority)
+                priority = int(priority_factor*repo.test_model_to_priority(test,kimid) * 2**15)
+                print "Submitting job <%s, %s> priority %i" % (test, kimid, priority)
                 self.bsd.put(simplejson.dumps([test,kimid]))
         else:
             print "Tried to update invalid KIM ID!"
@@ -117,7 +119,7 @@ class Worker(object):
         self.ip          = GLOBAL_IP 
         self.timeout = 10
         self.port = GLOBAL_PORT
-        logger = logger.getChild("worker")
+        self.logger = logger.getChild("worker")
 
     def run(self):
         # if we can't already connect to the daemon on localhost,
