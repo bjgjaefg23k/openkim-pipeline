@@ -71,6 +71,7 @@ GLOBAL_DIR  = "/home/sethnagroup/vagrant/openkim-repository/"
 
 KIMID_STORE = "kimidstore.json"
 TEST_RESULT_STORE = "testresultstore.json"
+MATCH_STORE = "matchstore.json"
 
 #============================
 # Runner Internals

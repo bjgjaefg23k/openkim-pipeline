@@ -108,7 +108,7 @@ def update_repo():
                     results = run_test_on_model(test,model)
                     repo.write_result_to_file(results)
                 except:
-                    logger.error("WE HAD an error on (%r,%r) with:\n%r",test,model,sys.exc_info[0])
+                    logger.error("WE HAD an error on (%r,%r) with:\n%r",test,model,sys.exc_info()[0])
             else:
                 print "{} vs {} seems current".format(test,model)
 
