@@ -23,11 +23,14 @@ mv MO_* $REPO/mo/
 python make_lattice_tests.py
 mv TE_0* $REPO/te/
 
+python make_surface_tests.py
+mv TE_1* $REPO/te/
+
 python make_elastics_tests.py
 mv TE_2* $REPO/te/
 
-python make_surface_tests.py
-mv TE_1* $REPO/te/
+python make_bond_tests.py
+mv TE_3* $REPO/te/
 
 cp -r test_drivers/* $REPO/td/
 cp -r model_drivers/* $REPO/md/
