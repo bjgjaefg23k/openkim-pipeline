@@ -31,6 +31,40 @@ def get_file(string,testdir):
         return os.path.join(testdir,filename)
 
 
+def data_path_from_match(match):
+    """ Given a match, try to find where it exists
+    
+    RETRUNS:
+        exists - bool
+        path - either a kim_code, or a pair that must be run
+    """
+    groups = match.groups()
+    logger.debug("trying to find data path for groups: %r",groups)
+    if len(groups) == 2:
+        # a 2 call is an rd
+        part, rd = groups
+        rd = kimid.promote_kimid(rd)
+        return (True, rd)
+    if len(groups) == 3:
+        # a 3 call is TR, PR
+        part, tr, pr = groups
+        tr = kimid.promote(tr)
+        return (True, tr)
+    if len(groups) == 4:
+        # a 4 call is part,te,mo,pr
+        part, te, mo, pr = groups
+        te = kimid.promote_kimid(te)
+        mo = kimid.promote_kimid(mo)
+        pr = kimid.promote_kimid(pr)
+        try:
+            tr = repo.tr_for_te_mo(te,mo)
+        except PipelineDataMissing:
+            #tr doesn't exist
+            return (False, [te,mo])
+        else:
+            return (True, tr)
+    raise PipelineTemplateError, "didn't understand the in file"
+        
 def data_from_match(match):
     groups = match.groups()
     try:
@@ -76,6 +110,12 @@ def data_processor(line,model,test):
     """ replace all data directives with the appropriate path """
     return re.sub(RE_DATA,data_from_match,line)
 
+def dependency_processor(line,model,test):
+    """ find the data directives and get the location of data, if any, as generator """
+    matches = re.finditer(RE_DATA,line)
+    for match in matches:
+        yield data_path_from_match(match)
+
 def modelname_processor(line,model,test):
     """ replace all modelname directives with the appropriate path """
     return re.sub(RE_MODEL,model,line)
@@ -92,6 +132,43 @@ def process_line(line,*args):
         line = processor(line,*args)
         #logger.debug("current line is: %r",line)
     return line
+
+
+def dependency_check(inp,model,test):
+    """ Given an input file
+        find all of the data directives and obtain the pointers to the relevant data if it exists
+        if it doesn't exist, return a false and a list of dependant tests
+
+        outputs:
+            ready - bool
+            dependencies_good_to_go - list of kids
+            dependencies_needed - tuple of tuples 
+    """
+    logger.info("running a dependancy check for %r",test)
+    ready, dependencies = (True, [])
+    
+    cands = []
+    #try to find all of the possible dependencies
+    for line in inp:
+        for cand in dependency_processor(line,model,test):
+            cands.append(cand)
+            logger.debug("found a candidate dependency: %r", cand)
+
+    if not cands:
+        return (True, None, None)
+    
+    #cheap transpose
+    candstranspose = zip(*cands)
+    #is everyone ready?
+    allready = all(candstranspose[0])
+
+    if allready:
+        #good to go
+        return allready, candstranspose[1], None
+    else:
+        #grab the pairs
+        return allready, ( kid for ready,kid in cands if ready ), ( pair for ready, pair in cands if not ready )
+
 
 def process(inp, model, test):
     """ takes in a file like object and retuns a processed file like object """

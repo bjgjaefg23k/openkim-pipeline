@@ -56,13 +56,16 @@ def plotBrokenBondFit(indices,energies,bfparams,index0=[1,-1,0],poleaxis=[1,1,0]
    
     
     plotSubSet(indices,energies,index0,poleaxis,bfparams)
-    pylab.savefig('Al'+model+'BrokenBondFit.png')
+    pylab.savefig('BrokenBondFit.png')
     
 
 calc = KIMCalculator(model)
 indices, energies, surfaceEnergyDict = sweepSurfaces(calc, N=3)
 bfparams = fitBrokenBond(indices, energies)
 plotBrokenBondFit(indices,energies,bfparams)
-results = {'Broken Bond Parameter (110)': bfparams[0],'Broken Bond Parameter (100)':bfparams[1],'Broken Bond Parameter (112)': bfparams[2]}
+results = {'BrokenBondParameter(110)': bfparams[0], \
+        'BrokenBondParameter(100)':bfparams[1], \
+        'BrokenBondParameter(112)':bfparams[2], \
+        "BrokenBondFit": "@FILE[BrokenBondFit.png']"}
 print simplejson.dumps(results)
 
