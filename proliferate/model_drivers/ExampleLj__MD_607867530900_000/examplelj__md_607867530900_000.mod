@@ -1,5 +1,5 @@
-GFORTRAN module version '6' created from MD_607867530999_000.F90 on Thu Jun  7 09:44:52 2012
-MD5:2111e5bcff1944c5dc121384e48cfd4b -- If you edit this, you'll get what you deserve.
+GFORTRAN module version '6' created from ExampleLj__MD_607867530900_000.F90 on Fri Jun  8 14:57:09 2012
+MD5:c3c91ac8aea945d1bfc17e918f6f41b3 -- If you edit this, you'll get what you deserve.
 
 (() () () () () () () () () () () () () () () () () () () () () () ()
 () () () ())
@@ -14,25 +14,27 @@ MD5:2111e5bcff1944c5dc121384e48cfd4b -- If you edit this, you'll get what you de
 
 ()
 
-(2 'calc_phi' 'md_607867530999_000' 'calc_phi' 1 ((PROCEDURE
+(2 'calc_phi' 'examplelj__md_607867530900_000' 'calc_phi' 1 ((PROCEDURE
 UNKNOWN-INTENT MODULE-PROC DECL UNKNOWN 0 0 SUBROUTINE IMPLICIT_PURE) (
 UNKNOWN 0 0 0 UNKNOWN ()) 3 0 (4 5 6 7 8 9) () 0 () () () 0 0)
-10 'calc_phi_dphi' 'md_607867530999_000' 'calc_phi_dphi' 1 ((PROCEDURE
-UNKNOWN-INTENT MODULE-PROC DECL UNKNOWN 0 0 SUBROUTINE IMPLICIT_PURE) (
-UNKNOWN 0 0 0 UNKNOWN ()) 11 0 (12 13 14 15 16 17 18) () 0 () () () 0 0)
-19 'calc_phi_dphi_d2phi' 'md_607867530999_000' 'calc_phi_dphi_d2phi' 1 (
+10 'calc_phi_dphi' 'examplelj__md_607867530900_000' 'calc_phi_dphi' 1 (
 (PROCEDURE UNKNOWN-INTENT MODULE-PROC DECL UNKNOWN 0 0 SUBROUTINE
-IMPLICIT_PURE) (UNKNOWN 0 0 0 UNKNOWN ()) 20 0 (21 22 23 24 25 26 27 28)
-() 0 () () () 0 0)
-29 'compute_energy_forces' 'md_607867530999_000' 'compute_energy_forces'
-1 ((PROCEDURE UNKNOWN-INTENT MODULE-PROC DECL UNKNOWN 0 0 SUBROUTINE) (
-UNKNOWN 0 0 0 UNKNOWN ()) 30 0 (31 32) () 0 () () () 0 0)
-33 'destroy' 'md_607867530999_000' 'destroy' 1 ((PROCEDURE
+IMPLICIT_PURE) (UNKNOWN 0 0 0 UNKNOWN ()) 11 0 (12 13 14 15 16 17 18) ()
+0 () () () 0 0)
+19 'calc_phi_dphi_d2phi' 'examplelj__md_607867530900_000'
+'calc_phi_dphi_d2phi' 1 ((PROCEDURE UNKNOWN-INTENT MODULE-PROC DECL
+UNKNOWN 0 0 SUBROUTINE IMPLICIT_PURE) (UNKNOWN 0 0 0 UNKNOWN ()) 20 0 (
+21 22 23 24 25 26 27 28) () 0 () () () 0 0)
+29 'compute_energy_forces' 'examplelj__md_607867530900_000'
+'compute_energy_forces' 1 ((PROCEDURE UNKNOWN-INTENT MODULE-PROC DECL
+UNKNOWN 0 0 SUBROUTINE) (UNKNOWN 0 0 0 UNKNOWN ()) 30 0 (31 32) () 0 ()
+() () 0 0)
+33 'destroy' 'examplelj__md_607867530900_000' 'destroy' 1 ((PROCEDURE
 UNKNOWN-INTENT MODULE-PROC DECL UNKNOWN 0 0 SUBROUTINE) (UNKNOWN 0 0 0
 UNKNOWN ()) 34 0 (35) () 0 () () () 0 0)
-36 'reinit' 'md_607867530999_000' 'reinit' 1 ((PROCEDURE UNKNOWN-INTENT
-MODULE-PROC DECL UNKNOWN 0 0 SUBROUTINE) (UNKNOWN 0 0 0 UNKNOWN ()) 37 0
-(38) () 0 () () () 0 0)
+36 'reinit' 'examplelj__md_607867530900_000' 'reinit' 1 ((PROCEDURE
+UNKNOWN-INTENT MODULE-PROC DECL UNKNOWN 0 0 SUBROUTINE) (UNKNOWN 0 0 0
+UNKNOWN ()) 37 0 (38) () 0 () () () 0 0)
 4 'model_epsilon' '' 'model_epsilon' 3 ((VARIABLE IN UNKNOWN-PROC
 UNKNOWN UNKNOWN 0 0 DUMMY) (REAL 8 0 0 REAL ()) 0 0 () () 0 () () () 0 0)
 5 'model_sigma' '' 'model_sigma' 3 ((VARIABLE IN UNKNOWN-PROC UNKNOWN

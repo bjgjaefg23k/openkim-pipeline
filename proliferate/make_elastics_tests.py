@@ -8,6 +8,7 @@ import simplejson
 from contextlib import nested
 from rename import CreateMetaData,InFileTextReplacement,ConvertName,ConvertBatch
 
+"""
 def EnglishToKIMID(eng):
     for f in glob.glob("/home/vagrant/openkim-repository/te/*/metadata.json"):
         dic = simplejson.load(open(f))
@@ -21,18 +22,34 @@ def EnglishToKIMID2(eng):
         if dic['title'] == eng:
             return dic['kim_code']
     return None
+"""
+
+def kim_id_from_prefix(prefix):
+    matches = glob.glob(prefix+"*")
+    if len(matches) == 1:
+        return matches[0]
+    else:
+        raise IndexError, "%i matches found for prefix %s" %(len(matches), prefix)
 
 def CreateBatch(template, prefix, driver):
     import ase.data
-    symbols  = ['Al', 'Au', 'Pt', 'Pd', 'W', 'V'] #ase.data.chemical_symbols
+    #symbols  = ['Al', 'Au', 'Pt', 'Pd', 'W', 'V'] 
+    symbols = ase.data.chemical_symbols
     lattices = ['sc', 'fcc', 'bcc', 'diamond']
     index = 0
     for lattice in lattices:
         for symbol in symbols:
             newname = template+"_copy"
-            finname = prefix+"_"+lattice+"_"+symbol
-            testsource = EnglishToKIMID("test_lattice_const_"+lattice+"_"+symbol)
-            testmodel = EnglishToKIMID2("ex_model_"+symbol+"_P_LJ")
+            finname = prefix+string.capitalize(lattice)+symbol
+            depend_test_prefix = "LatticeConstantCubic"+string.capitalize(lattice)+symbol
+            depend_model_prefix = "ExampleLj"+symbol 
+            try:
+                testsource =kim_id_from_prefix(depend_test_prefix)
+                testmodel = kim_id_from_prefix(depend_model_prefix)
+            except:
+                print "No matching test/model for lattice constant of ", lattice, symbol
+                continue
+
             testproperty = "PR_000000000001_000"
             if testsource is not None and testmodel is not None:
                 shutil.copytree(template, newname) 
@@ -44,6 +61,6 @@ def CreateBatch(template, prefix, driver):
                 print "no english name"
 
 if __name__ == "__main__":
-    CreateBatch("test_elastics", "test_elastic_consts", "TD_222222222222_000")
-    ConvertBatch("test_elastic_consts", "TE_222222222", "TD_222222222222_000")
+    CreateBatch("test_elastics", "ElasticConstantsCubic", "TD_222222222222_000")
+    ConvertBatch("ElasticConstantsCubic", "TE_222222222", "TD_222222222222_000")
 
