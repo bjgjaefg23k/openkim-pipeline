@@ -165,9 +165,9 @@ def dependency_check(inp,model,test):
             cands.append(cand)
             logger.debug("found a candidate dependency: %r", cand)
 
-        for path_cand in depedency_path_processor(line,model,test):
-            cands.append(cand)
-            logger.debug("found a path candidate dependency: %r", cand)
+        for path_cand in dependency_path_processor(line,model,test):
+            cands.append(path_cand)
+            logger.debug("found a path candidate dependency: %r", path_cand)
 
     if not cands:
         return (True, None, None)
