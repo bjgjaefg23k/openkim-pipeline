@@ -92,8 +92,11 @@ logger.setLevel(logging.DEBUG)
 #formatter
 log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
+
+LOG_DIR = os.path.join(KIM_PIPELINE_DIR,"logs")
+
 #create a rotating file handler
-rotfile_handler = logging.handlers.RotatingFileHandler(os.path.join("logs",
+rotfile_handler = logging.handlers.RotatingFileHandler(os.path.join(LOG_DIR,
         "pipeline.log"),mode='a',
         backupCount=5,maxBytes=10*1024*1024)
 rotfile_handler.setLevel(logging.DEBUG)
