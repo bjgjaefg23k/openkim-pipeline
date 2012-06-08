@@ -23,7 +23,7 @@ KIM_API_DIR = os.environ.get("KIM_API_DIR",
 #        os.path.join(KIM_DIR,"TEST_DRIVERs"))
 
 #get the repository dir from the symlink
-KIM_REPOSITORY_DIR = os.readlink('openkim-repository')
+KIM_REPOSITORY_DIR = os.path.abspath(os.readlink('openkim-repository'))
 KIM_PIPELINE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 PIPELINE_INFO_FILE = "pipelineinfo.json"

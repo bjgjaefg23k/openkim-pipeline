@@ -47,6 +47,7 @@ from config import *
 logger = logger.getChild("rsync_tools")
 import os
 import subprocess, tempfile
+import kimid
 
 RSYNC_ADDRESS =     "sethnagroup@cerbo.ccmr.cornell.edu"
 RSYNC_REMOTE_ROOT = "/home/sethnagroup/vagrant/openkim-repository"
@@ -70,18 +71,6 @@ LOCAL_REPO_ROOT = KIM_REPOSITORY_DIR
 
 def rsync_command(files,read=True):
     """ run rsync """
-    if not files:
-        try:
-            logger.info("running full rsync")
-            if read:
-                cmd = " ".join(["rsync",RSYNC_FLAGS, RSYNC_PATH + "/", RSYNC_LOG_FILE_FLAG, LOCAL_REPO_ROOT])
-            else:
-                cmd = " ".join(["rsync",RSYNC_FLAGS, RSYNC_LOG_FILE_FLAG, LOCAL_REPO_ROOT + "/", RSYNC_PATH])    
-            return subprocess.check_call(cmd,shell=True)
-        except subprocess.CalledProcessError:
-            logger.error("RSYNC FAILED")
-            raise
-            
     with tempfile.NamedTemporaryFile() as tmp:
         tmp.file.write("\n".join(files))
         tmp.file.close()
@@ -99,16 +88,16 @@ def rsync_command(files,read=True):
             logger.error("RSYNC FAILED!")
             raise
 
-def rsync_read(*args,**kwargs):
-    rsync_command(*args,read=True,**kwargs)
+def rsync_read(files):
+    rsync_command(files,read=True)
 
-def rsync_write(*args,**kwargs):
-    rsync_command(*args,read=False,**kwargs)
+def rsync_write(files):
+    rsync_command(files,read=False)
 
 
 def full_sync():
     """ grab the whole repository """
-
+    rsync_read(["te/","mo/","md/","tr/","td/","vc/","vr/","pr/","rd/","database.sqlite"])
 
 def temp_write(*args):
     """ write things to the temporary write area """
@@ -127,6 +116,7 @@ def real_read(*args):
 def kid_to_folder(kid):
     leader,pk,version = kimid.parse_kimid(kid)
     folder = leader.lower() + "/" + kid + "/"
+    return folder
 
 #=================================
 # director methods
@@ -134,19 +124,19 @@ def kid_to_folder(kid):
 
 def director_model_verification_read(modelname):
     """ when director needs to verify a model """
-    files = ["vc/"]
+    files = ["vc/","database.sqlite"]
     files.append(kid_to_folder(modelname))
     rsync_read(files)
 
 def director_new_model_read(modelname):
     """ when a director gets a new model """
-    files = ["te/","tr/"]
+    files = ["te/","tr/","database.sqlite"]
     files.append(kid_to_folder(modelname))
     rsync_read(files)
 
 def director_new_test_read(testname):
     """ when a director gets a new test """
-    files = ["mo/","tr/"]
+    files = ["mo/","tr/","database.sqlite"]
     files.append(kid_to_folder(testname))
     rsync_read(files)
 
@@ -157,14 +147,14 @@ def director_new_test_read(testname):
 
 def worker_model_verification_read(modelname,vcname,depends):
     """ when a worker needs to run a verification job """
-    files = [kid_to_folder(modelname), kid_to_folder(vcname)]
+    files = [kid_to_folder(modelname), kid_to_folder(vcname), "database.sqlite"]
     for depend in depends:
         files.append(kid_to_folder(depend))
     rsync_read(files)
 
 def worker_test_result_read(testname,modelname,depends):
     """ when a worker needs to run a test result """
-    files = [kid_to_folder(modelname),kid_to_folder(testname)]
+    files = [kid_to_folder(modelname),kid_to_folder(testname), "database.sqlite"]
     for depend in depends:
         files.append(kid_to_folder(depend))
     rsync_read(files)
