@@ -20,7 +20,8 @@ import random, sys
 from config import *
 import repository
 from contextlib import nested
-
+import re
+from template import RE_KIMID
 
 logger = logger.getChild("kimid")
 """ 
@@ -79,6 +80,8 @@ def promote_kimid(kid):
     """ Given a kimid {kid}, with or without the version number,
         with or without the prepended name, ensure that the most complete kimid comes out
     """
+    if not re.match(RE_KIMID,kid):
+        raise PipelineTemplateError, "what I got {} is not a valid kimid"
     try:
         name,kid = kid.split("__")
     except ValueError:
