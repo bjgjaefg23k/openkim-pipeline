@@ -7,6 +7,7 @@ import urllib
 import time
 import simplejson
 import template
+import rsync_tools
 from config import *
 from pipeline_global import *
 logger = logger.getChild("pipeline")
@@ -24,8 +25,6 @@ class Director(object):
     def run(self):
         self.connect_to_daemon()
         self.job_thrd  = Process(target=Director.get_updates(self))
-        #FIXME
-        #self.data_thrd = Process(target=Director.get_datums(self))
 
     def connect_to_daemon(self):
         self.logger.info("Connecting to beanstalkd")
@@ -48,8 +47,6 @@ class Director(object):
         self.bsd.watch(TUBE_ERRORS)
         self.bsd.ignore("default")
 
-        #FIXME
-        #self.push_jobs({"kimid": "MO_607867530901_000", "priority": "normal"})
 
     def disconnect_from_daemon(self):
         self.bsd.close()
@@ -80,16 +77,13 @@ class Director(object):
             # got a request to update a model or test
             # from the website (or other trusted place)
             if request.stats()['tube'] == TUBE_UPDATE:
-                # update the repository, try to compile the file
-                # send it out as a job to compute
-                # FIXME
-                #rsync.update_repo()
+                # update the repository,send it out as a job to compute
+                rsync_tools.full_sync()
                 self.push_jobs(simplejson.loads(request.body))
 
             # got word from a worker that a job is complete
             if request.stats()['tube'] == TUBE_RESULTS:
                 ret = Message(string=request.body) 
-                #repo.write_result_to_file(ret['result'])
                 self.logger.info("Finished %r ...", ret.job)
                 self.logger.info("Results returned: %r", ret.results) 
                     

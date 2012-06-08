@@ -6,6 +6,7 @@ import runner
 import urllib
 import time
 import simplejson
+import rsync_tools
 from config import *
 from pipeline_global import *
 logger = logger.getChild("pipeline")
@@ -53,12 +54,15 @@ class Worker(object):
             #repo.rsync_update()
             jobmsg = Message(string=job.body)
             try:
+                self.logger.info("rsyncing to repo %r", jobmsg.job+jobmsg.depends)
+                rsync_tools.worker_test_result_read(*jobmsg.job, depends=jobmsg.depends)
                 self.logger.info("Running %r ...", jobmsg.jobid)
                 result = runner.run_test_on_model(*jobmsg.job)
                 repo.write_result_to_file(result, jobmsg.jobid)
                 
-                #FIXME 
-                #rsync.sync_directory()
+                self.logger.info("rsyncing results %r", jobmsg.jobid)
+                rsync_tools.worker_test_result_write(jobmsg.jobid)
+                self.logger.info("sending result message back")
                 resultsmsg = Message(jobid=jobmsg.jobid, priority=jobmsg.priority,
                         job=jobmsg.job, results=result, errors=None)
                 self.bsd.use(TUBE_RESULTS)
