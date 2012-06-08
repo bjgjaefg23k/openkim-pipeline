@@ -1,4 +1,4 @@
-TEST_NAME :=TE_333333333333_000
+TEST_NAME :=ExampleLAMMPS__TE_333333333333_000
 Unit_length :=A
 Unit_energy :=eV
 Unit_charge :=e

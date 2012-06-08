@@ -29,7 +29,7 @@
 
 #######################################################################################################
 #
-# Release: This file is part of the openkim-api-v1.0.1 package.
+# Release: This file is part of the openkim-api.git repository.
 #
 # See KIM_API/standard.kim for documentation about this file
 #
@@ -49,7 +49,7 @@ Unit_time        := fs
 SUPPORTED_ATOM/PARTICLES_TYPES:
 # Symbol/name               Type                    code
 
-SPECIES1_NAME_STR                          spec                    1
+SPECIES_001_NAME_STR                         spec                    1
 
 
 #######################################################################################################

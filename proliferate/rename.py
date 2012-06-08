@@ -39,11 +39,12 @@ def ConvertName(src, dst, driver, replacements=None):
     os.chdir("..")
 
 
-def ConvertBatch(prefix, outprefix, driver):
+def ConvertBatch(prefix, outprefix, driver, extra=None):
+    extra = extra or {}
     index = 0
     for f in glob.glob("%s*" % prefix):
-        outname = outprefix+"%03d_000" % index
-        ConvertName(f, outname, driver) 
+        outname = f+"__"+outprefix+"%03d_000" % index
+        ConvertName(f, outname, driver, extra) 
         index = index + 1
 
 

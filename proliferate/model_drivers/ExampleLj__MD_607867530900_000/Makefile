@@ -28,12 +28,12 @@
 #
 
 #
-# Release: This file is part of the openkim-api-v1.0.1 package.
+# Release: This file is part of the openkim-api.git repository.
 #
 
 
-MODEL_DRIVER_NAME := MD_607867530999_000
-MODEL_DRIVER_BUILD_TARGET := $(MODEL_DRIVER_NAME).a
+MODEL_DRIVER_NAME := ExampleLj__MD_607867530900_000 
+MODEL_DRIVER_BUILD_TARGET := $(strip $(MODEL_DRIVER_NAME)).a
 
 ifndef KIM_API_DIR
    include $(KIM_DIR)KIM_API/Include.mk
@@ -44,10 +44,10 @@ endif
 
 all: $(MODEL_DRIVER_BUILD_TARGET)
 
-$(MODEL_DRIVER_NAME).a: $(MODEL_DRIVER_NAME).o
+$(strip $(MODEL_DRIVER_NAME)).a: $(strip $(MODEL_DRIVER_NAME)).o
 	ar rcs $@ *.o
 
-$(MODEL_DRIVER_NAME).o: Makefile
+$(strip $(MODEL_DRIVER_NAME)).o: Makefile
 
 Makefile: $(KIM_API_DIR)Include.mk
 	@touch Makefile
