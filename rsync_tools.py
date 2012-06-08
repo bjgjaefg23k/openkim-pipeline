@@ -114,7 +114,7 @@ def real_read(*args):
 
 
 def kid_to_folder(kid):
-    leader,pk,version = kimid.parse_kimid(kid)
+    front,leader,pk,version = kimid.parse_kimid(kid)
     folder = leader.lower() + "/" + kid + "/"
     return folder
 
