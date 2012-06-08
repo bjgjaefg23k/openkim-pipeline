@@ -22,6 +22,8 @@ def InFileTextReplacement(filename, oldtxt, newtxt):
         newdata = re.sub(oldtxt, newtxt, data)
         if newdata == data:
             newdata = re.sub(oldtxt.lower(), newtxt.lower(), data)
+        if newdata != data and len(newdata) > 80  and filename.endswith("F90"):
+            newdata = re.sub("__FILE__", "\"HELP\"", newdata)
         o.write( newdata ) 
         tmpfile = o.name
     shutil.move(tmpfile, filename)
