@@ -74,9 +74,9 @@ def rsync_command(files,read=True):
         try:
             logger.info("running full rsync")
             if read:
-                cmd = " ".join(["rsync",RSYNC_FLAGS, RSYNC_PATH, RSYNC_LOG_FILE_FLAG, LOCAL_REPO_ROOT])
+                cmd = " ".join(["rsync",RSYNC_FLAGS, RSYNC_PATH + "/", RSYNC_LOG_FILE_FLAG, LOCAL_REPO_ROOT])
             else:
-                cmd = " ".join(["rsync",RSYNC_FLAGS, RSYNC_LOG_FILE_FLAG, LOCAL_REPO_ROOT, RSYNC_PATH])    
+                cmd = " ".join(["rsync",RSYNC_FLAGS, RSYNC_LOG_FILE_FLAG, LOCAL_REPO_ROOT + "/", RSYNC_PATH])    
             return subprocess.check_call(cmd,shell=True)
         except subprocess.CalledProcessError:
             logger.error("RSYNC FAILED")
