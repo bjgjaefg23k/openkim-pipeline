@@ -28,7 +28,8 @@ class Worker(object):
         except:
             self.ssh = Popen("screen -dm ssh -L{}:{}:{} {}@{}".format(
                 self.port,self.ip,self.port,self.remote_user,self.remote_addr), shell=True)
-            time.sleep(1)
+            self.logger.info("Waiting to connect to beanstalkd")
+            time.sleep(PIPELINE_WAIT)
             self.start_listen()
 
         self.logger.info("Connected to daemon")
