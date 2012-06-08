@@ -66,6 +66,9 @@ LOCAL_REPO_ROOT = KIM_REPOSITORY_DIR
 # rsync wrappers 
 #================================
 
+def rsync_command(*args):
+    """ run rsync """
+
 def full_sync():
     """ grab the whole repository """
     cmds = ["rsync","-avz",RSYNC_ADDRESS
