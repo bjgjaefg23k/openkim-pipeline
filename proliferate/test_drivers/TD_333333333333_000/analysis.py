@@ -1,5 +1,6 @@
 import numpy
 import pylab
+pylab.ioff()
 from numpy import sin, cos, pi
 from scipy.optimize import leastsq
 import scipy.optimize
@@ -35,7 +36,7 @@ def energyVsAngle(file,index0,poleaxis):
 
 	pylab.savefig(fileNameHeader+'plot.png')
 
-	pylab.show()
+	#pylab.show()
 
 def negativeEnergySurface(file):
 	"""
@@ -353,7 +354,7 @@ def plotSubSet(indices, energies,index0,poleaxis,params,correction=0):
 	#pylab.figure()
 	#pylab.plot(angles,residuals)
 
-	pylab.show() 
+	#pylab.show() 
 
 def fitSubset(fileName,index0,poleaxis,n=2,p0=[0.1,-0.2,0.01],correction=0):
 	"""
@@ -455,7 +456,7 @@ def residualFuncAngle(fileName,bfparams,index0,poleaxis,correction=0):
 	pylab.figure() 
 	pylab.plot(angle_from_poleaxis,selected_e_rel,'bo')
 
-	pylab.show()
+	#pylab.show()
 
 	return angle_from_min,selected_fit_indices,angle_from_poleaxis 
 
@@ -563,7 +564,7 @@ def make3Dplot(indices,energies,params,sig_am=1/1000.,corrections=0):
 	filestring = "SphereplotTest.obj"
 	savefig(filestring)
 
-	show()
+	#show()
 
 	return sph
 
