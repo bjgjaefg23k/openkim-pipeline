@@ -125,7 +125,7 @@ def dependency_processor(line,model,test):
 def dependency_path_processor(line,model,test):
     matches = re.finditer(RE_PATH,line)
     for match in matches:
-        yield (True, path_kid_from_match(match)
+        yield (True, path_kid_from_match(match))
 
 def modelname_processor(line,model,test):
     """ replace all modelname directives with the appropriate path """
