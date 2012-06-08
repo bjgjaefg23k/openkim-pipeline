@@ -43,8 +43,9 @@ logger.debug("allkimids %r",allkimids)
 with PersistentDefaultDict(KIMID_STORE) as store:
     for kid in allkimids:
         logger.debug("adding %r",kid)
-        leader,pk,version = kimid.parse_kimid(kid)
+        front,leader,pk,version = kimid.parse_kimid(kid)
         
+        leader = str(front)+leader
         substore = store[leader]
         if pk in store[leader]:
             if version > store[leader][pk]:

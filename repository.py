@@ -283,7 +283,6 @@ def test_result_info(tr):
 
 def get_path(kid):
     """ Given a kimid give the path to the corresponding place """
-    leader,pk,version = kimid.parse_kimid(kid)
     logger.debug("someone requested path for %r",kid)
 
     if leader=="TE":
