@@ -43,6 +43,7 @@ class Worker(object):
         
     def get_jobs(self):
         while 1:
+            self.logger.info("Waiting for jobs...")
             job = self.bsd.reserve()
             job.bury()
 
@@ -57,7 +58,7 @@ class Worker(object):
                 repo.write_result_to_file(result, jobmsg.jobid)
                 
                 #FIXME 
-                rsync.sync_directory()
+                #rsync.sync_directory()
                 resultsmsg = Message(jobid=jobmsg.jobid, priority=jobmsg.priority,
                         job=jobmsg.job, results=result, errors=None)
                 self.bsd.use(TUBE_RESULTS)
