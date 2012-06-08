@@ -43,9 +43,32 @@ WRITES
             TR dir                          to REAL_WRITE
 """
 
+from config import *
+logger = logger.getChild("rsync_tools")
+import os
+import subprocess
+
+RSYNC_ADDRESS =     "sethnagroup@cerbo.ccmr.cornell.edu"
+RSYNC_REMOTE_ROOT = "/home/sethnagroup/vagrant/openkim-repository"
+RSYNC_FLAGS = "-avzR"
+RSYNC_PATH = '--rsync-path="cd {} && rsync"'.format(RSYNC_REMOTE_ROOT)
+
+
+TEMP_WRITE_PATH =   os.path.join(RSYNC_REMOTE_ROOT,"")
+TEMP_READ_PATH =    os.path.join(RSYNC_REMOTE_ROOT,"")
+REAL_WRITE_PATH =   os.path.join(RSYNC_REMOTE_ROOT,"")
+REAL_READ_PATH =    os.path.join(RSYNC_REMOTE_ROOT,"")
+
+LOCAL_REPO_ROOT = KIM_REPOSITORY_DIR
+
+
 #================================
 # rsync wrappers 
 #================================
+
+def full_sync():
+    """ grab the whole repository """
+    cmds = ["rsync","-avz",RSYNC_ADDRESS
 
 def temp_write(*args):
     """ write things to the temporary write area """
