@@ -30,7 +30,7 @@ class Worker(object):
             time.sleep(1)
             self.start_listen()
 
-        self.logger.info("Connected to director")
+        self.logger.info("Connected to daemon")
         self.get_jobs()
 
     def start_listen(self):
@@ -55,17 +55,21 @@ class Worker(object):
                 self.logger.info("Running %r ...", jobmsg.jobid)
                 result = runner.run_test_on_model(*jobmsg.job)
                 repo.write_result_to_file(result, jobmsg.jobid)
-
-                resultmsg = {"job": jobmsg.job, "result": result}
+                
+                #FIXME 
+                rsync.sync_directory()
+                resultsmsg = Message(jobid=jobmsg.jobid, priority=jobmsg.priority,
+                        job=jobmsg.job, results=result, errors=None)
                 self.bsd.use(TUBE_RESULTS)
-                self.bsd.put(simplejson.dumps(resultmsg))
+                self.bsd.put(repr(resultsmsg))
                 job.delete()
             
             except Exception as e:
                 self.logger.error("Run failed, removing... %r" % e)
-                error = {"job": jobmsg.job, "error": str(e)}
+                resultsmsg = Message(jobid=jobmsg.jobid, priority=jobmsg.priority,
+                        job=jobmsg.job, results=None, errors=repr(e))
                 self.bsd.use(TUBE_ERRORS)
-                self.bsd.put(simplejson.dumps(error))
+                self.bsd.put(repr(resultsmsg))
                 job.delete()
 
 

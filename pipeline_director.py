@@ -47,6 +47,7 @@ class Director(object):
         self.bsd.watch(TUBE_ERRORS)
         self.bsd.ignore("default")
 
+        #FIXME
         self.push_jobs({"kimid": "MO_607867530901_000", "priority": "normal"})
 
     def disconnect_from_daemon(self):
@@ -54,13 +55,22 @@ class Director(object):
         self.daemon.kill()
 
     def get_tr_id(self):
-        bsd  bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
+        bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
         bsd.watch(TUBE_TR_IDS)
         request = bsd.reserve()
         tr_id = request.body
         request.delete()
         bsd.close()
         return tr_id
+
+    def get_vr_id(self):
+        bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
+        bsd.watch(TUBE_VR_IDS)
+        request = bsd.reserve()
+        vr_id = request.body
+        request.delete()
+        bsd.close()
+        return vr_id
 
     def get_updates(self):
         while 1:
@@ -71,19 +81,20 @@ class Director(object):
             if request.stats()['tube'] == TUBE_UPDATE:
                 # update the repository, try to compile the file
                 # send it out as a job to compute
-                #repo.rsync_update()
+                # FIXME
+                #rsync.update_repo()
                 self.push_jobs(simplejson.loads(request.body))
 
             # got word from a worker that a job is complete
             if request.stats()['tube'] == TUBE_RESULTS:
-                ret = simplejson.loads(request.body)
+                ret = Message(string=request.body) 
                 #repo.write_result_to_file(ret['result'])
-                self.logger.info("Finished %r ...", ret['job'])
-                self.logger.info("Results returned: %r", ret["result"])
+                self.logger.info("Finished %r ...", ret.job)
+                self.logger.info("Results returned: %r", ret.results) 
                     
             if request.stats()['tube'] == TUBE_ERRORS:
-                ret = simplejson.loads(request.body)
-                self.logger.error("Errors occured: %r", ret['error'])
+                ret = Message(string=request.body)
+                self.logger.error("Errors occured: %r", ret.errors)
 
             request.delete()
 

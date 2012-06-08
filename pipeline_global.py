@@ -24,6 +24,7 @@ KEY_ERRORS   = "errors"
 KEY_DEPENDS  = "depends"
 KEY_CHILDS   = "childs"
 
+
 def Message(object):
     def __init__(self, string=None, jobid=None, 
             priority=None, job=None, results=None, 

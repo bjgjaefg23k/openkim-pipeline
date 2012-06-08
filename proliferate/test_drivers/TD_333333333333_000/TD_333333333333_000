@@ -66,6 +66,6 @@ plotBrokenBondFit(indices,energies,bfparams)
 results = {'BrokenBondParameter(110)': bfparams[0], \
         'BrokenBondParameter(100)':bfparams[1], \
         'BrokenBondParameter(112)':bfparams[2], \
-        "BrokenBondFit": "@FILE[BrokenBondFit.png']"}
+        "BrokenBondFit": "@FILE[BrokenBondFit.png]"}
 print simplejson.dumps(results)
 

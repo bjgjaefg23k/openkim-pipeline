@@ -10,8 +10,10 @@ from rename import CreateMetaData,InFileTextReplacement,ConvertName,ConvertBatch
 
 def CreateBatch(template, prefix, driver):
     import ase.data
-    symbols  = ['Al', 'Au', 'Pt', 'Pd', 'W', 'V'] #ase.data.chemical_symbols
+    symbols  = ['Al', 'Cu', 'Ni', 'Pb', 'Ag'] #ase.data.chemical_symbols
     
+    #boo = zip(ase.data.chemical_symbols, ase.data.reference_states)
+    #[ elem for elem, state, in boo if (state and state['symmetry'] == 'fcc') ]
     for symbol in symbols:
         newname = template+"_copy"
         finname = prefix+"_"+symbol
