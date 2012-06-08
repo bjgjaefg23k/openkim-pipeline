@@ -26,5 +26,6 @@ if __name__ == "__main__":
     elif site == True:
         obj = Site()
         obj.run()
+        obj.send_update("MO_607867530901_000")
     else:
         parser.print_help() 
