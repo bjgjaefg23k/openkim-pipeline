@@ -24,7 +24,8 @@ class Director(object):
     def run(self):
         self.connect_to_daemon()
         self.job_thrd  = Process(target=Director.get_updates(self))
-        self.data_thrd = Process(target=Director.get_datums(self))
+        #FIXME
+        #self.data_thrd = Process(target=Director.get_datums(self))
 
     def connect_to_daemon(self):
         self.logger.info("Connecting to beanstalkd")
@@ -48,7 +49,7 @@ class Director(object):
         self.bsd.ignore("default")
 
         #FIXME
-        self.push_jobs({"kimid": "MO_607867530901_000", "priority": "normal"})
+        #self.push_jobs({"kimid": "MO_607867530901_000", "priority": "normal"})
 
     def disconnect_from_daemon(self):
         self.bsd.close()
@@ -123,19 +124,19 @@ class Director(object):
         for test in tests:
             for model in models: 
                 priority = int(priority_factor*repo.test_model_to_priority(test,model) * 2**15)
-                self.check_dependencies_and_push(test,model)
+                self.check_dependencies_and_push(test,model,priority)
 
-    def check_dependencies_and_push(self, test, model, child=None):
-        test_dir = repo.test_dir(testname)
+    def check_dependencies_and_push(self, test, model, priority, child=None):
+        test_dir = repo.test_dir(test)
         # run the test in its own directory
         with repo.in_repo_dir(test_dir):
             #grab the input file
             with open(INPUT_FILE) as fl:
                 ready, TRs, PAIRs = template.dependency_check(fl,model,test)
 
-                self.logger.info("Submitting job <%s, %s> priority %i" % (test, model, priority))
-
+                self.logger.info("Requesting new TR id")
                 trid = self.get_tr_id()
+                self.logger.info("Submitting job <%s, %s, %s> priority %i" % (test, model, trid, priority))
 
                 if not ready:
                     # Some test results are required
@@ -143,10 +144,12 @@ class Director(object):
                     for (t,m) in PAIRs:
                         self.logger.info("Submitting dependency <%s, %s>" % (t, m))
                         # FIXME - Maybe force higher priority?
-                        depids.append(self.check_dependencies_and_push(t,m,child=(test,model,trid)))
+                        depids.append(self.check_dependencies_and_push(t,m,priority,child=(test,model,trid)))
                     # Delayed-put and bury, wait for dependencies to resolve FIXME
+                    self.bsd.use(TUBE_JOBS)
                     self.bsd.put(repr(Message(job=(test,model),jobid=trid, child=child, depends=TRs+tuple(depids))), priority=priority)
                 else:
+                    self.bsd.use(TUBE_JOBS)
                     self.bsd.put(repr(Message(job=(test,model),jobid=trid, child=child, depends=TRs)), priority=priority)
 
     def halt(self):
