@@ -123,21 +123,32 @@ def real_write(*args):
 def real_read(*args):
     """ read things from the real read directory """
 
+
+def kid_to_folder(kid):
+    leader,pk,version = kimid.parse_kimid(kid)
+    folder = leader.lower() + "/" + kid + "/"
+
 #=================================
 # director methods
 #=================================
 
 def director_model_verification_read(modelname):
     """ when director needs to verify a model """
-    rsync_read(["vc/","mo/{}/".format(modelname)])
+    files = ["vc/"]
+    files.append(kid_to_folder(modelname))
+    rsync_read(files)
 
 def director_new_model_read(modelname):
     """ when a director gets a new model """
-    rsync_read(["mo/{}/".format(modelname), "te/", "tr/" ])
+    files = ["te/","tr/"]
+    files.append(kid_to_folder(modelname))
+    rsync_read(files)
 
 def director_new_test_read(testname):
     """ when a director gets a new test """
-    rsync_read(["mo/","te/{}/".format(testname), "tr/" ] )
+    files = ["mo/","tr/"]
+    files.append(kid_to_folder(testname))
+    rsync_read(files)
 
 #==================================
 # worker methods
@@ -146,26 +157,24 @@ def director_new_test_read(testname):
 
 def worker_model_verification_read(modelname,vcname,depends):
     """ when a worker needs to run a verification job """
-    files = ["mo/{}/".format(modelname),"vc/{}/".format(vcname)]
+    files = [kid_to_folder(modelname), kid_to_folder(vcname)]
     for depend in depends:
-        leader,pk,version = kimid.parse_kimid(depend)
-        files.append(leader.lower() + "/" + depend + "/" )
+        files.append(kid_to_folder(depend))
     rsync_read(files)
 
 def worker_test_result_read(testname,modelname,depends):
     """ when a worker needs to run a test result """
-    files = ["mo/{}/".format(modelname),"te/{}/".format(testname)]
+    files = [kid_to_folder(modelname),kid_to_folder(testname)]
     for depend in depends:
-        leader,pk,version = kimid.parse_kimid(depend)
-        files.append(leader.lower() + "/" + depend + "/")
+        files.append(kid_to_folder(depend))
     rsync_read(files)
 
 def worker_model_verification_write(vrname):
     """ when a worker ran a model verification """
-    files = ["vr/{}/".format(vrname)]
+    files = [kid_to_folder(vrname)]
     rsync_write(files)
 
 def worker_test_result_write(trname):
     """ when a worker ran a test result """
-    files = ["tr/{}/".format(trname)]
+    files = [kid_to_folder(trname)]
     rsync_write(files)
