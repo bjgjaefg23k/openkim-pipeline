@@ -93,11 +93,17 @@ def data_from_match(match):
         raise PipelineDataMissing, "We couldn't get the requested data"
     raise PipelineTemplateError, "I don't understand how to parse this: {}".format(match.groups())
 
+
+
+def path_kid_from_match(match):
+    """ return the kid of the path directive """
+    part,kid = match.groups()
+    kid = kimid.promote_kimid(kid)
+    return kid
+
 def path_from_match(match):
     """ return the appropriate path for a match """
-    part,kid = match.groups()
-    #logger.debug("got a @PATH directive request for %r",kid)
-    kid = kimid.promote_kimid(kid)
+    kid = path_kid_from_match(match)
     path =  repo.get_path(kid)
     #logger.debug("thinks the path is %r",path)
     return path
@@ -115,6 +121,11 @@ def dependency_processor(line,model,test):
     matches = re.finditer(RE_DATA,line)
     for match in matches:
         yield data_path_from_match(match)
+
+def dependency_path_processor(line,model,test):
+    matches = re.finditer(RE_PATH,line)
+    for match in matches:
+        yield (True, path_kid_from_match(match)
 
 def modelname_processor(line,model,test):
     """ replace all modelname directives with the appropriate path """
@@ -153,6 +164,10 @@ def dependency_check(inp,model,test):
         for cand in dependency_processor(line,model,test):
             cands.append(cand)
             logger.debug("found a candidate dependency: %r", cand)
+
+        for path_cand in depedency_path_processor(line,model,test):
+            cands.append(cand)
+            logger.debug("found a path candidate dependency: %r", cand)
 
     if not cands:
         return (True, None, None)
