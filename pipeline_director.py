@@ -32,7 +32,7 @@ class Director(object):
             self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
         except:
             self.logger.info("No daemon found, starting on %r", self.remote_addr)
-            self.daemon = Popen("ssh {}@{} \"screen -dm beanstalkd -l {} -p {} -z {}\"".format(
+            self.daemon = Popen("ssh {}@{} \"screen -dm beanstalkd -l {} -p {} -z {} -b beanlog -f 0\"".format(
                 self.remote_user, self.remote_addr, self.ip, self.port, self.msg_size), shell=True)
             self.ssh = Popen("screen -dm ssh -L{}:{}:{} {}@{}".format(
                 self.port,self.ip,self.port,self.remote_user,self.remote_addr), shell=True)
