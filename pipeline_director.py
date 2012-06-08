@@ -36,7 +36,8 @@ class Director(object):
                 self.remote_user, self.remote_addr, self.ip, self.port, self.msg_size), shell=True)
             self.ssh = Popen("screen -dm ssh -L{}:{}:{} {}@{}".format(
                 self.port,self.ip,self.port,self.remote_user,self.remote_addr), shell=True)
-            time.sleep(1)
+            self.logger.info("Waiting to connect to beanstalkd")
+            time.sleep(PIPELINE_WAIT)
             self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
 
         self.logger.info("Director ready")
