@@ -4,7 +4,8 @@ HERE=`pwd`
 
 # remove the old models and tests
 cd $REPO
-git commit -a -m "storing what you have"
+git reset --hard
+git clean -x -f -d
 git rm -r ./te/*
 git rm -r ./mo/*
 git rm -r ./md/*
@@ -18,19 +19,15 @@ mkdir -p $REPO/md/
 
 tar zxvf FullLJ.tgz
 python make_models.py
-mv MO_* $REPO/mo/
-
 python make_lattice_tests.py
-mv TE_0* $REPO/te/
-
 python make_surface_tests.py
-mv TE_1* $REPO/te/
-
 python make_elastics_tests.py
-mv TE_2* $REPO/te/
-
 python make_bond_tests.py
-mv TE_3* $REPO/te/
+
+mv ExampleLj*       $REPO/mo/
+mv LatticeConstant* $REPO/te/
+mv SurfaceEnergy*   $REPO/te/
+mv ElasticConstant* $REPO/te/
 
 cp -r test_drivers/* $REPO/td/
 cp -r model_drivers/* $REPO/md/
@@ -46,7 +43,7 @@ cd $KIM_DIR
 make
 cd $HERE
 
-cd $REPO
-git add .
-git commit -m "done building"
-cd $HERE
+#cd $REPO
+#git add .
+#git commit -m "done building"
+#cd $HERE
