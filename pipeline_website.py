@@ -42,7 +42,9 @@ class Site(object):
         for i in range(10):
             self.bsd.put(kimid.new_kimid("TR"))
 
+
+    def send_update(self, kimid):
         self.bsd.use(TUBE_UPDATE)
-        self.bsd.put(simplejson.dumps({"kimid": "MO_607867530901_000", "priority":"normal"}))
+        self.bsd.put(simplejson.dumps({"kimid": kimid, "priority":"normal"}))
 
 
