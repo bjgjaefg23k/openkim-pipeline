@@ -8,7 +8,7 @@ import repository as repo
 import os
 import subprocess
 logger = logger.getChild("storerefresh")
-
+from contextlib import nested
 
 
 logger.info("running store refresh")
@@ -29,6 +29,11 @@ try:
 except OSError:
     pass
 
+try:
+    os.remove(NAME_STORE)
+except OSError:
+    pass
+
 subprocess.call("python kimid.py init",shell=True)
 
 allkimids = []
@@ -40,12 +45,18 @@ for dir in KIM_REPO_DIRS:
 logger.debug("allkimids %r",allkimids)
 
 #try to populate all of the kimids
-with PersistentDefaultDict(KIMID_STORE) as store:
+with nested(PersistentDefaultDict(KIMID_STORE),PersistentDefaultDict(NAME_STORE)) as (store, name_store):
     for kid in allkimids:
         logger.debug("adding %r",kid)
         front,leader,pk,version = kimid.parse_kimid(kid)
         
-        leader = str(front)+leader
+        #kid = str(leader) + "_" + str(pk) + "_" + str(version)
+        kid = kimid.format_kimid(leader,int(pk),int(version))
+        name_store[kid] = front
+        #I'm cheating here.
+        name_store[kid[:-4]] = front
+        
+        #leader = str(front)+leader
         substore = store[leader]
         if pk in store[leader]:
             if version > store[leader][pk]:

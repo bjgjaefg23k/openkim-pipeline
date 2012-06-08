@@ -73,6 +73,7 @@ GLOBAL_DIR  = "/home/sethnagroup/vagrant/openkim-repository/"
 KIMID_STORE = os.path.join(KIM_PIPELINE_DIR,"kimidstore.json")
 TEST_RESULT_STORE = os.path.join(KIM_PIPELINE_DIR,"testresultstore.json")
 MATCH_STORE = os.path.join(KIM_PIPELINE_DIR,"matchstore.json")
+NAME_STORE = os.path.join(KIM_PIPELINE_DIR,"namestore.json")
 
 #============================
 # Runner Internals

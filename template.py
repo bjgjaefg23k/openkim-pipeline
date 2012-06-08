@@ -12,13 +12,13 @@ logger = logger.getChild("template")
 #==========================
 
 
-RE_KIMID    = "([A-Z]{2}_[0-9]{12}_?[0-9]{3}?)"   
+RE_KIMID    = r"((?:[_a-zA-Z][_a-zA-Z0-9]*?_?_)?[A-Z]{2}_[0-9]{12}(?:_[0-9]{3})?)"   
 RE_FILE     = re.compile(r"(@FILE\[(.*)\])")     # matches @FILE[stuff] and returns stuff
 RE_MODEL    = re.compile(r"(@MODELNAME)")       # matches @MODELNAME as a word
 #RE_DATA     = re.compile(r"@DATA\[(.*)\]\[(.*)\]{2}")      # matches @DATA[RD_XXXX_000] fill-in, etc
-RE_DATA     = re.compile("(@DATA(?:\[" + RE_KIMID + "\])(?:\[" + RE_KIMID + "\])?(?:\[" + RE_KIMID + "\])?)")
+RE_DATA     = re.compile(r"(@DATA(?:\[" + RE_KIMID + r"\])(?:\[" + RE_KIMID + r"\])?(?:\[" + RE_KIMID + "\])?)")
 RE_CLEANER  = re.compile("(@[A-Z]*\[)(.*)(\])") # to remove the @FILE[] and @DATA[]
-RE_PATH     = re.compile("(@PATH\["+RE_KIMID+"\])") 
+RE_PATH     = re.compile("(@PATH\[(.*?)\])")
 RE_TEST     = re.compile("(@TESTNAME)")
 
 
@@ -97,15 +97,19 @@ def data_from_match(match):
 
 def path_kid_from_match(match):
     """ return the kid of the path directive """
-    part,kid = match.groups()
-    kid = kimid.promote_kimid(kid)
+    part,cand = match.groups()
+    logger.debug("looking at cand: %r",cand)
+    if not re.match(RE_KIMID,cand):
+        raise PipelineTemplateError, "Your path: {} cannot be turned into a unique kimid!".format(cand)
+    
+    kid = kimid.promote_kimid(cand)
     return kid
 
 def path_from_match(match):
     """ return the appropriate path for a match """
     kid = path_kid_from_match(match)
     path =  repo.get_path(kid)
-    #logger.debug("thinks the path is %r",path)
+    logger.debug("thinks the path is %r",path)
     return path
 
 def path_processor(line,model,test):

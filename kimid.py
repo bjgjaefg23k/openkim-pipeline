@@ -19,6 +19,8 @@ from persistentdict import PersistentDict, PersistentDefaultDict
 import random, sys
 from config import *
 import repository
+from contextlib import nested
+
 
 logger = logger.getChild("kimid")
 """ 
@@ -41,7 +43,7 @@ def randints():
 randints_gen = randints()
 
 def next_int(collection):
-    return next( "{:08d}".format(x) for x in randints_gen if x not in collection )
+    return next( "{:012d}".format(x) for x in randints_gen if x not in collection )
 
 
 def get_new_id(leader):
@@ -75,18 +77,34 @@ def get_current_version(leader,pk):
 
 def promote_kimid(kid):
     """ Given a kimid {kid}, with or without the version number,
-        ensure it goes out with the version number """
-    if len(kid) == 2+1+NUM_DIGITS:
-        #we have a short id
-        leader,pk = kid.split("_")
-        version = get_current_version(leader,pk)
-        return format_kimid(leader,pk,version)
-    return kid
+        with or without the prepended name, ensure that the most complete kimid comes out
+    """
+    try:
+        name,kid = kid.split("__")
+    except ValueError:
+        #we don't seem to have a name
+        #get the name from the store
+        with PersistentDefaultDict(NAME_STORE) as store:
+            name = store[kid]
+    else:
+        # we must have split successfully to be here
+        #we have at least a name
+        pass
+    finally:
+        #check to see if we are short
+        if len(kid) == 2 + 1 + NUM_DIGITS: # (TE) + (_) + (0123456789012)
+            # we have a short id
+            leader, pk = kid.split("_")
+            version = get_current_version(leader,pk)
+        else:
+            _,leader,pk,version = parse_kimid(kid)
 
+        fullkid = format_kimid(leader,pk,version,name)
+        return fullkid
 
 def format_kimid(leader,pk,version,front=None):
     if isinstance(pk,int):
-        pk = "{:08d}".format(pk)
+        pk = "{:012d}".format(pk)
 
     kid = KIM_ID_FORMAT.format(leader,pk,version)
     if front:
