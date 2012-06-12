@@ -18,13 +18,16 @@ def CreateMetaData(name, oldname, driver):
 def InFileTextReplacement(filename, oldtxt, newtxt):
     tmpfile = ""
     with nested(open(filename, "r"), tempfile.NamedTemporaryFile("w", delete=False)) as (f,o):
-        data = f.read()
-        newdata = re.sub(oldtxt, newtxt, data)
-        if newdata == data:
-            newdata = re.sub(oldtxt.lower(), newtxt.lower(), data)
-        if newdata != data and len(newdata) > 80  and filename.endswith("F90"):
+        #data = f.read()
+        for data in f:
+            newdata = re.sub(oldtxt, newtxt, data)
+            newdata = re.sub("KIM_API_STATUS", "KIM_API_status", newdata)
+            if newdata == data:
+                newdata = re.sub(oldtxt.lower(), newtxt.lower(), data)
+            #if newdata != data and len(newdata) > 30  and filename.endswith("F90"):
+            #    newdata = re.sub("__FILE__", "\"HELP\"", newdata)
             newdata = re.sub("__FILE__", "\"HELP\"", newdata)
-        o.write( newdata ) 
+            o.write( newdata ) 
         tmpfile = o.name
     shutil.move(tmpfile, filename)
 
@@ -40,9 +43,27 @@ def ConvertName(src, dst, driver, replacements=None):
         if not os.path.isdir(f):
             InFileTextReplacement(f, src, dst)
             for key,val in replacements.iteritems():
-                InFileTextReplacement(f, key, val)
+                if f.endswith("Makefile"):
+                    InFileTextReplacement(f, key, val)
     CreateMetaData(dst, src, driver)
     os.chdir("..")
+
+
+def ConvertModelDriver(drivers):
+    tmpfile = ""
+
+    for filename in glob.glob("*/Makefile"):
+        print "Converting model driver name for ", filename
+        with nested(open(filename, "r"), tempfile.NamedTemporaryFile("w", delete=False)) as (f,o):
+            for line in f:
+                if line.startswith("MODEL_DRIVER_NAME"):
+                    print "Found on line", line 
+                    for key,val in drivers.iteritems():
+                        line = re.sub(key,val, line)
+                o.write(line)
+            tmpfile = o.name
+        shutil.move(tmpfile, filename)
+
 
 model_drivers = {}
 import cPickle as pickle
@@ -65,7 +86,9 @@ def ConvertAll():
             oldname = f
             newname = f+"__"+moids.pop()
             print "Converting model ", oldname, "to", newname
-            ConvertName(oldname, newname, oldname, model_drivers)
+            ConvertName(oldname, newname, oldname)
+
+    ConvertModelDriver(model_drivers)
 
 if __name__ == "__main__":
     ConvertAll()
