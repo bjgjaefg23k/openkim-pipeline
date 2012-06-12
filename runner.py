@@ -1,4 +1,4 @@
-""" 
+"""
 Some scripts that let us run tests and the like
 """
 import time, simplejson, signal, itertools, sys
@@ -63,7 +63,7 @@ def run_test_on_model(testname,modelname):
                 except PipelineTimeout:
                     logger.error("test %r timed out",testname)
                     raise PipelineTimeout, "your test timed out"
-                
+
                 end_time = time.time()
             with open(STDOUT_FILE,"w") as stdout_file:
                 stdout_file.write(stdout)
@@ -72,7 +72,7 @@ def run_test_on_model(testname,modelname):
         process.kill()
         raise KIMRuntimeError, "your test didn't terminate nicely"
 
-    
+
     #look backwards in the stdout for the first non whitespaced line
     try:
         data_string = next(itertools.ifilter(line_filter,reversed(stdout.splitlines())))
@@ -106,17 +106,18 @@ def run_test_on_model(testname,modelname):
 def update_repo(force=False):
     logger.info("attempting to update repo...")
     for test in repo.KIM_TESTS:
+        #logger.info("attempting to update test %r",test)
         for model in repo.models_for_test(test):
             if force or not repo.test_result_exists(test,model):
-                print "Running {} vs {}".format(test,model)
-                
+                logger.info("Running %r vs %r",test,model)
+
                 try:
                     results = run_test_on_model(test,model)
                     repo.write_result_to_file(results, None)
                 except:
                     logger.error("WE HAD an error on (%r,%r) with:\n%r",test,model,sys.exc_info()[0])
             else:
-                print "{} vs {} seems current".format(test,model)
+                logger.info("%r vs %r seems current",test,model)
 
 
 if __name__ == "__main__":

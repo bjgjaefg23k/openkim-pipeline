@@ -62,7 +62,7 @@ def update(mesg="",remote='origin',branch='master'):
 # Some kim api wrapped things
 #======================================
 
-def valid_match(testname,modelname):
+def valid_match(testname,modelname,force=False):
     """ Test to see if a test and model match using the kim API, returns bool """
     #logger.debug("attempting to match %r with %r",testname,modelname)
     if testname not in KIM_TESTS:
@@ -71,9 +71,11 @@ def valid_match(testname,modelname):
     if modelname not in KIM_MODELS:
         logger.error("model %r not valid", modelname)
         raise PipelineFileMissing, "model {} not valid".format(modelname)
-    
+
+    return True #hard coded short circuit REMOVE
+
     with PersistentDict(MATCH_STORE) as store:
-        if str((testname,modelname)) in store:
+        if str((testname,modelname)) in store and not force:
             return store[str((testname,modelname))]
 
         logger.debug("invoking KIMAPI for (%r,%r)",testname,modelname)
@@ -170,9 +172,8 @@ def test_result_exists(testresultname):
 # Results in repo
 #==========================================
 
-
 def files_from_results(results):
-    """ Given a dictionary of results, 
+    """ Given a dictionary of results,
     return the filenames for any files contained in the results """
     logger.debug("parsing results for file directives")
     testname = results["_testname"]
@@ -180,23 +181,23 @@ def files_from_results(results):
     #get only those files that match the file directive, needs strings to process
     files = filter(None,(template.get_file(str(val),testdir) for key,val in results.iteritems()))
     return files
-        
+
 
 def write_result_to_file(results, tr_id, pk=None):
     """ Given a dictionary of results, write it to the corresponding file, or create a new id
-        
+
         This assumes the results already have the proper output Property IDs
         Write the property json file in its corresponding location
         and copy any files associated with it
 
         Also, update the property store for fast lookups
-    
+
     """
     logger.info("writing result file for results: %r",results)
     testname = results["_testname"]
     modelname = results["_modelname"]
-   
-    if tr_id == None: 
+
+    if tr_id == None:
         tr_id = kimid.new_kimid("TR")
         logger.debug("Making a TR ID up...", tr_id)
     outputfolder = tr_id
@@ -216,7 +217,7 @@ def write_result_to_file(results, tr_id, pk=None):
             for src in files:
                 logger.debug("copying %r over", src)
                 shutil.copy(os.path.join(testdir,src),outputfolder)
-        
+
         #make symlinks
         #os.symlink(test_dir(testname),os.path.join(outputfolder,testname))
         #os.symlink(model_dir(modelname),os.path.join(outputfolder,modelname))
