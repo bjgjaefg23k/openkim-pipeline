@@ -197,7 +197,7 @@ def write_result_to_file(results, tr_id, pk=None):
 
     if tr_id == None:
         tr_id = kimid.new_kimid("TR")
-        logger.debug("Making a TR ID up...", tr_id)
+        logger.debug("Making a TR ID up... %r", tr_id)
     outputfolder = tr_id
     outputfilename = outputfolder
     outputpath = os.path.join(outputfolder,outputfilename)
