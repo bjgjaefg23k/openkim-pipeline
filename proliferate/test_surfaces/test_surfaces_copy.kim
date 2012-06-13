@@ -20,8 +20,6 @@ coordinates  real*8  length  [numberOfParticles,3]
 numberContributingParticles  integer  none  []
 get_neigh  method  none []
 neighObject  pointer  none  []
-process_dEdr  method  none  []
-process_d2Edr2  method  none  []
 boxSideLengths  real*8  length  [3]
 MODEL_OUTPUT: 
 compute  method  none  []
