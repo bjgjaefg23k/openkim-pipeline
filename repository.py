@@ -72,8 +72,6 @@ def valid_match(testname,modelname,force=False):
         logger.error("model %r not valid", modelname)
         raise PipelineFileMissing, "model {} not valid".format(modelname)
 
-    return True #hard coded short circuit REMOVE
-
     with PersistentDict(MATCH_STORE) as store:
         if str((testname,modelname)) in store and not force:
             return store[str((testname,modelname))]
