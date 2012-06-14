@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from config import *
 from pipeline_director import Director 
 from pipeline_worker import Worker
