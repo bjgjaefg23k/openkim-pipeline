@@ -7,6 +7,7 @@ import repository as repo
 from config import *
 logger = logger.getChild("runner")
 import template
+import os
 
 
 def timeout_handler(signum, frame):
@@ -87,13 +88,16 @@ def run_test_on_model(testname,modelname):
     except simplejson.JSONDecodeError:
         logger.error("We didn't get JSON back!")
         raise PipelineTemplateError, "test didn't return JSON"
-
+    
+    #GET METADATA
     data = { output_info[key]:val for key,val in data.iteritems() }
     data["_stdout"] = "@FILE[{}]".format(STDOUT_FILE)
     data["_testname"] = testname
     data["_modelname"] = modelname
     data["_time"] = end_time-start_time
     data["_created_at"] = time.time()
+    data["_vmversion"] = os.environ["VMVERSION"]
+
     time_str = stderr.splitlines()[-1]
     time_dat = simplejson.loads(time_str)
     data.update(time_dat)
@@ -120,7 +124,27 @@ def update_repo(force=False):
                 logger.info("%r vs %r seems current",test,model)
 
 
+#run all the tests on all the models
+def update_repo_all(force=False):
+    logger.info("attempting to update repo...")
+    for test in repo.KIM_TESTS:
+        #logger.info("attempting to update test %r",test)
+        for model in repo.KIM_MODELS:
+            if force or not repo.test_result_exists(test,model):
+                logger.info("Running %r vs %r",test,model)
+
+                try:
+                    results = run_test_on_model(test,model)
+                    repo.write_result_to_file(results, None)
+                except:
+                    logger.error("WE HAD an error on (%r,%r) with:\n%r",test,model,sys.exc_info()[0])
+            else:
+                logger.info("%r vs %r seems current",test,model)
+
+
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         if sys.argv[1] == "update":
             update_repo()
+        elif sys.argv[1] == "updateall":
+            update_repo_all()

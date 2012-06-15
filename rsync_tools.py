@@ -99,6 +99,11 @@ def full_sync():
     """ grab the whole repository """
     rsync_read(["te/","mo/","md/","tr/","td/","vc/","vr/","pr/","rd/","database.sqlite"])
 
+def full_write():
+    """ write the whole repo """
+    rsync_write(["te/","mo/","md/","tr/","td/","vc/","vr/","pr/","rd/","database.sqlite","trlookup.txt"])
+
+
 def temp_write(*args):
     """ write things to the temporary write area """
 
