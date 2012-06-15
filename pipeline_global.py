@@ -10,7 +10,7 @@ Message format for the queue system:
 import simplejson
 
 PIPELINE_WAIT    = 10
-PIPELINE_TIMEOUT = 10
+PIPELINE_TIMEOUT = 60
 PIPELINE_MSGSIZE = 2**20
 TUBE_JOBS    = "jobs"
 TUBE_RESULTS = "results"
