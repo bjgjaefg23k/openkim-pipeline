@@ -127,9 +127,9 @@ def update_repo(force=False):
 #run all the tests on all the models
 def update_repo_all(force=False):
     logger.info("attempting to update repo...")
-    for test in repo.KIM_TESTS:
-        #logger.info("attempting to update test %r",test)
-        for model in repo.KIM_MODELS:
+    for model in repo.KIM_MODELS:
+        for test in repo.KIM_TESTS:
+            #logger.info("attempting to update test %r",test)
             if force or not repo.test_result_exists(test,model):
                 logger.info("Running %r vs %r",test,model)
 
