@@ -127,7 +127,7 @@ class Director(object):
         with repo.in_repo_dir(test_dir):
             #grab the input file
             with open(INPUT_FILE) as fl:
-                ready, TRs, PAIRs = template.dependency_check(fl,model,test)
+                ready, TRs, PAIRs = template.dependency_check(fl)
 
                 self.logger.info("Requesting new TR id")
                 trid = self.get_tr_id()
