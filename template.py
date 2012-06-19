@@ -120,13 +120,13 @@ def data_processor(line,model,test):
     """ replace all data directives with the appropriate path """
     return re.sub(RE_DATA,data_from_match,line)
 
-def dependency_processor(line,model,test):
+def dependency_processor(line):
     """ find the data directives and get the location of data, if any, as generator """
     matches = re.finditer(RE_DATA,line)
     for match in matches:
         yield data_path_from_match(match)
 
-def dependency_path_processor(line,model,test):
+def dependency_path_processor(line):
     matches = re.finditer(RE_PATH,line)
     for match in matches:
         yield (True, path_kid_from_match(match))
@@ -149,7 +149,7 @@ def process_line(line,*args):
     return line
 
 
-def dependency_check(inp,model,test):
+def dependency_check(inp):
     """ Given an input file
         find all of the data directives and obtain the pointers to the relevant data if it exists
         if it doesn't exist, return a false and a list of dependant tests
@@ -159,17 +159,17 @@ def dependency_check(inp,model,test):
             dependencies_good_to_go - list of kids
             dependencies_needed - tuple of tuples 
     """
-    logger.info("running a dependancy check for %r",test)
+    logger.info("running a dependancy check for %r", os.path.basename(os.path.dirname(inp.name)))
     ready, dependencies = (True, [])
     
     cands = []
     #try to find all of the possible dependencies
     for line in inp:
-        for cand in dependency_processor(line,model,test):
+        for cand in dependency_processor(line):
             cands.append(cand)
             logger.debug("found a candidate dependency: %r", cand)
 
-        for path_cand in dependency_path_processor(line,model,test):
+        for path_cand in dependency_path_processor(line):
             cands.append(path_cand)
             logger.debug("found a path candidate dependency: %r", path_cand)
 
