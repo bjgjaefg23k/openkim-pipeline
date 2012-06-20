@@ -6,6 +6,7 @@ import repository as repo
 import kimid
 from config import *
 logger = logger.getChild("template")
+import models
 
 #==========================
 # Keywords
@@ -22,6 +23,21 @@ RE_PATH     = re.compile("(@PATH\[(.*?)\])")
 RE_TEST     = re.compile("(@TESTNAME)")
 
 
+#-------------------------------------------
+# FILE Directive handlers
+#------------------------------------------
+
+
+def files_from_results(results):
+    """ Given a dictionary of results,
+    return the filenames for any files contained in the results """
+    logger.debug("parsing results for file directives")
+    testname = results["_testname"]
+    test = models.Test(testname)
+    #get only those files:that match the file directive, needs strings to process
+    files = filter(None,(get_file(str(val),test.path) for key,val in results.iteritems()))
+    return files
+
 def get_file(string,testdir):
     """ If the string has a FILE directive, get the full path to the file, else return zero """
     match = re.match(RE_FILE,string)
@@ -30,6 +46,9 @@ def get_file(string,testdir):
         logger.debug("Found @FILE directive match for %r",filename)
         return os.path.join(testdir,filename)
 
+#--------------------------------------------
+# DATA directive handlers
+#--------------------------------------------
 
 def data_path_from_match(match):
     """ Given a match, try to find where it exists
@@ -94,6 +113,9 @@ def data_from_match(match):
     raise PipelineTemplateError, "I don't understand how to parse this: {}".format(match.groups())
 
 
+#----------------------------------------
+# PATH directive handlers
+#----------------------------------------
 
 def path_kid_from_match(match):
     """ return the kid of the path directive """
@@ -111,6 +133,11 @@ def path_from_match(match):
     path =  repo.get_path(kid)
     logger.debug("thinks the path is %r",path)
     return path
+
+
+#-----------------------------------------
+# Processors 
+#-----------------------------------------
 
 def path_processor(line,model,test):
     """replace all path directives with the appropriate path"""
@@ -149,6 +176,11 @@ def process_line(line,*args):
     return line
 
 
+#-----------------------------------------
+# Main Methods
+#-----------------------------------------
+
+
 def dependency_check(inp):
     """ Given an input file
         find all of the data directives and obtain the pointers to the relevant data if it exists
@@ -159,7 +191,7 @@ def dependency_check(inp):
             dependencies_good_to_go - list of kids
             dependencies_needed - tuple of tuples 
     """
-    logger.info("running a dependancy check for %r", os.path.basename(os.path.dirname(inp.name)))
+    logger.debug("running a dependancy check for %r", os.path.basename(os.path.dirname(inp.name)))
     ready, dependencies = (True, [])
     
     cands = []

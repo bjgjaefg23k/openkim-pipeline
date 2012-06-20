@@ -13,75 +13,14 @@ from config import *
 logger = logger.getChild("models")
 
 from persistentdict import PersistentDict
-import re, os, glob, operator
 from contextlib import contextmanager
 import kimid
 import template
+import database
+import shutil
+import subprocess
+import re
 
-#-------------------------------------------------
-# Helper routines (probably move)
-#-------------------------------------------------
-
-#KIMID matcher  ( optional name             __) (prefix  ) ( number  )( opt version )
-RE_KIMID    = r"(?:([_a-zA-Z][_a-zA-Z0-9]*?)__)?([A-Z]{2})_([0-9]{12})(?:_([0-9]{3}))?"
-
-
-def parse_kim_code(kim_code):
-    """ Parse a kim code into it's pieces,
-        returns a tuple (name,leader,num,version) """
-    try:
-        return re.match(RE_KIMID,kim_code).groups()
-    except AttributeError:
-        logger.error("Invalid KIMID on %r", kim_code)
-        raise InvalidKIMID, "{}: is not a valid KIMID".format(kim_code)
-
-def kim_code_finder(name,leader,num,version):
-    """ Do a glob to look for possible matches
-        returns a list of possible matches, where the matches are kim_codes """
-    start_path = os.path.join(KIM_REPOSITORY_DIR,leader.lower())
-    name = name or '*'
-    version = version or '*'
-    kim_code = format_kim_code(name,leader,num,version)
-    full_possibilities = glob.glob(os.path.join(start_path,kim_code))
-    short_possibilities = [ os.path.basename(x) for x in full_possibilities ]
-
-    if len(short_possibilities) == 0:
-        #none found
-        logger.error("Failed to find any matches for %r", kim_code)
-        raise PipelineSearchError, "Failed to find any matches for {}".format(kim_code)
-    return short_possibilities
-
-
-def look_for_name(leader,num,version):
-    """ Look for a name given the other pieces of a kim code,
-        returns just the name if it exists or throws and error"""
-    partial = format_kim_code(None,leader,num,version) 
-    logger.debug("looking up names for %r", partial)
-    possibilities = kim_code_finder(None,leader,num,version)
-    if len(possibilities) == 1:
-        fullname = possibilities[0]
-        name, leader, num, version = parse_kim_code(fullname)
-        return name
-    #must be multiple possibilities
-    logger.error("Found multiple names for %r", partial)
-    raise PipelineTemplateError, "Found multiple matches for {}".format(partial)
-
-def get_latest_version(name,leader,num):
-    """ Get the latest version of the kim code in the database,
-    return the full kim_code for the newest version in the database"""
-    version = None
-    possibilities = kim_code_finder(name,leader,num,version)
-    parsed_possibilities = [ parse_kim_code(code) for code in possibilities ]
-    #sort the list on its version number
-    newest = sorted(parsed_possibilities,key=operator.itemgetter(-1)).pop()
-    return newest
-
-def format_kim_code(name,leader,num,version):
-    """ Format a kim code into its proper form """
-    if name:
-        return "{}__{}_{}_{}".format(name,leader,num,version)
-    else:
-        return "{}_{}_{}".format(leader,num,version)
 
 #------------------------------------------------
 # Base KIMObject 
@@ -99,10 +38,12 @@ class KIMObject(object):
         * info - some metadata stored in a json file
     """
     required_leader = None
+    makeable = False
+
     def __init__(self,kim_code):
         """ Initialize a KIMObject given the kim_code, where partial kim codes are promoted if possible """
         logger.debug("Initializing a new KIMObject: %r", kim_code)
-        name, leader, num, version = parse_kim_code(kim_code)
+        name, leader, num, version = database.parse_kim_code(kim_code)
        
         # test to see if we have the right leader
         if self.required_leader:
@@ -116,32 +57,45 @@ class KIMObject(object):
         
         #if we were given everything, we are good to go
         if name and leader and num and version:
-            self.kim_code = format_kim_code(name,leader,num,version)
+            self.kim_code = database.format_kim_code(name,leader,num,version)
         
         #if we weren't given a name, see if one exists
         elif name is None and leader and num and version:
-            name = look_for_name(leader,num,version)
+            name = database.look_for_name(leader,num,version)
             self.kim_code_name = name
-            self.kim_code = format_kim_code(name,leader,num,version)
+            self.kim_code = database.format_kim_code(name,leader,num,version)
         
         #if we weren't given a version
         elif name and leader and num and version is None:
-            name,leader,num,version = get_latest_version(name,leader,num)
+            name,leader,num,version = database.get_latest_version(name,leader,num)
             self.kim_code_version = version
-            self.kim_code = format_kim_code(name,leader,num,version)
+            self.kim_code = database.format_kim_code(name,leader,num,version)
 
         #if we weren't given a name or version
         elif name is None and leader and num and version is None:
-            name,leader,num,version = get_latest_version(name,leader,num)
+            name,leader,num,version = database.get_latest_version(name,leader,num)
             self.kim_code_name = name
             self.kim_code_version = version
-            self.kim_code = format_kim_code(name,leader,num,version)
+            self.kim_code = database.format_kim_code(name,leader,num,version)
 
-        self.path = os.path.join(KIM_REPOSITORY_DIR,leader.lower(),self.kim_code)
+        self.parent_dir = os.path.join(KIM_REPOSITORY_DIR, self.kim_code_leader.lower())
+        self.path = os.path.join( self.parent_dir ,self.kim_code)
         self.info = PersistentDict(os.path.join(self.path,METADATA_INFO_FILE))
 
     def __repr__(self):
         return "<{}({})>".format(self.__class__.__name__, self.kim_code)
+
+    def __hash__(self):
+        return hash(self.kim_code)
+
+    def __eq__(self,other):
+        if other:
+            return self.kim_code == other.kim_code
+        return False
+
+    def __nonzero__(self):
+        """ Object is true if it exists """
+        return self.exists
 
     @property
     def exists(self):
@@ -150,9 +104,15 @@ class KIMObject(object):
 
     def get_latest_version_number(self):
         """ Figure out the latest version number """
-        name,leader,num,version = get_latest_version(self.kim_code_name,
+        name,leader,num,version = database.get_latest_version(self.kim_code_name,
                 self.kim_code_leader,self.kim_code_number)
         return version
+
+    @property
+    def latest_version(self):
+        """ Return the latest version object of this thing """
+        name,leader,num,version = database.get_latest_version(self.kim_code_name, self.kim_code_leader, self.kim_code_number)
+        return self.__class__(database.format_kim_code(name,leader,num,version))
     
     @property
     def is_latest_version(self):
@@ -173,12 +133,39 @@ class KIMObject(object):
         logger.debug("moved to dir: {}".format(self.path))
         yield
         os.chdir(cwd)
+    
+    def make(self):
+        """ Try to build the thing """
+        if self.makeable:
+            with self.in_dir():
+                logger.debug("Attempting to make %r: %r", self.__class__.__name__, self.kim_code)
+                subprocess.check_call('make')
+        else:
+            logger.warning("%r:%r is not makeable", self.__class__.__name__, self.kim_code)
 
+    @property
+    def makefile(self):
+        """ A file object for the make file """
+        if self.makeable:
+            return open(os.path.join(self.path, "Makefile"))
+        else:
+            logger.warning("%r:%r is not makeable", self.__class__.__name__, self.kim_code)
 
-
+    @classmethod
+    def all(cls):
+        """ Return a generator of all of this type """
+        logger.debug("Attempting to find all %r...", cls.__name__)
+        type_dir = os.path.join(KIM_REPOSITORY_DIR, cls.required_leader.lower() ) 
+        kim_codes =  ( subpath for subpath in os.listdir(type_dir) if os.path.isdir( os.path.join( type_dir, subpath) ) )
+        return ( cls(x) for x in kim_codes )
 
 #---------------------------------------------
 # Actual KIM Models
+#---------------------------------------------
+
+
+#---------------------------------------------
+# Test
 #---------------------------------------------
 
 class Test(KIMObject):
@@ -190,6 +177,8 @@ class Test(KIMObject):
         * test_driver - which test driver it relies on
     """
     required_leader = "TE"
+    makeable = True
+
     def __init__(self,kim_code):
         """ Initialize the Test, with a kim_code """
         super(Test,self).__init__(kim_code)
@@ -197,6 +186,11 @@ class Test(KIMObject):
         self.outfile_path = os.path.join(self.path,OUTPUT_FILE)
         self.infile_path = os.path.join(self.path,INPUT_FILE)
         self.out_dict = self._outfile_to_dict()
+
+    @property
+    def _reversed_out_dict(self):
+        """ Reverses the out_dict """
+        return { value:key for key,value in self.out_dict.iteritems() }
 
     @property
     def infile(self):
@@ -215,6 +209,24 @@ class Test(KIMObject):
                 dependencies_not_ready - tuples of test/model pairs to run """
         return template.dependency_check(self.infile)
 
+
+    @property
+    def dependencies(self):
+        """ Return a list of kim objects that are its dependencies """
+        ready, goods, bads = self.dependency_check()
+        if goods:
+            for kim_code in goods:
+                yield kim_obj(kim_code)
+        if bads:
+            for kim1, kim2 in bads:
+                yield kim_obj(kim1)
+                yield kim_obj(kim2)
+
+    @property
+    def test_drivers(self):
+        """ Return a list of test drivers this guy relies on """
+        return ( depend for depend in self.dependencies if depend.required_leader == "TD")
+
     def _outfile_to_dict(self):
         """ Convert the output file to a dict """
         outdata = open(self.outfile_path).read()
@@ -225,68 +237,245 @@ class Test(KIMObject):
             data.update({ front.strip() : back.strip() })
         return data
 
+    def processed_infile(self,model):
+        """ Process the input file, with template, and return a file object to the result """
+        template.process(self.infile,self.kim_code,model.kim_code)
+        return open(os.path.join(self.path,TEMP_INPUT_FILE))
 
+
+#--------------------------------------
+# Model
+#-------------------------------------
 
 class Model(KIMObject):
     """ A KIM Model """
     required_leader = "MO"
+    makeable = True
+
     def __init__(self,kim_code):
         """ Initialize the Model, with a kim_code """
         super(Model,self).__init__(kim_code)
 
+    @property
+    def model_driver(self):
+        """ Return the model driver if there is one, otherwise None """
+        try:
+            return ModelDriver(next( line.split(":=")[1].strip() for line in self.makefile if line.startswith("MODEL_DRIVER_NAME") ))
+        except StopIteration:
+            return None
+
+
+#-------------------------------------
+# TestResult
+#-------------------------------------
+
 class TestResult(KIMObject):
     """ A test result """
     required_leader = "TR"
-    def __init__(self,kim_code):
-        """ Initialize the TestResult, with a kim_code """
+    makeable = False
+
+    def __init__(self, kim_code = None, results = None):
+        """ Initialize the TestResult, with a kim_code,
+                optionally, take a JSON string and store it """
+        
+        kim_code = kim_code or database.new_test_result_id()
         super(TestResult,self).__init__(kim_code)
+
+        self.results = PersistentDict(os.path.join(self.path,self.kim_code),format='json')
+        #if we recieved a json string, write it out
+        if results:
+            logger.debug("Recieved results, writing out to %r", self.kim_code)
+            incoming_results = simplejson.loads(results)
+            
+            #also move all of the files
+            files = template.files_from_results(incoming_results)
+            if files:
+                logger.debug("found files to move")
+                testdir = Test(testname).path
+                for src in files:
+                    logger.debug("copying %r over", src)
+                    shutil.copy(os.path.join(testdir,src),self.path)
+
+            self.results.update(incoming_results)
+            self.results.sync()
+
+        self.test = Test(self.results["_testname"])
+        self.model = Model(self.results["_modelname"])
+
+    def sync(self):
+        """ sync not only the info file but also the results """
+        self.info.sync()
+        self.results.sync()
+
+    @property
+    def files(self):
+        """ A list of all of the files in the test_result """
+        return map(os.path.basename,template.files_from_results(self.results))
+    
+    @property
+    def full_file_paths(self):
+        """ Files with a full path """
+        return ( os.path.join(self.path, filename) for filename in self.files )
+
+    @property
+    def file_handlers(self):
+        """ return file handlers for all of the files """
+        return ( open(filename) for filename in self.full_file_paths )
+
+    def _is_property(self,key):
+        """ Tells whether a key is a property or not """
+        return bool(re.match(database.RE_KIMID, key))
+
+    @property
+    def property_codes(self):
+        """ Return a list of all property codes computed in this test result """
+        return ( x for x in filter(self._is_property, self.results.keys() ) )    
+
+    @property
+    def predictions(self):
+        """ Return a dictionary with kim Property objects pointing to the results """
+        return { Property(key): value for key,value in self.results.iteritems() if key in self.property_codes }
+
+    @property
+    def properties(self):
+        """ Return a list of properties """
+        return ( Property(x) for x in self.property_codes )
+
+
+
+#------------------------------------------
+# TestDriver
+#------------------------------------------
 
 class TestDriver(KIMObject):
     """ A test driver """
     required_leader = "TD"
+    makeable = True
+
     def __init__(self,kim_code):
         """ Initialize the TestDriver, with a kim_code """
         super(TestDriver,self).__init__(kim_code)
+        self.executable = os.path.join(self.path, self.kim_code)
+
+    @property
+    def tests(self):
+        """ Return a list of tests """
+        return ( test for test in Test.all() if self in test.dependencies )
+
+
+#------------------------------------------
+# ModelDriver
+#------------------------------------------
 
 class ModelDriver(KIMObject):
     """ A model driver """
     required_leader = "MD"
+    makeable = True
+
     def __init__(self,kim_code):
         """ Initialize the ModelDriver, with a kim_code """
         super(ModelDriver,self).__init__(kim_code)
 
+    @property
+    def models(self):
+        """ Return all of the models using this model driver """
+        return ( model for model in Model.all() if self==model.model_driver )
+
+
+#------------------------------------------
+# Property
+#------------------------------------------
+
 class Property(KIMObject):
     """ A kim property """
     required_leader = "PR"
+    makeable = False
+
     def __init__(self,kim_code):
         """ Initialize the Property, with a kim_code """
         super(Property,self).__init__(kim_code)
 
+    @property
+    def results(self):
+        """ Return a list of results that compute this property """
+        return ( tr for tr in TestResult.all() if self in tr.properties )
+
+    @property
+    def references(self):
+        """ Return a generator of references that reference this property """
+        return ( rd for rd in ReferenceDatum.all() if self == rd.property )
+
+    @property
+    def tags(self):
+        """ Return a generator of all the tags used by the test writers to refer to this property """ 
+        return set( value for key,value in result.test._reversed_out_dict.iteritems() if Property(key)==self for result in self.results )
+
+    
+
+#------------------------------------------
+# VerificationCheck
+#------------------------------------------
+
 class VerificationCheck(KIMObject):
     """ A verification check """
     required_leader = "VC"
+    makeable = True
+
     def __init__(self,kim_code):
         """ Initialize the VerificationCheck, with a kim_code """
         super(VerificationCheck,self).__init__(kim_code)
 
+#------------------------------------------
+# VerificationResult
+#------------------------------------------
+
 class VerificationResult(KIMObject):
     """ A verification result """
     required_leader = "VR"
+    makeable = False
+
     def __init__(self,kim_code):
         """Initialize the VerificationResult, with a kim_code """
         super(VerificationResult,self).__init__(kim_code)
 
 
+#------------------------------------------
+# ReferenceDatum
+#------------------------------------------
+
 class ReferenceDatum(KIMObject):
     """ a piece of reference data """
     required_leader = "RD"
+    makeable = False
+
     def __init__(self,kim_code):
         """ Initialize the ReferenceDatum, with a kim_code """
         super(ReferenceDatum,self).__init__(kim_code)
 
+#------------------------------------------
+# VirtualMachine
+#------------------------------------------
+
 class VirtualMachine(KIMObject):
     """ for a virtual machine """
     required_leader = "VM"
+    makeable = False
+
     def __init__(self,kim_code):
         """ Initialize a VirtualMachine with a kim_code """
         super(VirtualMachine,self).__init__(kim_code)
+
+
+# two letter codes to the associated class
+code_to_model = {"TE": Test, "MO": Model, "TD": TestDriver, "TR": TestResult , "VC": VerificationCheck, "VR": VerificationResult, "RD": ReferenceDatum, "PR": Property , "VM": VirtualMachine, "MD": ModelDriver }
+
+def kim_obj(kim_code):
+    """ Just given a kim_code try to make the right object """
+    name,leader,num,version = database.parse_kim_code(kim_code)
+    cls = code_to_model.get(leader, KIMObject)
+    return cls(kim_code)
+
+
+
+if __name__ == "__main__":
+    result = TestResult("TR_127663948908_000")
