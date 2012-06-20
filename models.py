@@ -82,6 +82,9 @@ class KIMObject(object):
         self.path = os.path.join( self.parent_dir ,self.kim_code)
         self.info = PersistentDict(os.path.join(self.path,METADATA_INFO_FILE))
 
+    def __str__(self):
+        return self.kim_code
+
     def __repr__(self):
         return "<{}({})>".format(self.__class__.__name__, self.kim_code)
 
@@ -90,7 +93,7 @@ class KIMObject(object):
 
     def __eq__(self,other):
         if other:
-            return self.kim_code == other.kim_code
+            return  str(kim_code) == str(other)
         return False
 
     def __nonzero__(self):
@@ -186,6 +189,10 @@ class Test(KIMObject):
         self.outfile_path = os.path.join(self.path,OUTPUT_FILE)
         self.infile_path = os.path.join(self.path,INPUT_FILE)
         self.out_dict = self._outfile_to_dict()
+
+    def __call__(self,*args,**kwargs):
+        with self.in_dir():
+            subprocess.check_call(self.executable,*args,**kwargs)
 
     @property
     def _reversed_out_dict(self):
@@ -341,6 +348,17 @@ class TestResult(KIMObject):
         """ Return a list of properties """
         return ( Property(x) for x in self.property_codes )
 
+    def __getitem__(self,key):
+        """ Make it so that results behave like their result dictionary for access """
+        return self.results.__getitem__(key)
+
+    def __getattr__(self,attr):
+        """ if we didn't find the attr, look in self.results """
+        return self.results.__getattribute__(attr)
+
+
+
+
 
 
 #------------------------------------------
@@ -356,6 +374,10 @@ class TestDriver(KIMObject):
         """ Initialize the TestDriver, with a kim_code """
         super(TestDriver,self).__init__(kim_code)
         self.executable = os.path.join(self.path, self.kim_code)
+
+    def __call__(self,*args,**kwargs):
+        with self.in_dir():
+            subprocess.check_call(self.executable,*args,**kwargs)
 
     @property
     def tests(self):
@@ -424,6 +446,11 @@ class VerificationCheck(KIMObject):
     def __init__(self,kim_code):
         """ Initialize the VerificationCheck, with a kim_code """
         super(VerificationCheck,self).__init__(kim_code)
+        self.executable = os.path.join(self.path,self.kim_code)
+
+    def __call__(self,*args,**kwargs):
+        with self.in_dir():
+            subprocess.check_call(self.executable,*args,**kwargs)
 
 #------------------------------------------
 # VerificationResult
