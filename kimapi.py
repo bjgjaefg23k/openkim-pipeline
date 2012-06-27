@@ -9,7 +9,7 @@ logger = logger.getChild("repository")
 # Some kim api wrapped things
 #======================================
 
-def valid_match(test,model,force=False):
+def valid_match(test,model):
     """ Test to see if a test and model match using the kim API, returns bool """
     #logger.debug("attempting to match %r with %r",testname,modelname)
     logger.debug("invoking KIMAPI for (%r,%r)",test,model)

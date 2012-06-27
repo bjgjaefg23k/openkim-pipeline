@@ -1,4 +1,3 @@
-import repository as repo
 import beanstalkc as bean 
 from subprocess import check_call, Popen, PIPE
 from multiprocessing import Process

@@ -172,6 +172,11 @@ class KIMObject(object):
         kim_codes =  ( subpath for subpath in dircache.listdir(type_dir) if os.path.isdir( os.path.join( type_dir, subpath) ) )
         return ( cls(x) for x in kim_codes )
 
+    def delete(self):
+        """ Delete the folder for this object """
+        logger.warning("REMOVING the kim object %r", self)
+        shutil.rmtree(self.path)
+
 #---------------------------------------------
 # Actual KIM Models
 #---------------------------------------------
@@ -318,12 +323,10 @@ class TestResult(KIMObject):
     required_leader = "TR"
     makeable = False
 
-    def __init__(self, kim_code = None, pair = None, results = None):
+    def __init__(self, kim_code = None, pair = None, results = None, search=True):
         """ Initialize the TestResult, with a kim_code,
                 or a (test,model) pair,
                 optionally, take a JSON string and store it """
-       
-        search = True
 
         if pair and kim_code:
             raise SyntaxWarning, "TestResult should have a pair, or a kim_code or neither, not both"
@@ -433,6 +436,18 @@ class TestResult(KIMObject):
         except PipelineDataMissing:
             return False
         return True
+
+    @classmethod
+    def duplicates(cls):
+        """ Return a list of all of the duplicated results """
+        pairs = set()
+        for result in cls.all():
+            pair = (result.test, result.model)
+            if pair in pairs:
+                yield result
+            else:
+                pairs.add(pair)
+
 
 
 
