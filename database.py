@@ -5,6 +5,8 @@ Set of methods for querying the database in one form or the other
 from config import *
 logger = logger.getChild("database")
 import re, os, glob, operator
+import models
+import random
 
 #-------------------------------------------------
 # Helper routines (probably move)
@@ -21,8 +23,21 @@ def new_test_result_id(number=None):
         version = get_new_version(None,"TR",number)
         return format_kim_code(None,"TR",number,version)
     else:
-        return kimid.new_kimid("TR")
+        kim_code =  new_tr_kimid()
+        logger.info("Generated new TR kim_code: %r", kim_code)
+        return kim_code
 
+def randint():
+    """ Return a random kim integer """
+    return random.randint(0,1e12)
+
+def new_tr_kimid():
+    """ Generate a new Test Result kimid """
+    existing = set( result.kim_code for result in models.TestResult.all() )
+    kim_code = format_kim_code(None,"TR","{:012d}".format(randint()),"000")
+    while kim_code in existing:
+        kim_code = format_kim_code(None,"TR","{:012d}".format(randint()),"000")
+    return kim_code
 
 def parse_kim_code(kim_code):
     """ Parse a kim code into it's pieces,

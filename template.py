@@ -11,8 +11,9 @@ import database
 # Keywords
 #==========================
 
-#RE_KIMID    = r"((?:[_a-zA-Z][_a-zA-Z0-9]*?_?_)?[A-Z]{2}_[0-9]{12}(?:_[0-9]{3})?)"   
-RE_KIMID = database.RE_KIMID
+RE_KIMID    = r"((?:[_a-zA-Z][_a-zA-Z0-9]*?_?_)?[A-Z]{2}_[0-9]{12}(?:_[0-9]{3})?)"   
+#RE_KIMID = database.RE_KIMID
+#RE_KIMID    = r"(?:[_a-zA-Z][_a-zA-Z0-9]*?__)?[A-Z]{2}_[0-9]{10,12}(?:_[0-9]{3})?"
 
 RE_FILE     = re.compile(r"(@FILE\[(.*)\])")     # matches @FILE[stuff] and returns stuff
 RE_MODEL    = re.compile(r"(@MODELNAME)")       # matches @MODELNAME as a word
@@ -86,6 +87,7 @@ def data_path_from_match(match):
         
 def data_from_match(match):
     groups = match.groups()
+    logger.debug("looking at groups %r",groups)
     try:
         if len(groups) == 2:
             #a 2 call is an rd
@@ -108,7 +110,7 @@ def data_from_match(match):
             mo = models.Model(mo_kcode)
             pr = models.Property(pr_kcode)
 
-            tr = test.result_with_model(pr)
+            tr = te.result_with_model(mo)
             data = tr[pr]
             return str(data)
     except KeyError:
