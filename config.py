@@ -118,6 +118,9 @@ logger.addHandler(console_handler)
 class InvalidKIMID(Exception):
     """ Used for invalid KIM IDS """ 
 
+class PipelineResultsError(Exception):
+    """ Used when the results are not of an understood type """
+
 class KIMRuntimeError(Exception):
     """ General purpose KIM Api Error """
 
