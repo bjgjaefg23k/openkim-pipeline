@@ -20,6 +20,7 @@ import database
 import shutil
 import subprocess
 import re
+import dircache
 
 
 #------------------------------------------------
@@ -159,7 +160,7 @@ class KIMObject(object):
         """ Return a generator of all of this type """
         logger.debug("Attempting to find all %r...", cls.__name__)
         type_dir = os.path.join(KIM_REPOSITORY_DIR, cls.required_leader.lower() ) 
-        kim_codes =  ( subpath for subpath in os.listdir(type_dir) if os.path.isdir( os.path.join( type_dir, subpath) ) )
+        kim_codes =  ( subpath for subpath in dircache.listdir(type_dir) if os.path.isdir( os.path.join( type_dir, subpath) ) )
         return ( cls(x) for x in kim_codes )
 
 #---------------------------------------------
