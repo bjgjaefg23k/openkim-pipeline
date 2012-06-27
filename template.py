@@ -110,7 +110,7 @@ def data_from_match(match):
             mo = models.Model(mo_kcode)
             pr = models.Property(pr_kcode)
 
-            tr = te.result_with_model(pr)
+            tr = te.result_with_model(mo)
             data = tr[pr]
             return str(data)
     except KeyError:
