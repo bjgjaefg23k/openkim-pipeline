@@ -20,7 +20,7 @@ import shutil
 import subprocess
 import re
 import dircache
-
+import simplejson
 
 #------------------------------------------------
 # Base KIMObject 
@@ -40,8 +40,10 @@ class KIMObject(object):
     required_leader = None
     makeable = False
 
-    def __init__(self,kim_code):
-        """ Initialize a KIMObject given the kim_code, where partial kim codes are promoted if possible """
+    def __init__(self,kim_code,search=True):
+        """ Initialize a KIMObject given the kim_code, where partial kim codes are promoted if possible,
+            if search is False, then don't look for existing ones 
+        """
         logger.debug("Initializing a new KIMObject: %r", kim_code)
         name, leader, num, version = database.parse_kim_code(kim_code)
        
@@ -54,9 +56,11 @@ class KIMObject(object):
         self.kim_code_leader = leader
         self.kim_code_number = num
         self.kim_code_version = version
-        
+       
+        if not search:
+            self.kim_code = kim_code
         #if we were given everything, we are good to go
-        if name and leader and num and version:
+        elif name and leader and num and version:
             self.kim_code = database.format_kim_code(name,leader,num,version)
         
         #if we weren't given a name, see if one exists
@@ -104,6 +108,11 @@ class KIMObject(object):
     def exists(self):
         """ Tells you whether the path exists or not """
         return os.path.exists(self.path)
+
+    def create_dir(self):
+        """ If this thing doesn't exist create it's directories """
+        if not self.exists:
+            os.makedirs(self.path)
 
     def get_latest_version_number(self):
         """ Figure out the latest version number """
@@ -244,7 +253,7 @@ class Test(KIMObject):
         try:
             return next( result for result in self.results if result.model == model )
         except StopIteration:
-            raise PipelineDataMissing, "Could not find a TestResult for (%r, %r)".format(self,model)
+            raise PipelineDataMissing, "Could not find a TestResult for ({}, {})".format(self,model)
     
     def _outfile_to_dict(self):
         """ Convert the output file to a dict """
@@ -258,7 +267,7 @@ class Test(KIMObject):
 
     def processed_infile(self,model):
         """ Process the input file, with template, and return a file object to the result """
-        template.process(self.infile,self.kim_code,model.kim_code)
+        template.process(self.infile,model.kim_code,self.kim_code)
         return open(os.path.join(self.path,TEMP_INPUT_FILE))
 
 
@@ -302,7 +311,9 @@ class TestResult(KIMObject):
         """ Initialize the TestResult, with a kim_code,
                 or a (test,model) pair,
                 optionally, take a JSON string and store it """
-        
+       
+        search = True
+
         if pair and kim_code:
             raise SyntaxWarning, "TestResult should have a pair, or a kim_code or neither, not both"
         
@@ -312,17 +323,35 @@ class TestResult(KIMObject):
             kim_code = result.kim_code
         
         else:
-            kim_code = kim_code or database.new_test_result_id()
+            if not kim_code:
+                kim_code = database.new_test_result_id()
+                search = False
         
-        super(TestResult,self).__init__(kim_code)
+        super(TestResult,self).__init__(kim_code,search=search)
+
+        if not self.exists and not search:
+            #If this TR doesn't exist and we have search off, create it
+            self.create_dir()
 
         self.results = PersistentDict(os.path.join(self.path,self.kim_code),format='json')
         #if we recieved a json string, write it out
         if results:
             logger.debug("Recieved results, writing out to %r", self.kim_code)
-            incoming_results = simplejson.loads(results)
+            
+            if isinstance(results,dict):
+                #we have a dict
+                incoming_results = results
+            else: 
+                #if it is a json string try to convert it
+                try:
+                    incoming_results = simplejson.loads(results)
+                except TypeError:
+                    #wasn't convertable
+                    raise PipelineResultsError, "Could not understand the format of the results: {}".format(results)
             
             #also move all of the files
+            testname = incoming_results["_testname"]
+
             files = template.files_from_results(incoming_results)
             if files:
                 logger.debug("found files to move")
@@ -333,6 +362,7 @@ class TestResult(KIMObject):
 
             self.results.update(incoming_results)
             self.results.sync()
+            logger.info("Results created in %r", self.kim_code)
 
         self.test = Test(self.results["_testname"])
         self.model = Model(self.results["_modelname"])
