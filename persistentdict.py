@@ -41,13 +41,6 @@ class PersistentDict(dict):
         filename = self.filename
         tempname = filename + '.tmp'
         fileobj = open(tempname, 'wb' if self.format=='pickle' else 'w')
-        """try:
-            fileobj = open(tempname, 'wb' if self.format=='pickle' else 'w')
-        except IOError:
-            #the directory doesn't exist, create it
-            os.makedirs(os.path.dirname(tempname))
-            fileobj = open(tempname, 'wb' if self.format=='pickle' else 'w')
-        """
         try:
             self.dump(fileobj)
         except Exception:

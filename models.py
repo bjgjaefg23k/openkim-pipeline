@@ -21,6 +21,7 @@ import subprocess
 import re
 import dircache
 import simplejson
+import kimapi
 
 #------------------------------------------------
 # Base KIMObject 
@@ -270,6 +271,11 @@ class Test(KIMObject):
         template.process(self.infile,model.kim_code,self.kim_code)
         return open(os.path.join(self.path,TEMP_INPUT_FILE))
 
+    @property
+    def models(self):
+        """ Returns a generator of valid matched models """
+        return (model for model in Model.all() if kimapi.valid_match(self,model) )
+
 
 #--------------------------------------
 # Model
@@ -296,6 +302,11 @@ class Model(KIMObject):
     def results(self):
         """ Get all of the results """
         return ( result for result in TestResult.all() if result.model == self )
+
+    @property
+    def tests(self):
+        """ Return a generator of the tests that match this model """
+        return ( test for test in Test.all() if kimapi.valid_match(test,self) )
 
 
 #-------------------------------------
