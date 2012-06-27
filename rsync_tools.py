@@ -47,7 +47,7 @@ from config import *
 logger = logger.getChild("rsync_tools")
 import os
 import subprocess, tempfile
-import kimid
+import models
 
 RSYNC_ADDRESS =     "sethnagroup@cerbo.ccmr.cornell.edu"
 RSYNC_REMOTE_ROOT = "/home/sethnagroup/vagrant/openkim-repository"
@@ -119,9 +119,8 @@ def real_read(*args):
 
 
 def kid_to_folder(kid):
-    front,leader,pk,version = kimid.parse_kimid(kid)
-    folder = leader.lower() + "/" + kid + "/"
-    return folder
+    obj = models.KIMObject(kid)
+    return kid.path
 
 #=================================
 # director methods

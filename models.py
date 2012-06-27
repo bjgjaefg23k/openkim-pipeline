@@ -14,7 +14,6 @@ logger = logger.getChild("models")
 
 from persistentdict import PersistentDict
 from contextlib import contextmanager
-import kimid
 import template
 import database
 import shutil
@@ -94,7 +93,7 @@ class KIMObject(object):
 
     def __eq__(self,other):
         if other:
-            return  str(kim_code) == str(other)
+            return  str(self) == str(other)
         return False
 
     def __nonzero__(self):
@@ -204,6 +203,7 @@ class Test(KIMObject):
     def infile(self):
         """ return a file object for the in file """
         return open(self.infile_path)
+
     @property
     def outfile(self):
         """ return a file object for the out file """
@@ -216,7 +216,6 @@ class Test(KIMObject):
                 dependencies_good_to_go - kids for ready dependencies
                 dependencies_not_ready - tuples of test/model pairs to run """
         return template.dependency_check(self.infile)
-
 
     @property
     def dependencies(self):
@@ -235,6 +234,18 @@ class Test(KIMObject):
         """ Return a list of test drivers this guy relies on """
         return ( depend for depend in self.dependencies if depend.required_leader == "TD")
 
+    @property
+    def results(self):
+        """ Give a list of all of the results of this test """
+        return ( result for result in TestResult.all() if result.test == self )
+
+    def result_with_model(self, model):
+        """ Get the first result with the model: model, or None """
+        try:
+            return next( result for result in self.results if result.model == model )
+        except StopIteration:
+            raise PipelineDataMissing, "Could not find a TestResult for (%r, %r)".format(self,model)
+    
     def _outfile_to_dict(self):
         """ Convert the output file to a dict """
         outdata = open(self.outfile_path).read()
@@ -272,6 +283,11 @@ class Model(KIMObject):
         except StopIteration:
             return None
 
+    @property
+    def results(self):
+        """ Get all of the results """
+        return ( result for result in TestResult.all() if result.model == self )
+
 
 #-------------------------------------
 # TestResult
@@ -282,11 +298,22 @@ class TestResult(KIMObject):
     required_leader = "TR"
     makeable = False
 
-    def __init__(self, kim_code = None, results = None):
+    def __init__(self, kim_code = None, pair = None, results = None):
         """ Initialize the TestResult, with a kim_code,
+                or a (test,model) pair,
                 optionally, take a JSON string and store it """
         
-        kim_code = kim_code or database.new_test_result_id()
+        if pair and kim_code:
+            raise SyntaxWarning, "TestResult should have a pair, or a kim_code or neither, not both"
+        
+        if pair:
+            test, model = pair
+            result = test.result_with_model(model)
+            kim_code = result.kim_code
+        
+        else:
+            kim_code = kim_code or database.new_test_result_id()
+        
         super(TestResult,self).__init__(kim_code)
 
         self.results = PersistentDict(os.path.join(self.path,self.kim_code),format='json')
@@ -357,6 +384,15 @@ class TestResult(KIMObject):
         """ if we didn't find the attr, look in self.results """
         return self.results.__getattribute__(attr)
 
+    @classmethod
+    def test_result_exists(cls,test,model):
+        """ Check to see if the test result exists """
+        try:
+            cls(pair=(test,model))
+        except PipelineDataMissing:
+            return False
+        return True
+
 
 
 
@@ -422,6 +458,11 @@ class Property(KIMObject):
     def results(self):
         """ Return a list of results that compute this property """
         return ( tr for tr in TestResult.all() if self in tr.properties )
+
+    @property
+    def data(self):
+        """ Return the data in this thing """
+        return None
 
     @property
     def references(self):
