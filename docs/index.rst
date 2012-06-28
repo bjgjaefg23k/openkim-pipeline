@@ -12,6 +12,7 @@ Contents:
    :maxdepth: 2
 
    virtualbox
+   pipeline
 
 Indices and tables
 ==================
