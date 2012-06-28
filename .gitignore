@@ -4,4 +4,4 @@ logs/*
 *.tmp
 kim.log
 *.swp
-_build
+docs/_build
