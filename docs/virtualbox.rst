@@ -3,7 +3,7 @@ OpenKIM Pipeline Box
 ===================
 
 Creating a development or worker box
-====================================
+------------------------------------
 
 To get it out of the way, the most important things are to create a development box
 or a director/worker box.  To create either, you must first acquire the
@@ -26,7 +26,7 @@ a worker.  That's it!  What follows is a technical description of how that happe
 
 
 Introduction to vagrant
-=======================
+-----------------------
 Vagrant is a ruby wrapper around VirtualBox, a VM environment produced by 
 Oracle which is available across most platforms.  It allows you to package
 a 'box' (basically a compressed VB image) and ship it out to others.  On top
@@ -75,7 +75,7 @@ which creates a file ``package.box`` which you can then share.
 
 
 Features of our box
-====================
+--------------------
 We are running a Ubuntu Precise 64bit distribution that has a lot of base software
 installed.  This includes many python packages (scipy, numpy, pylab, ipython, 
 beanstalkc come to mind) and base software (build-essential, gfortran, sshd, etc).
@@ -95,7 +95,7 @@ LV is used at the root filesystem for our box.  The actual ``root`` is never mou
 not being used for development by the box maintainer.  
 
 Necessary files
-===============
+---------------
 To ensure that provisioning runs as expected and that the box has the capability of resnapping
 itself, there are some files that are special on top of the base ubuntu system.
 
@@ -147,7 +147,7 @@ when starting the box.  These shouldn't need to be changed ever (except maybe th
 
 
 Size issues
-===========
+-----------
 The box will naturally inflate in actual disk usage on the host over time.  The swap will be
 used, the files created and destroyed never really get cleaned up.  If you wish to shrink
 the box down to reasonable sizes again, simply run::
@@ -158,7 +158,7 @@ This creates a huge file full of zeros and then deletes it.  It helps, trust me.
 
 
 Modifying the base box
-======================
+----------------------
 If you would like to boot into ``root`` in order to make persistent changes to the 
 virtualbox, you would need to change the root directive in ``/boot/grub/grub.cfg`` from:: 
 
@@ -175,7 +175,7 @@ that does most of the work for you.
 
  
 Vagrant provisioning
-====================
+--------------------
 To get the box how we like it, we are using the Shell provisioner.  It is simply
 a series of bash scripts that have been tested to acquire software and install it
 from a large variety of sources.  The main scripts are ``setup`` and ``secure``
