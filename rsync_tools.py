@@ -16,7 +16,7 @@ READS
             way to check TRs                from DATABASE?
 
         upon a new test
-            whole models dir                from REAL_READ
+            whole Models dir                from REAL_READ
             test dir                        from REAL_READ
             way to check test results       from DATABASE?
         upon a model verification check
@@ -47,7 +47,7 @@ from config import *
 logger = logger.getChild("rsync_tools")
 import os
 import subprocess, tempfile
-import models
+import database
 
 RSYNC_ADDRESS =     "sethnagroup@cerbo.ccmr.cornell.edu"
 RSYNC_REMOTE_ROOT = "/home/sethnagroup/vagrant/openkim-repository"
@@ -97,11 +97,11 @@ def rsync_write(files):
 
 def full_sync():
     """ grab the whole repository """
-    rsync_read(["te/","mo/","md/","tr/","td/","vc/","vr/","pr/","rd/","database.sqlite"])
+    rsync_read(["te/","mo/","md/","tr/","td/","vc/","vr/","pr/","rd/"])
 
 def full_write():
     """ write the whole repo """
-    rsync_write(["te/","mo/","md/","tr/","td/","vc/","vr/","pr/","rd/","database.sqlite","trlookup.txt"])
+    rsync_write(["te/","mo/","md/","tr/","td/","vc/","vr/","pr/","rd/"])
 
 
 def temp_write(*args):
@@ -119,8 +119,11 @@ def real_read(*args):
 
 
 def kid_to_folder(kid):
-    obj = models.KIMObject(kid)
-    return kid.path
+    #obj = models.KIMObject(kid)
+    #return obj.path
+    name,leader,num,version = database.parse_kim_code(kid)
+    path = os.path.join(leader.lower(),kid)
+    return path
 
 #=================================
 # director methods
@@ -128,19 +131,19 @@ def kid_to_folder(kid):
 
 def director_model_verification_read(modelname):
     """ when director needs to verify a model """
-    files = ["vc/","database.sqlite"]
+    files = ["vc/"]
     files.append(kid_to_folder(modelname))
     rsync_read(files)
 
 def director_new_model_read(modelname):
     """ when a director gets a new model """
-    files = ["te/","tr/","database.sqlite"]
+    files = ["te/","tr/"]
     files.append(kid_to_folder(modelname))
     rsync_read(files)
 
 def director_new_test_read(testname):
     """ when a director gets a new test """
-    files = ["mo/","tr/","database.sqlite"]
+    files = ["mo/","tr/"]
     files.append(kid_to_folder(testname))
     rsync_read(files)
 
@@ -151,14 +154,14 @@ def director_new_test_read(testname):
 
 def worker_model_verification_read(modelname,vcname,depends):
     """ when a worker needs to run a verification job """
-    files = [kid_to_folder(modelname), kid_to_folder(vcname), "database.sqlite"]
+    files = [kid_to_folder(modelname), kid_to_folder(vcname)]
     for depend in depends:
         files.append(kid_to_folder(depend))
     rsync_read(files)
 
 def worker_test_result_read(testname,modelname,depends):
     """ when a worker needs to run a test result """
-    files = [kid_to_folder(modelname),kid_to_folder(testname), "database.sqlite"]
+    files = [kid_to_folder(modelname),kid_to_folder(testname)]
     for depend in depends:
         files.append(kid_to_folder(depend))
     rsync_read(files)

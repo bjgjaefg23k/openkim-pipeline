@@ -60,13 +60,15 @@ class Worker(object):
                 self.logger.info("Running %r ...", jobmsg.jobid)
                
                 test_kcode, model_kcode = jobmsg.job
+
                 test = models.Test(test_kcode)
                 model = models.Model(model_kcode)
                 
+                self.logger.info("Running (%r,%r)",test,model)
                 result = runner.run_test_on_model(test,model)
 
                 #create the test result object (will be written)
-                tr = models.TestResult(jobmsg.jobid, results = result)
+                tr = models.TestResult(jobmsg.jobid, results = result, search=False)
                 
                 self.logger.info("rsyncing results %r", jobmsg.jobid)
                 rsync_tools.worker_test_result_write(jobmsg.jobid)
