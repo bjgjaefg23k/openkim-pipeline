@@ -13,6 +13,7 @@ Contents:
 
    virtualbox
    pipeline
+   code
 
 Indices and tables
 ==================

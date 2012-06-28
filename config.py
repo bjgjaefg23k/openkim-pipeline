@@ -10,7 +10,7 @@ import os
 #===============================
 
 #get the kim directories
-KIM_DIR = os.environ["KIM_DIR"]
+KIM_DIR = os.environ["KIM_DIR"] #the bash shell environ
 KIM_API_DIR = os.environ.get("KIM_API_DIR",
         os.path.join(KIM_DIR,"KIM_API"))
 #KIM_MODELS_DIR = os.environ.get("KIM_MODELS_DIR",
