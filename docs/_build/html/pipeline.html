@@ -1,0 +1,457 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>OpenKIM Pipeline &mdash; OpenKIM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="OpenKIM Pipeline 0.1 documentation" href="index.html" />
+    <link rel="prev" title="OpenKIM vagrant box" href="virtualbox.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="virtualbox.html" title="OpenKIM vagrant box"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">OpenKIM Pipeline 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="openkim-pipeline">
+<h1>OpenKIM Pipeline<a class="headerlink" href="#openkim-pipeline" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<p>Blah blah blee</p>
+</div>
+<div class="section" id="module-models">
+<span id="code"></span><h2>Code<a class="headerlink" href="#module-models" title="Permalink to this headline">¶</a></h2>
+<p>A pure python object wrapper for the pipeline stuff</p>
+<p>What we would like is a nice way to create an manipulate the items in the database</p>
+<dl class="docutils">
+<dt>Things we need to be able to do:</dt>
+<dd><ul class="first last simple">
+<li>create test results</li>
+<li>look up test results for test model pairs</li>
+<li>look up current versions of kim objects</li>
+</ul>
+</dd>
+</dl>
+<dl class="class">
+<dt id="models.KIMObject">
+<em class="property">class </em><tt class="descclassname">models.</tt><tt class="descname">KIMObject</tt><big>(</big><em>kim_code</em>, <em>search=True</em><big>)</big><a class="reference internal" href="_modules/models.html#KIMObject"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.KIMObject" title="Permalink to this definition">¶</a></dt>
+<dd><p>The base KIMObject that all things inherit from</p>
+<dl class="docutils">
+<dt>KIMObjects live in memory, and have the following things:</dt>
+<dd><ul class="first last simple">
+<li>path - directory they are stored</li>
+<li>kim_code - their kim code</li>
+<li>kim_code_leader - two letter prefix</li>
+<li>kim_code_number - their id number (12 digits)</li>
+<li>kim_code_version - 3 digit version number</li>
+<li>info - some metadata stored in a json file</li>
+</ul>
+</dd>
+</dl>
+<dl class="classmethod">
+<dt id="models.KIMObject.all">
+<em class="property">classmethod </em><tt class="descname">all</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/models.html#KIMObject.all"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.KIMObject.all" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a generator of all of this type</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="models.KIMObject.create_dir">
+<tt class="descname">create_dir</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/models.html#KIMObject.create_dir"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.KIMObject.create_dir" title="Permalink to this definition">¶</a></dt>
+<dd><p>If this thing doesn&#8217;t exist create it&#8217;s directories</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="models.KIMObject.delete">
+<tt class="descname">delete</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/models.html#KIMObject.delete"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.KIMObject.delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete the folder for this object</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="models.KIMObject.exists">
+<tt class="descname">exists</tt><a class="reference internal" href="_modules/models.html#KIMObject.exists"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.KIMObject.exists" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tells you whether the path exists or not</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="models.KIMObject.get_latest_version_number">
+<tt class="descname">get_latest_version_number</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/models.html#KIMObject.get_latest_version_number"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.KIMObject.get_latest_version_number" title="Permalink to this definition">¶</a></dt>
+<dd><p>Figure out the latest version number</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="models.KIMObject.in_dir">
+<tt class="descname">in_dir</tt><big>(</big><em>*args</em>, <em>**kwds</em><big>)</big><a class="reference internal" href="_modules/models.html#KIMObject.in_dir"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.KIMObject.in_dir" title="Permalink to this definition">¶</a></dt>
+<dd><p>a context manager to do things inside this objects path</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="models.KIMObject.is_latest_version">
+<tt class="descname">is_latest_version</tt><a class="reference internal" href="_modules/models.html#KIMObject.is_latest_version"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.KIMObject.is_latest_version" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tells whether this is the latest version in the database</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="models.KIMObject.latest_version">
+<tt class="descname">latest_version</tt><a class="reference internal" href="_modules/models.html#KIMObject.latest_version"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.KIMObject.latest_version" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the latest version object of this thing</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="models.KIMObject.make">
+<tt class="descname">make</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/models.html#KIMObject.make"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.KIMObject.make" title="Permalink to this definition">¶</a></dt>
+<dd><p>Try to build the thing</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="models.KIMObject.makefile">
+<tt class="descname">makefile</tt><a class="reference internal" href="_modules/models.html#KIMObject.makefile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.KIMObject.makefile" title="Permalink to this definition">¶</a></dt>
+<dd><p>A file object for the make file</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="models.KIMObject.sync">
+<tt class="descname">sync</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/models.html#KIMObject.sync"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.KIMObject.sync" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sync the info file</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="models.Model">
+<em class="property">class </em><tt class="descclassname">models.</tt><tt class="descname">Model</tt><big>(</big><em>kim_code</em><big>)</big><a class="reference internal" href="_modules/models.html#Model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.Model" title="Permalink to this definition">¶</a></dt>
+<dd><p>A KIM Model</p>
+<dl class="attribute">
+<dt id="models.Model.model_driver">
+<tt class="descname">model_driver</tt><a class="reference internal" href="_modules/models.html#Model.model_driver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.Model.model_driver" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the model driver if there is one, otherwise None</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="models.Model.results">
+<tt class="descname">results</tt><a class="reference internal" href="_modules/models.html#Model.results"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.Model.results" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get all of the results</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="models.Model.tests">
+<tt class="descname">tests</tt><a class="reference internal" href="_modules/models.html#Model.tests"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.Model.tests" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a generator of the tests that match this model</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="models.ModelDriver">
+<em class="property">class </em><tt class="descclassname">models.</tt><tt class="descname">ModelDriver</tt><big>(</big><em>kim_code</em><big>)</big><a class="reference internal" href="_modules/models.html#ModelDriver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.ModelDriver" title="Permalink to this definition">¶</a></dt>
+<dd><p>A model driver</p>
+<dl class="attribute">
+<dt id="models.ModelDriver.models">
+<tt class="descname">models</tt><a class="reference internal" href="_modules/models.html#ModelDriver.models"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.ModelDriver.models" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return all of the models using this model driver</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="models.Property">
+<em class="property">class </em><tt class="descclassname">models.</tt><tt class="descname">Property</tt><big>(</big><em>kim_code</em><big>)</big><a class="reference internal" href="_modules/models.html#Property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.Property" title="Permalink to this definition">¶</a></dt>
+<dd><p>A kim property</p>
+<dl class="attribute">
+<dt id="models.Property.data">
+<tt class="descname">data</tt><a class="reference internal" href="_modules/models.html#Property.data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.Property.data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the data in this thing</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="models.Property.references">
+<tt class="descname">references</tt><a class="reference internal" href="_modules/models.html#Property.references"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.Property.references" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a generator of references that reference this property</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="models.Property.results">
+<tt class="descname">results</tt><a class="reference internal" href="_modules/models.html#Property.results"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.Property.results" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a list of results that compute this property</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="models.Property.tags">
+<tt class="descname">tags</tt><a class="reference internal" href="_modules/models.html#Property.tags"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.Property.tags" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a generator of all the tags used by the test writers to refer to this property</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="models.ReferenceDatum">
+<em class="property">class </em><tt class="descclassname">models.</tt><tt class="descname">ReferenceDatum</tt><big>(</big><em>kim_code</em><big>)</big><a class="reference internal" href="_modules/models.html#ReferenceDatum"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.ReferenceDatum" title="Permalink to this definition">¶</a></dt>
+<dd><p>a piece of reference data</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="models.Test">
+<em class="property">class </em><tt class="descclassname">models.</tt><tt class="descname">Test</tt><big>(</big><em>kim_code</em><big>)</big><a class="reference internal" href="_modules/models.html#Test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.Test" title="Permalink to this definition">¶</a></dt>
+<dd><p>A kim test, it is a KIMObject, plus</p>
+<ul class="simple">
+<li>executable - a path to its executable</li>
+<li>in_file - it&#8217;s infile</li>
+<li>out_file - out_file dictionary</li>
+<li>test_driver - which test driver it relies on</li>
+</ul>
+<dl class="attribute">
+<dt id="models.Test.dependencies">
+<tt class="descname">dependencies</tt><a class="reference internal" href="_modules/models.html#Test.dependencies"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.Test.dependencies" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a list of kim objects that are its dependencies</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="models.Test.dependency_check">
+<tt class="descname">dependency_check</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/models.html#Test.dependency_check"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.Test.dependency_check" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ask template.py to do a dependency check
+returns a 3 tuple
+ready - bool of whether good to go or not
+dependencies_good_to_go - kids for ready dependencies
+dependencies_not_ready - tuples of test/model pairs to run</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="models.Test.infile">
+<tt class="descname">infile</tt><a class="reference internal" href="_modules/models.html#Test.infile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.Test.infile" title="Permalink to this definition">¶</a></dt>
+<dd><p>return a file object for the in file</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="models.Test.models">
+<tt class="descname">models</tt><a class="reference internal" href="_modules/models.html#Test.models"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.Test.models" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a generator of valid matched models</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="models.Test.outfile">
+<tt class="descname">outfile</tt><a class="reference internal" href="_modules/models.html#Test.outfile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.Test.outfile" title="Permalink to this definition">¶</a></dt>
+<dd><p>return a file object for the out file</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="models.Test.processed_infile">
+<tt class="descname">processed_infile</tt><big>(</big><em>model</em><big>)</big><a class="reference internal" href="_modules/models.html#Test.processed_infile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.Test.processed_infile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process the input file, with template, and return a file object to the result</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="models.Test.result_with_model">
+<tt class="descname">result_with_model</tt><big>(</big><em>model</em><big>)</big><a class="reference internal" href="_modules/models.html#Test.result_with_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.Test.result_with_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the first result with the model: model, or None</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="models.Test.results">
+<tt class="descname">results</tt><a class="reference internal" href="_modules/models.html#Test.results"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.Test.results" title="Permalink to this definition">¶</a></dt>
+<dd><p>Give a list of all of the results of this test</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="models.Test.test_drivers">
+<tt class="descname">test_drivers</tt><a class="reference internal" href="_modules/models.html#Test.test_drivers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.Test.test_drivers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a list of test drivers this guy relies on</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="models.TestDriver">
+<em class="property">class </em><tt class="descclassname">models.</tt><tt class="descname">TestDriver</tt><big>(</big><em>kim_code</em><big>)</big><a class="reference internal" href="_modules/models.html#TestDriver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.TestDriver" title="Permalink to this definition">¶</a></dt>
+<dd><p>A test driver</p>
+<dl class="attribute">
+<dt id="models.TestDriver.tests">
+<tt class="descname">tests</tt><a class="reference internal" href="_modules/models.html#TestDriver.tests"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.TestDriver.tests" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a list of tests</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="models.TestResult">
+<em class="property">class </em><tt class="descclassname">models.</tt><tt class="descname">TestResult</tt><big>(</big><em>kim_code=None</em>, <em>pair=None</em>, <em>results=None</em>, <em>search=True</em><big>)</big><a class="reference internal" href="_modules/models.html#TestResult"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.TestResult" title="Permalink to this definition">¶</a></dt>
+<dd><p>A test result</p>
+<dl class="classmethod">
+<dt id="models.TestResult.duplicates">
+<em class="property">classmethod </em><tt class="descname">duplicates</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/models.html#TestResult.duplicates"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.TestResult.duplicates" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a list of all of the duplicated results</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="models.TestResult.file_handlers">
+<tt class="descname">file_handlers</tt><a class="reference internal" href="_modules/models.html#TestResult.file_handlers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.TestResult.file_handlers" title="Permalink to this definition">¶</a></dt>
+<dd><p>return file handlers for all of the files</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="models.TestResult.files">
+<tt class="descname">files</tt><a class="reference internal" href="_modules/models.html#TestResult.files"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.TestResult.files" title="Permalink to this definition">¶</a></dt>
+<dd><p>A list of all of the files in the test_result</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="models.TestResult.full_file_paths">
+<tt class="descname">full_file_paths</tt><a class="reference internal" href="_modules/models.html#TestResult.full_file_paths"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.TestResult.full_file_paths" title="Permalink to this definition">¶</a></dt>
+<dd><p>Files with a full path</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="models.TestResult.predictions">
+<tt class="descname">predictions</tt><a class="reference internal" href="_modules/models.html#TestResult.predictions"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.TestResult.predictions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a dictionary with kim Property objects pointing to the results</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="models.TestResult.properties">
+<tt class="descname">properties</tt><a class="reference internal" href="_modules/models.html#TestResult.properties"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.TestResult.properties" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a list of properties</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="models.TestResult.property_codes">
+<tt class="descname">property_codes</tt><a class="reference internal" href="_modules/models.html#TestResult.property_codes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.TestResult.property_codes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a list of all property codes computed in this test result</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="models.TestResult.sync">
+<tt class="descname">sync</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/models.html#TestResult.sync"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.TestResult.sync" title="Permalink to this definition">¶</a></dt>
+<dd><p>sync not only the info file but also the results</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="models.TestResult.test_result_exists">
+<em class="property">classmethod </em><tt class="descname">test_result_exists</tt><big>(</big><em>test</em>, <em>model</em><big>)</big><a class="reference internal" href="_modules/models.html#TestResult.test_result_exists"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.TestResult.test_result_exists" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check to see if the test result exists</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="models.VerificationCheck">
+<em class="property">class </em><tt class="descclassname">models.</tt><tt class="descname">VerificationCheck</tt><big>(</big><em>kim_code</em><big>)</big><a class="reference internal" href="_modules/models.html#VerificationCheck"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.VerificationCheck" title="Permalink to this definition">¶</a></dt>
+<dd><p>A verification check</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="models.VerificationResult">
+<em class="property">class </em><tt class="descclassname">models.</tt><tt class="descname">VerificationResult</tt><big>(</big><em>kim_code</em><big>)</big><a class="reference internal" href="_modules/models.html#VerificationResult"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.VerificationResult" title="Permalink to this definition">¶</a></dt>
+<dd><p>A verification result</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="models.VirtualMachine">
+<em class="property">class </em><tt class="descclassname">models.</tt><tt class="descname">VirtualMachine</tt><big>(</big><em>kim_code</em><big>)</big><a class="reference internal" href="_modules/models.html#VirtualMachine"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.VirtualMachine" title="Permalink to this definition">¶</a></dt>
+<dd><p>for a virtual machine</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="models.kim_obj">
+<tt class="descclassname">models.</tt><tt class="descname">kim_obj</tt><big>(</big><em>kim_code</em><big>)</big><a class="reference internal" href="_modules/models.html#kim_obj"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#models.kim_obj" title="Permalink to this definition">¶</a></dt>
+<dd><p>Just given a kim_code try to make the right object</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">OpenKIM Pipeline</a><ul>
+<li><a class="reference internal" href="#introduction">Introduction</a></li>
+<li><a class="reference internal" href="#module-models">Code</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="virtualbox.html"
+                        title="previous chapter">OpenKIM vagrant box</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/pipeline.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="virtualbox.html" title="OpenKIM vagrant box"
+             >previous</a> |</li>
+        <li><a href="index.html">OpenKIM Pipeline 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Alex Alemi, Matt Bierbaum, Woosong Choi, James P. Sethna.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
