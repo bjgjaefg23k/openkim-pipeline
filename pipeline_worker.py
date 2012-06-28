@@ -9,6 +9,7 @@ import rsync_tools
 from config import *
 from pipeline_global import *
 logger = logger.getChild("pipeline")
+import models
 
 class Worker(object):
     def __init__(self):
@@ -57,8 +58,15 @@ class Worker(object):
                 self.logger.info("rsyncing to repo %r", jobmsg.job+jobmsg.depends)
                 rsync_tools.worker_test_result_read(*jobmsg.job, depends=jobmsg.depends)
                 self.logger.info("Running %r ...", jobmsg.jobid)
-                result = runner.run_test_on_model(*jobmsg.job)
-                repo.write_result_to_file(result, jobmsg.jobid)
+               
+                test_kcode, model_kcode = jobmsg.job
+                test = models.Test(test_kcode)
+                model = models.Model(model_kcode)
+                
+                result = runner.run_test_on_model(test,model)
+
+                #create the test result object (will be written)
+                tr = models.TestResult(jobmsg.jobid, results = result)
                 
                 self.logger.info("rsyncing results %r", jobmsg.jobid)
                 rsync_tools.worker_test_result_write(jobmsg.jobid)

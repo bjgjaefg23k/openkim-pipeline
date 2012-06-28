@@ -115,3 +115,6 @@ def format_kim_code(name,leader,num,version):
 # some list generators 
 #--------------------------------
 
+
+def test_model_to_priority(test,model):
+    return 1
