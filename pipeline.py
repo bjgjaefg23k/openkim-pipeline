@@ -16,7 +16,7 @@ if __name__ == "__main__":
         elif sys.argv[1] == "site":
             obj = Site()
             obj.run()
-            obj.send_update("MO_607867530901_000")
+            obj.send_update("MO_607867530001_000")
     else:
         print "Specify {worker|director|site}"
         exit(1)

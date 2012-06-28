@@ -26,6 +26,7 @@ KIM_API_DIR = os.environ.get("KIM_API_DIR",
 KIM_REPOSITORY_DIR = os.environ["KIM_REPOSITORY_DIR"]
 KIM_PIPELINE_DIR = os.path.abspath(os.path.dirname(__file__))
 
+METADATA_INFO_FILE = "metadata.json"
 PIPELINE_INFO_FILE = "pipelineinfo.json"
 INPUT_FILE = "pipeline.in"
 OUTPUT_FILE = "pipeline.out"    #with their words : property ids
@@ -114,6 +115,12 @@ logger.addHandler(console_handler)
 # KIM ERRORS
 #====================================
 
+class InvalidKIMID(Exception):
+    """ Used for invalid KIM IDS """ 
+
+class PipelineResultsError(Exception):
+    """ Used when the results are not of an understood type """
+
 class KIMRuntimeError(Exception):
     """ General purpose KIM Api Error """
 
@@ -125,6 +132,9 @@ class PipelineTimeout(Exception):
 
 class PipelineDataMissing(Exception):
     """ If requested data doesn't exist """
+
+class PipelineSearchError(Exception):
+    """ If a search turns up bad """
 
 class PipelineTemplateError(Exception):
     """ some kind of templating format is wrong """
