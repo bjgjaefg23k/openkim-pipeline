@@ -8,7 +8,9 @@ Creating a development or worker box
 To get it out of the way, the most important things are to create a development box
 or a director/worker box.  To create either, you must first acquire the
 ``Vagrantfile`` as found in::
+
     openkim-pipeline-setup/static/foruser/Vagrantfile
+
 Copy this to a new directory and run ``vagrant up``.  That's it!
 
 If you wish to make the box secure, you must also acquire::
@@ -17,10 +19,12 @@ If you wish to make the box secure, you must also acquire::
 
 Copy this to the current directory and run it with ``./secure``.  It will then
 ask you your four favorite questions::
+
     Worker or director?
     Sitename (openkim.org, purdue.openkim.org, etc)
     Username
     Password
+
 After this, it will proceed to shut the box down to outside influences and become 
 a worker.  That's it!  What follows is a technical description of how that happens. 
 
@@ -94,8 +98,6 @@ When the box is run, the file ``/boot/grub/grub.cfg`` specifies that indeed the 
 LV is used at the root filesystem for our box.  The actual ``root`` is never mounted when
 not being used for development by the box maintainer.  
 
-Necessary files
----------------
 To ensure that provisioning runs as expected and that the box has the capability of resnapping
 itself, there are some files that are special on top of the base ubuntu system.
 
@@ -181,5 +183,7 @@ a series of bash scripts that have been tested to acquire software and install i
 from a large variety of sources.  The main scripts are ``setup`` and ``secure``
 which run the development base setup and make the base headless and secure respectively.
 
+These shell scripts are run through ``/persistent/runsetup`` and ``/persistent/runsecure``
+and are run at various times throughout the life of a pipeline box.  
 
-
+For their details, see the code.  They are rather simple and short.
