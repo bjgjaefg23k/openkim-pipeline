@@ -378,8 +378,14 @@ class TestResult(KIMObject):
             self.results.sync()
             logger.info("Results created in %r", self.kim_code)
 
-        self.test = Test(self.results["_testname"])
-        self.model = Model(self.results["_modelname"])
+        try:
+            self.test = Test(self.results["_testname"])
+        except KeyError:
+            self.test = None
+        try:
+            self.model = Model(self.results["_modelname"])
+        except KeyError:
+            self.model = None
 
     def sync(self):
         """ sync not only the info file but also the results """

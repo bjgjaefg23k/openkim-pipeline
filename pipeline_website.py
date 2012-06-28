@@ -1,4 +1,3 @@
-import repository as repo
 import beanstalkc as bean 
 from subprocess import check_call, Popen, PIPE
 from multiprocessing import Process
@@ -9,8 +8,8 @@ import simplejson
 import template
 from config import *
 from pipeline_global import *
-import kimid
 logger = logger.getChild("pipeline")
+import database
 
 class Site(object):
     def __init__(self):
@@ -40,7 +39,7 @@ class Site(object):
 
         self.bsd.use(TUBE_TR_IDS)
         for i in range(10):
-            self.bsd.put(kimid.new_kimid("TR"))
+            self.bsd.put(database.new_tr_kimid())
 
 
     def send_update(self, kimid):

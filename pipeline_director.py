@@ -1,3 +1,5 @@
+import models as modelslib
+import database
 import beanstalkc as bean 
 from subprocess import check_call, Popen, PIPE
 from multiprocessing import Process
@@ -8,7 +10,6 @@ import rsync_tools
 from config import *
 from pipeline_global import *
 logger = logger.getChild("pipeline")
-import models
 
 class Director(object):
     def __init__(self):
@@ -104,18 +105,19 @@ class Director(object):
         kimid = update['kimid']
         priority_factor = self.priority_to_number(update['priority'])
 
-        # Either we have a test or a model
-        try:
-            test = models.Test(kimid)
+        name,leader,num,version = database.parse_kim_code(kimid)
+
+        #We either have a test or a model
+        if leader=="TE":
+            test = modelslib.Test(kimid)
             tests = [test]
             models = test.models
-        except AssertionError:
-            try:
-                model = models.Model(kimid)
-                models = [model]
-                tests = model.tests
-            except:
-                self.logger.error("Tried to update an invalid KIM ID!: %r",kimid)
+        elif leader=="MO":
+            model = modelslib.Model(kimid)
+            tests = model.tests
+            models = [model]
+        else:
+            self.logger.error("Tried to update an invalid KIM ID!: %r",kimid)
 
         for test in tests:
             for model in models: 
@@ -128,6 +130,8 @@ class Director(object):
         with test.in_dir():
             #grab the input file
             ready, TRs, PAIRs = test.dependency_check()
+            TR_ids = map(str,TRs)
+
             self.logger.info("Requesting new TR id")
             trid = self.get_tr_id()
             self.logger.info("Submitting job <%s, %s, %s> priority %i" % (test, model, trid, priority))
@@ -138,13 +142,13 @@ class Director(object):
                 for (t,m) in PAIRs:
                     self.logger.info("Submitting dependency <%s, %s>" % (t, m))
                     # FIXME - Maybe force higher priority?
-                    depids.append(self.check_dependencies_and_push(t,m,priority,child=(str(test),str(model),trid)))
+                    depids.append(self.check_dependencies_and_push(str(t),str(m),priority,child=(str(test),str(model),trid)))
                 # Delayed-put and bury, wait for dependencies to resolve FIXME
                 self.bsd.use(TUBE_JOBS)
-                self.bsd.put(repr(Message(job=(str(test),str(model)),jobid=trid, child=child, depends=TRs+tuple(depids))), priority=priority)
+                self.bsd.put(repr(Message(job=(str(test),str(model)),jobid=trid, child=child, depends=TR_ids+tuple(depids))), priority=priority)
             else:
                 self.bsd.use(TUBE_JOBS)
-                self.bsd.put(repr(Message(job=(str(test),str(model)),jobid=trid, child=child, depends=TRs)), priority=priority)
+                self.bsd.put(repr(Message(job=(str(test),str(model)),jobid=trid, child=child, depends=TR_ids)), priority=priority)
 
     def halt(self):
         self.disconnect_from_daemon()
