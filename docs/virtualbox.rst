@@ -1,6 +1,14 @@
 
-OpenKIM Pipeline Box
+Virtual Machine
 ===================
+Hardware (CPUs, memory) have come a long way, as they tend to do.  Recently, virtualization
+support has become widely adopted enabling guest machines to run on a host with very little
+to no real overhead.  This allows us to make a VM that behaves almost exactly as a typical
+host machine.  The VM is key to allowing resources to live on a variety of hardware and in 
+varied locations.  They also ensure that the history and versions of results can be traced 
+back to a single software version that is frozen in history and can be repeated at any time
+down the road.
+
 
 Creating a development or worker box
 ------------------------------------
