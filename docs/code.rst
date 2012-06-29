@@ -67,6 +67,9 @@ Captures stdout when the test is run, currently ``pipeline.stdout``
 
 The name of the processed input file, currently ``pipeline.in.tmp``
 
+.. data:: RUNNER_TIMEOUT
+
+The maximum time allowed for a test to run
 
 Remote Access Settings
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -96,6 +99,46 @@ machine running the deamon
 .. data:: GLOBAL_DIR
 
 Directory on the remote machine in which the repository lives
+
+
+Logging
+^^^^^^^
+
+The ``config.py`` file also sets up the logging for the rest of the project, through the `logging module <http://docs.python.org/library/logging.html>`_, with logs written to ``logs/pipeline.log`` in a rotating file fashion.
+
+To use, at the top of every project, be sure to rename the logger as a child of the method::
+
+    #e.g. in models.py
+    from config import *
+    logger = logger.getChild('models')
+
+After that you can log at 5 different levels: (debug,info,warning,error,critical) e.g.::
+
+    logger.debug("This is a debug method with formating: %r", "blah")
+    logger.info("This is an info message")
+    logger.warning("This is a warning level message about the logger: %r", logger)
+
+etc.
+
+
+KIM Errors
+^^^^^^^^^^
+
+Config also creates a set of errors for error handling
+
+.. autoexception:: InvalidKIMID
+
+.. autoexception:: PipelineResultsError
+
+.. autoexception:: PipelineFileMissing
+
+.. autoexception:: PipelineTimeout
+
+.. autoexception:: PipelineDataMissing
+
+.. autoexception:: PipelineSearchError
+
+.. autoexception:: PipelineTemplateError
 
 
 
