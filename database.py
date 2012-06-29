@@ -1,6 +1,10 @@
 """ 
 Set of methods for querying the database in one form or the other
 
+As well as parsing and handling kim_codes
+
+Currently these calls mostly glob on the database, could be replaced by something more elegant later
+
 """
 from config import *
 logger = logger.getChild("database")
@@ -96,12 +100,16 @@ def get_latest_version(name,leader,num):
     return newest
 
 def get_new_version(name,leader,num):
-    """ Get the new version code for the information given """
+    """ Get the new version code for the information given, i.e. increments the
+    largest version number found by 1 """
     version_int = int(get_latest_version(name,leader,num)) + 1
     return "{:03d}".format(version_int)
 
 def format_kim_code(name,leader,num,version):
-    """ Format a kim code into its proper form """
+    """ Format a kim code into its proper form, assuming the form
+        
+        {name}__{leader}_{number}_{version}
+    """
     assert leader, "we need a leader"
     assert num, "we need a number"
     assert version, "we need a version"
@@ -115,6 +123,11 @@ def format_kim_code(name,leader,num,version):
 # some list generators 
 #--------------------------------
 
-
 def test_model_to_priority(test,model):
+    """ method to assign priorities to test model pairs, currently empty 
+
+    .. todo::
+        
+        implements priorities
+    """
     return 1
