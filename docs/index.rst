@@ -6,6 +6,9 @@
 Welcome to OpenKIM Pipeline's documentation!
 ============================================
 
+The OpenKIM Pipeline and its associated code aims to create system of virtual boxes that can be deployed remotely
+and run all of the OpenKIM Tests and Models against each other, reporting their results.
+
 Contents:
 
 .. toctree::
@@ -22,3 +25,8 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
+
+ToDos
+=====
+
+.. todolist::
