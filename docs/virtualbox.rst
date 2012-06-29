@@ -1,6 +1,14 @@
 
-OpenKIM Pipeline Box
+Virtual Machine
 ===================
+Hardware (CPUs, memory) have come a long way, as they tend to do.  Recently, virtualization
+support has become widely adopted enabling guest machines to run on a host with very little
+to no real overhead.  This allows us to make a VM that behaves almost exactly as a typical
+host machine.  The VM is key to allowing resources to live on a variety of hardware and in 
+varied locations.  They also ensure that the history and versions of results can be traced 
+back to a single software version that is frozen in history and can be repeated at any time
+down the road.
+
 
 Creating a development or worker box
 ------------------------------------
@@ -148,6 +156,32 @@ the same git repository.  These are also run when the user runs ``vagrant up`` f
 when starting the box.  These shouldn't need to be changed ever (except maybe the git url).
 
 
+Vagrant provisioning
+--------------------
+To get the box how we like it, we are using the Shell provisioner.  It is simply
+a series of bash scripts that have been tested to acquire software and install it
+from a large variety of sources.  The main scripts are ``setup`` and ``secure``
+which run the development base setup and make the base headless and secure respectively.
+
+These shell scripts are run through ``/persistent/runsetup`` and ``/persistent/runsecure``
+and are run at various times throughout the life of a pipeline box.  
+
+For their details, see the code.  They are rather simple and short.
+
+File dependencies
+^^^^^^^^^^^^^^^^^
+There are a number of files that are acquired over the network to ensure that provisioning
+occurs as planned.  Currently (as of 29/06/2012) they are:
+
+* *openkim-pipeline-setup.git* : the first thing pulled. Grabs the rest of the items
+* *openkim-api.git* : pulls a given checkout of the openkim API
+* *openkim-python.git* : the python interface to the KIM API
+* *openkim-kimcalculator-ase.git* : the ASE interface to KIM
+* *openkim-repository.git* : a bunch of sample models
+* *openkim-pipeline.git* : the pipeline runner code.  creates workers and directors
+* *ase* : the Atomic Simulation Environment, a Python atomistic simulation code
+* *lammps* : a binary executable that has been built for the virtual box 
+
 Size issues
 -----------
 The box will naturally inflate in actual disk usage on the host over time.  The swap will be
@@ -175,15 +209,3 @@ your changes and repackage the box.  Before you do so, however, you need to reco
 essentials of the box.  **There is a script provided for this** inside ``openkim-pipeline-setup/static``
 that does most of the work for you. 
 
- 
-Vagrant provisioning
---------------------
-To get the box how we like it, we are using the Shell provisioner.  It is simply
-a series of bash scripts that have been tested to acquire software and install it
-from a large variety of sources.  The main scripts are ``setup`` and ``secure``
-which run the development base setup and make the base headless and secure respectively.
-
-These shell scripts are run through ``/persistent/runsetup`` and ``/persistent/runsecure``
-and are run at various times throughout the life of a pipeline box.  
-
-For their details, see the code.  They are rather simple and short.

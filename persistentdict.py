@@ -1,8 +1,6 @@
 """
-Persistant Dictionary recipe stolen from:
+Persistant Dictionary recipe from:
     http://code.activestate.com/recipes/576642-persistent-dict-with-multiple-standard-file-format/
-
-Also, this dict behaves like a defaultdict of dicts
 
 """
 
@@ -82,6 +80,7 @@ class PersistentDict(dict):
         raise ValueError('File not in a supported format')
 
 class PersistentDefaultDict(PersistentDict, defaultdict):
+    """ Same as PersistentDict, but behaves as a defaultdict of dicts as well """
     def __init__(self,*args,**kwargs):
         super(PersistentDefaultDict,self).__init__(*args,**kwargs)
         self.default_factory = dict

@@ -1,58 +1,17 @@
 Code
 ====
 
-Below is all of the code.
+Below is some detailed descriptions of the code itself
 
-
-config.py
-----------------------
-
-see :ref:`../config.py`
-
-.. includeliteral:: ../config.py
-
-The config module holds all of the variables needed in the rest of the scripts, 
-as well as the exceptions we'll use throughout
-
-models.py
-----------------------
-.. automodule:: models
-    :members:
-
-kimapi.py
-----------------------
-.. automodule:: kimapi
-    :members:
-
-database.py
----------------------
-.. automodule:: database
-    :members:
-
-rsync_tools.py
--------------------
-.. automodule:: rsync_tools
-    :members:
-
-pipeline.py
-----------------------
-.. automodule:: pipeline
-    :members:
-
-runner.py
----------------
-.. automodule:: runner
-    :members:
-
-template.py
---------------
-.. automodule:: template
-    :members:
-
-
-persistentdict.py
-----------------------
-.. automodule:: persistentdict
-    :members:
-
+.. toctree::
+    
+    codedocs/config
+    codedocs/models
+    codedocs/pipeline
+    codedocs/runner
+    codedocs/kimapi
+    codedocs/database
+    codedocs/rsync_tools
+    codedocs/template
+    codedocs/persistentdict
 

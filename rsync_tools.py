@@ -1,46 +1,5 @@
 """
 Simple set of tools for having rsync commands go through
-
-Times we read and write
-
-
-READS
-    Director:
-        upon new model, must get model directory
-            and then be able to generate matches and know whether results exist
-            results existing can be database call
-            and the entire tests directory
-
-            MO dir                          from REAL_READ
-            whole tests dir                 from REAL_READ
-            way to check TRs                from DATABASE?
-
-        upon a new test
-            whole Models dir                from REAL_READ
-            test dir                        from REAL_READ
-            way to check test results       from DATABASE?
-        upon a model verification check
-            whole VC dir                    from REAL_READ
-            model dir                       from TEMP_READ
-
-    Worker:
-        upon a VC,MO job
-            any dependencies (folders)      from REAL_READ
-            whole VCs dir                   from REAL_READ
-            MO dir                          from TEMP_READ
-        upon a TE,MO
-            TE dir                          from REAL_READ
-            MO dir                          from REAL_READ
-            required dependency dirs        from REAL_READ
-
-WRITES
-    Director:
-        None I can think of
-    Worker:
-        upon VC,MO job completion
-            VR dir                          to TEMP_WRITE
-        upon TE,MO job completion
-            TR dir                          to REAL_WRITE
 """
 
 from config import *
@@ -70,7 +29,9 @@ LOCAL_REPO_ROOT = KIM_REPOSITORY_DIR
 #================================
 
 def rsync_command(files,read=True):
-    """ run rsync """
+    """ run rsync, syncing the files (or folders) listed in files, assumed to be paths or partial
+    paths from the LOCAL_REPO_ROOT
+    """
     with tempfile.NamedTemporaryFile() as tmp:
         tmp.file.write("\n".join(files))
         tmp.file.close()
@@ -89,9 +50,11 @@ def rsync_command(files,read=True):
             raise
 
 def rsync_read(files):
+    """ Do an rsync pull of files """
     rsync_command(files,read=True)
 
 def rsync_write(files):
+    """ Do an rsync_write of files """
     rsync_command(files,read=False)
 
 
@@ -119,6 +82,7 @@ def real_read(*args):
 
 
 def kid_to_folder(kid):
+    """ Convert a kim_code to its directory """
     #obj = models.KIMObject(kid)
     #return obj.path
     name,leader,num,version = database.parse_kim_code(kid)
