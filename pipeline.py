@@ -1,3 +1,7 @@
+"""
+Code that handles the Workers and Directors
+
+"""
 #!/usr/bin/env python
 from config import *
 import models as modelslib
@@ -14,15 +18,6 @@ import database
 import runner
 logger = logger.getChild("pipeline")
 
-"""
-Message format for the queue system:
-    "jobid":    id assigned from the director 
-    "priority": a string priority
-    "job":      (testid, modelid, testresult id)
-    "results":  the json message produced by the run
-    "errors":   the exception caught and returned as a string
-    "depends":  a list of tuples of jobs
-"""
 import simplejson
 
 PIPELINE_WAIT    = 10
@@ -45,6 +40,14 @@ KEY_CHILD    = "child"
 
 
 class Message(object):
+    """Message format for the queue system:
+        "jobid":    id assigned from the director 
+        "priority": a string priority
+        "job":      (testid, modelid, testresult id)
+        "results":  the json message produced by the run
+        "errors":   the exception caught and returned as a string
+        "depends":  a list of tuples of jobs
+    """
     def __init__(self, string=None, jobid=None, 
             priority=None, job=None, results=None, 
             errors=None, depends=None, child=None):
@@ -60,11 +63,13 @@ class Message(object):
             self.child = child
 
     def __repr__(self):
+        """ The repr of the string is a ``simplejson.dumps`` """
         return simplejson.dumps({KEY_JOBID: self.jobid, KEY_PRIORITY: self.priority,
             KEY_JOB: self.job, KEY_RESULTS: self.results, KEY_ERRORS: self.errors, 
             KEY_DEPENDS: self.depends, KEY_CHILD: self.child})
 
     def msg_from_string(self,string):
+        """ Generate a Message from a string """
         dic = simplejson.loads(string)
         self.jobid = dic[KEY_JOBID]
         self.priority = dic[KEY_PRIORITY]
@@ -76,6 +81,9 @@ class Message(object):
 
 
 class Director(object):
+    """ The Director object, knows to listen to incoming jobs, computes dependencies 
+    and passes them along to workers
+    """
     def __init__(self):
         self.ip   = GLOBAL_IP 
         self.port = GLOBAL_PORT 
@@ -86,10 +94,12 @@ class Director(object):
         self.logger = logger.getChild("director")
 
     def run(self):
+        """ connect and grab the job thread """
         self.connect_to_daemon()
         self.job_thrd  = Process(target=Director.get_updates(self))
 
     def connect_to_daemon(self):
+        """ try to connect to the daemon, or launch one if we timeout """
         self.logger.info("Connecting to beanstalkd")
         try:
             self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
@@ -113,10 +123,12 @@ class Director(object):
 
 
     def disconnect_from_daemon(self):
+        """ close and kill """
         self.bsd.close()
         self.daemon.kill()
 
     def get_tr_id(self):
+        """ Get a TR id from the TUBE_TR_IDS """
         bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
         bsd.watch(TUBE_TR_IDS)
         request = bsd.reserve()
@@ -126,6 +138,7 @@ class Director(object):
         return tr_id
 
     def get_vr_id(self):
+        """ Get a VR id from TUBE_VR_IDS """
         bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
         bsd.watch(TUBE_VR_IDS)
         request = bsd.reserve()
@@ -135,6 +148,7 @@ class Director(object):
         return vr_id
 
     def get_updates(self):
+        """ Endless loop that waits for updates """
         while 1:
             request = self.bsd.reserve()
 
@@ -165,6 +179,7 @@ class Director(object):
         return priorities[priority]
 
     def push_jobs(self, update):
+        """ Push all of the jobs that need to be done given an update """
         self.bsd.use(TUBE_JOBS)
         kimid = update['kimid']
         priority_factor = self.priority_to_number(update['priority'])
@@ -189,6 +204,7 @@ class Director(object):
                 self.check_dependencies_and_push(test,model,priority)
 
     def check_dependencies_and_push(self, test, model, priority, child=None):
+        """ Check dependencies, and push them first if necessary """
         test_dir = test.path
         # run the test in its own directory
         with test.in_dir():
@@ -218,6 +234,7 @@ class Director(object):
         self.disconnect_from_daemon()
 
 class Worker(object):
+    """ Represents a worker, knows how to do jobs he is given, create results and rsync them back """
     def __init__(self):
         self.remote_user = GLOBAL_USER 
         self.remote_addr = GLOBAL_HOST 
@@ -227,6 +244,7 @@ class Worker(object):
         self.logger = logger.getChild("worker")
 
     def run(self):
+        """ Start to listen, launch the daemon if we timeout """
         # if we can't already connect to the daemon on localhost,
         # open an ssh tunnel to the daemon and start the beanstalk
         try:
@@ -242,6 +260,7 @@ class Worker(object):
         self.get_jobs()
 
     def start_listen(self):
+        """ Start to listen and connect to the TUBE_JOBS """
         # connect to the daemon we created
         self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
 
@@ -250,6 +269,7 @@ class Worker(object):
         self.bsd.ignore("default")
         
     def get_jobs(self):
+        """ Endless loop that awaits jobs to run """
         while 1:
             self.logger.info("Waiting for jobs...")
             job = self.bsd.reserve()
@@ -295,6 +315,7 @@ class Worker(object):
 
 
 class Site(object):
+    """ False stand in for the website, pushes TR ids for us and can update models or tests """
     def __init__(self):
         self.ip   = GLOBAL_IP 
         self.port = GLOBAL_PORT 
