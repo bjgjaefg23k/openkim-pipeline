@@ -160,6 +160,20 @@ and are run at various times throughout the life of a pipeline box.
 
 For their details, see the code.  They are rather simple and short.
 
+File dependencies
+^^^^^^^^^^^^^^^^^
+There are a number of files that are acquired over the network to ensure that provisioning
+occurs as planned.  Currently (as of 29/06/2012) they are:
+
+* *openkim-pipeline-setup.git* : the first thing pulled. Grabs the rest of the items
+* *openkim-api.git* : pulls a given checkout of the openkim API
+* *openkim-python.git* : the python interface to the KIM API
+* *openkim-kimcalculator-ase.git* : the ASE interface to KIM
+* *openkim-repository.git* : a bunch of sample models
+* *openkim-pipeline.git* : the pipeline runner code.  creates workers and directors
+* *ase* : the Atomic Simulation Environment, a Python atomistic simulation code
+* *lammps* : a binary executable that has been built for the virtual box 
+
 Size issues
 -----------
 The box will naturally inflate in actual disk usage on the host over time.  The swap will be
