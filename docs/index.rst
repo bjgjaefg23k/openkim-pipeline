@@ -14,8 +14,9 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   virtualbox
    pipeline
+   network
+   virtualbox
    code
 
 Indices and tables
