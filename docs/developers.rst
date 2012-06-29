@@ -79,6 +79,7 @@ If you would like to entirely reinitialize the box run::
 
 This will make it a fresh start so you need to begin again from :ref:`initialsetup`.
 
+.. _testdev:
 
 Test development
 ----------------

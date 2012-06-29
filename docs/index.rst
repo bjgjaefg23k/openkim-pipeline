@@ -17,6 +17,36 @@ that allow us to abstract locations and hardware to provide standard computation
 that have very little overhead to instantiate.  The key ingredients to the project are listed
 below.
 
+FAQS
+----
+
+ * How do I write tests that comply with the pipeline?
+    Look in the `Test Development <developers.html#test-development>`_ section of :doc:`developers`
+
+ * How do I download a virtual box?
+    Look in the `Initial Setup <developers.html#initial-setup>`_ section of :doc:`developers`
+
+ * How do I create a worker?
+    Look in the `Initial Setup <developers.html#worker-director-launch>`_ section of :doc:`developers`, again
+
+ * How do the virtual boxes all stay synced?
+    See :doc:`virtualbox`
+
+ * What sort of network connections need to exist for this all to work?
+    See :doc:`network`
+
+ * How does the pipeline work?
+    See :doc:`pipeline`
+
+ * How do I play around with the database on my machine?
+    See :doc:`orm`
+    
+ * How did you get all of this to work?
+    Good question! You could read all the gory details in :doc:`code`
+
+Table of Contents
+=================
+
 .. toctree::
    :maxdepth: 3
 
@@ -24,6 +54,7 @@ below.
    network
    virtualbox
    developers
+   orm
    code
 
 Indices and tables
