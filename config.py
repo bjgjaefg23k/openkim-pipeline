@@ -1,5 +1,18 @@
 """
-Holds all of the GLOBAL configuration variables
+config.py holds all of the constants that are used throughout the pipeline scripts.
+
+Mostly folders and a preliminary list of all of the available tests and models, as well
+as the exceptions that will be used throughtout.
+
+By convention the constants are all in UPPER_CASE_WITH_UNDERSCORES,
+and this module is imported in star from at the top of all of the scripts::
+
+    from config import *
+
+doing so, we'll have access to all of the constants as well as the logger which ought to be
+made a child of eary::
+
+    logger = logger.getChild("<child name>")
 
 """
 
@@ -13,14 +26,6 @@ import os
 KIM_DIR = os.environ["KIM_DIR"] #the bash shell environ
 KIM_API_DIR = os.environ.get("KIM_API_DIR",
         os.path.join(KIM_DIR,"KIM_API"))
-#KIM_MODELS_DIR = os.environ.get("KIM_MODELS_DIR",
-#        os.path.join(KIM_DIR,"MODELs"))
-#KIM_MODEL_DRIVERS_DIR = os.environ.get("KIM_MODEL_DRIVERS_DIR",
-#        os.path.join(KIM_DIR,"MODEL_DRIVERs"))
-#KIM_TESTS_DIR = os.environ.get("KIM_TESTS_DIR",
-#        os.path.join(KIM_DIR,"TESTs"))
-#KIM_TEST_DRIVERS_DIR = os.environ.get("KIM_TEST_DRIVERS_DIR",
-#        os.path.join(KIM_DIR,"TEST_DRIVERs"))
 
 #get the repository dir from the symlink
 KIM_REPOSITORY_DIR = os.environ["KIM_REPOSITORY_DIR"]
@@ -68,15 +73,6 @@ GLOBAL_DIR  = "/home/sethnagroup/vagrant/openkim-repository/"
 
 
 #============================
-# Stores
-#============================
-
-KIMID_STORE = os.path.join(KIM_PIPELINE_DIR,"kimidstore.json")
-TEST_RESULT_STORE = os.path.join(KIM_PIPELINE_DIR,"testresultstore.json")
-MATCH_STORE = os.path.join(KIM_PIPELINE_DIR,"matchstore.json")
-NAME_STORE = os.path.join(KIM_PIPELINE_DIR,"namestore.json")
-
-#============================
 # Runner Internals
 #============================
 
@@ -119,10 +115,10 @@ class InvalidKIMID(Exception):
     """ Used for invalid KIM IDS """ 
 
 class PipelineResultsError(Exception):
-    """ Used when the results are not of an understood type """
+    """ Used when the results are not of an understood type, i.e. not a valid JSON string """
 
 class KIMRuntimeError(Exception):
-    """ General purpose KIM Api Error """
+    """ General purpose KIM Api Error, used if an invocation of the KIM_API doesn't behave """
 
 class PipelineFileMissing(Exception):
     """ If a file we rely on is missing """
@@ -134,7 +130,7 @@ class PipelineDataMissing(Exception):
     """ If requested data doesn't exist """
 
 class PipelineSearchError(Exception):
-    """ If a search turns up bad """
+    """ If a search turns up bad, e.g. someone asks for a kim_code that we can't match against"""
 
 class PipelineTemplateError(Exception):
-    """ some kind of templating format is wrong """
+    """ some kind of templating format is wrong, doesn't conform to our templating directives """
