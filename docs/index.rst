@@ -12,7 +12,7 @@ and run all of the OpenKIM Tests and Models against each other, reporting their 
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
    pipeline
    network

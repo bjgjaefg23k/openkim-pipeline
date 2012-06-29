@@ -115,10 +115,10 @@ class InvalidKIMID(Exception):
     """ Used for invalid KIM IDS """ 
 
 class PipelineResultsError(Exception):
-    """ Used when the results are not of an understood type """
+    """ Used when the results are not of an understood type, i.e. not a valid JSON string """
 
 class KIMRuntimeError(Exception):
-    """ General purpose KIM Api Error """
+    """ General purpose KIM Api Error, used if an invocation of the KIM_API doesn't behave """
 
 class PipelineFileMissing(Exception):
     """ If a file we rely on is missing """
@@ -130,7 +130,7 @@ class PipelineDataMissing(Exception):
     """ If requested data doesn't exist """
 
 class PipelineSearchError(Exception):
-    """ If a search turns up bad """
+    """ If a search turns up bad, e.g. someone asks for a kim_code that we can't match against"""
 
 class PipelineTemplateError(Exception):
-    """ some kind of templating format is wrong """
+    """ some kind of templating format is wrong, doesn't conform to our templating directives """
