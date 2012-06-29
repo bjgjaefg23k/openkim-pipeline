@@ -23,8 +23,8 @@ below.
    pipeline
    network
    virtualbox
-   code
    developers
+   code
 
 Indices and tables
 ==================
