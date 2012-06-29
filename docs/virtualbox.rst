@@ -148,6 +148,18 @@ the same git repository.  These are also run when the user runs ``vagrant up`` f
 when starting the box.  These shouldn't need to be changed ever (except maybe the git url).
 
 
+Vagrant provisioning
+--------------------
+To get the box how we like it, we are using the Shell provisioner.  It is simply
+a series of bash scripts that have been tested to acquire software and install it
+from a large variety of sources.  The main scripts are ``setup`` and ``secure``
+which run the development base setup and make the base headless and secure respectively.
+
+These shell scripts are run through ``/persistent/runsetup`` and ``/persistent/runsecure``
+and are run at various times throughout the life of a pipeline box.  
+
+For their details, see the code.  They are rather simple and short.
+
 Size issues
 -----------
 The box will naturally inflate in actual disk usage on the host over time.  The swap will be
@@ -175,15 +187,3 @@ your changes and repackage the box.  Before you do so, however, you need to reco
 essentials of the box.  **There is a script provided for this** inside ``openkim-pipeline-setup/static``
 that does most of the work for you. 
 
- 
-Vagrant provisioning
---------------------
-To get the box how we like it, we are using the Shell provisioner.  It is simply
-a series of bash scripts that have been tested to acquire software and install it
-from a large variety of sources.  The main scripts are ``setup`` and ``secure``
-which run the development base setup and make the base headless and secure respectively.
-
-These shell scripts are run through ``/persistent/runsetup`` and ``/persistent/runsecure``
-and are run at various times throughout the life of a pipeline box.  
-
-For their details, see the code.  They are rather simple and short.
