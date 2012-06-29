@@ -1,11 +1,25 @@
-""" A pure python object wrapper for the pipeline stuff
+""" 
+.. module:: models
+    :synopsis: Holds the python object models for kim objects
 
-What we would like is a nice way to create an manipulate the items in the database
+.. moduleauthor:: Alex Alemi <alexalemi@gmail.com>
 
-Things we need to be able to do:
-    * create test results
-    * look up test results for test model pairs
-    * look up current versions of kim objects
+A pure python object wrapper for the pipeline stuff
+
+Has a base ``KIMObject`` class and
+
+ * Test
+ * Model
+ * TestResult
+ * TestDriver
+ * ModelDriver
+ * Property
+ * ReferenceDatum
+ * VerificationCheck
+ * VerificationResult
+ * VirtualMachine
+
+classes, all of which inherit from ``KIMObject`` and aim to know how to handle themselves.
 
 """
 
@@ -29,21 +43,50 @@ import kimapi
 
 class KIMObject(object):
     """ The base KIMObject that all things inherit from
-    
-    KIMObjects live in memory, and have the following things:
-        * path - directory they are stored
-        * kim_code - their kim code
-        * kim_code_leader - two letter prefix
-        * kim_code_number - their id number (12 digits)
-        * kim_code_version - 3 digit version number
-        * info - some metadata stored in a json file
+
+    Attributes:
+        required_leader
+            the required two letter leader for all kim codes, meant to be overridden
+            by subclassers
+        makeable 
+            marks the type of kimobject as makeable or not, to be overriden by subclassers
+        path
+            the full path to the directory associated with the kim object
+        kim_code
+            the full kim_code
+        kim_code_name
+            the name at the front of the kim_code or None
+        kim_code_leader
+            the two digit prefix
+        kim_code_number
+            the 12 digit number as string
+        kim_code_version 
+            the version number as string
+        info 
+            a persistent dict for the metadata.json file for this object
+        parent_dir 
+            the parent directory of the object, i.e. the ``te`` directory for a test object
+
     """
+    #the required leader to this classes kim_codes
     required_leader = None
+    #whether or not objects of this type are makeable
     makeable = False
 
     def __init__(self,kim_code,search=True):
         """ Initialize a KIMObject given the kim_code, where partial kim codes are promoted if possible,
             if search is False, then don't look for existing ones 
+
+            Args:
+                kim_code (str)
+                    A full or partial kim_code, i.e. one like:
+                     * "Full_Name_of_thing__TE_000000000000_000"
+                     * "TE_000000000000_000"
+                     * "TE_000000000000"
+                     * "Full_Name_of_thing__TE_000000000000"
+                search (bool)
+                    Whether or not to search the directory structure for the fullest match,
+                    false is useful when creating new KIMObjects to avoid hitting a PipelineSearchError
         """
         logger.debug("Initializing a new KIMObject: %r", kim_code)
         name, leader, num, version = database.parse_kim_code(kim_code)
@@ -88,15 +131,19 @@ class KIMObject(object):
         self.info = PersistentDict(os.path.join(self.path,METADATA_INFO_FILE))
 
     def __str__(self):
+        """ the string representation is the full kim_code """
         return self.kim_code
 
     def __repr__(self):
+        """ The repr is of the form <KIMObject(kim_code)> """
         return "<{}({})>".format(self.__class__.__name__, self.kim_code)
 
     def __hash__(self):
+        """ The hash is the full kim_code """
         return hash(self.kim_code)
 
     def __eq__(self,other):
+        """ Two KIMObjects are equivalent if their full kim_code is equivalent """
         if other:
             return  str(self) == str(other)
         return False
@@ -140,7 +187,16 @@ class KIMObject(object):
 
     @contextmanager
     def in_dir(self):
-        """ a context manager to do things inside this objects path """
+        """ a context manager to do things inside this objects path
+            Usage::
+
+                foo = KIMObject(some_code)
+                with foo.in_dir():
+                    # < code block >
+
+            before executing the code block, cd into the path of the kim object
+            execute the code and then come back to the directory you were at
+        """
         cwd = os.getcwd()
         os.chdir(self.path)
         logger.debug("moved to dir: {}".format(self.path))
@@ -148,7 +204,7 @@ class KIMObject(object):
         os.chdir(cwd)
     
     def make(self):
-        """ Try to build the thing """
+        """ Try to build the thing, by executing ``make`` in its directory """
         if self.makeable:
             with self.in_dir():
                 logger.debug("Attempting to make %r: %r", self.__class__.__name__, self.kim_code)
@@ -173,7 +229,12 @@ class KIMObject(object):
         return ( cls(x) for x in kim_codes )
 
     def delete(self):
-        """ Delete the folder for this object """
+        """ Delete the folder for this object
+
+            .. note::
+
+                Not to be used lightly!
+        """
         logger.warning("REMOVING the kim object %r", self)
         shutil.rmtree(self.path)
 
@@ -189,23 +250,35 @@ class KIMObject(object):
 class Test(KIMObject):
     """ A kim test, it is a KIMObject, plus
     
-        * executable - a path to its executable
-        * in_file - it's infile
-        * out_file - out_file dictionary
-        * test_driver - which test driver it relies on
+        Settings:
+            required_leader = "TE"
+            makeable = True
+
+        Attributes:
+            executable
+                a path to its executable
+            outfile_path
+                path to its INPUT_FILE
+            infile_path
+                path to its OUTPUT_FILE
+            out_dict
+                a dictionary of its output file, mapping strings to
+                Property objects
     """
     required_leader = "TE"
     makeable = True
 
-    def __init__(self,kim_code):
+    def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Test, with a kim_code """
-        super(Test,self).__init__(kim_code)
+        super(Test,self).__init__(kim_code,*args,**kwargs)
         self.executable = os.path.join(self.path,self.kim_code)
         self.outfile_path = os.path.join(self.path,OUTPUT_FILE)
         self.infile_path = os.path.join(self.path,INPUT_FILE)
         self.out_dict = self._outfile_to_dict()
 
     def __call__(self,*args,**kwargs):
+        """ Calling a test object executes its executable in its own directory
+            args and kwargs are passed to ``subprocess.check_call`` """
         with self.in_dir():
             subprocess.check_call(self.executable,*args,**kwargs)
 
@@ -216,12 +289,12 @@ class Test(KIMObject):
 
     @property
     def infile(self):
-        """ return a file object for the in file """
+        """ return a file object for the INPUT_FILE """
         return open(self.infile_path)
 
     @property
     def outfile(self):
-        """ return a file object for the out file """
+        """ return a file object for the OUTPUT_FILE """
         return open(self.outfile_path)
 
     def dependency_check(self):
@@ -234,7 +307,7 @@ class Test(KIMObject):
 
     @property
     def dependencies(self):
-        """ Return a list of kim objects that are its dependencies """
+        """ Return a generator of kim objects that are its dependencies """
         ready, goods, bads = self.dependency_check()
         if goods:
             for kim_code in goods:
@@ -246,12 +319,12 @@ class Test(KIMObject):
 
     @property
     def test_drivers(self):
-        """ Return a list of test drivers this guy relies on """
+        """ Return a generator of test drivers this guy relies on """
         return ( depend for depend in self.dependencies if depend.required_leader == "TD")
 
     @property
     def results(self):
-        """ Give a list of all of the results of this test """
+        """ Return a generator of all of the results of this test """
         return ( result for result in TestResult.all() if result.test == self )
 
     def result_with_model(self, model):
@@ -287,17 +360,24 @@ class Test(KIMObject):
 #-------------------------------------
 
 class Model(KIMObject):
-    """ A KIM Model """
+    """ A KIM Model, KIMObject with
+        
+        Settings:
+            required_leader = "MO"
+            makeable = True
+    """
     required_leader = "MO"
     makeable = True
 
-    def __init__(self,kim_code):
+    def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Model, with a kim_code """
-        super(Model,self).__init__(kim_code)
+        super(Model,self).__init__(kim_code,*args,**kwargs)
 
     @property
     def model_driver(self):
-        """ Return the model driver if there is one, otherwise None """
+        """ Return the model driver if there is one, otherwise None,
+            currently, this tries to parse the kim file for the MODEL_DRIVER_NAME line
+        """
         try:
             return ModelDriver(next( line.split(":=")[1].strip() for line in self.makefile if line.startswith("MODEL_DRIVER_NAME") ))
         except StopIteration:
@@ -305,12 +385,12 @@ class Model(KIMObject):
 
     @property
     def results(self):
-        """ Get all of the results """
+        """ Get a generator of all of the results for this model """
         return ( result for result in TestResult.all() if result.model == self )
 
     @property
     def tests(self):
-        """ Return a generator of the tests that match this model """
+        """ Return a generator of the valid matching tests that match this model """
         return ( test for test in Test.all() if kimapi.valid_match(test,self) )
 
 
@@ -319,14 +399,51 @@ class Model(KIMObject):
 #-------------------------------------
 
 class TestResult(KIMObject):
-    """ A test result """
+    """ A test result, KIMObject with
+        
+        Settings:
+            required_leader = "TR"
+            makeable = False
+
+        Attributes:
+            results
+                A persistent dict for the results file in the objects directory
+            test
+                The test that generated the test result from self.results["_testname"] or None
+            model
+                The model for the test results or None
+
+
+        .. note::
+            TestResult has a little magic going on, if you try to request an attribute that it lacks
+            it will forward the request to its own self.results result dictionary, this allows you to
+            try to access its elements directly, i.e.::
+                
+                tr = TestResult("TR_000000000000_000")
+                tr["_testname"] == tr.results["_testname"]
+    """
     required_leader = "TR"
     makeable = False
 
     def __init__(self, kim_code = None, pair = None, results = None, search=True):
-        """ Initialize the TestResult, with a kim_code,
-                or a (test,model) pair,
-                optionally, take a JSON string and store it """
+        """ Initialize the TestResult.  You can either pass a kim_code as with other KIMObjects, or
+            a pair = (test,model) being a test and model object tuple, and try to look up the corresponding match
+
+            the results parameter, if passed will accept either a dictionary or a JSON decodable string, and the resuls
+            stored at the corresponding TestResult will be modified.
+
+            So, if you wanted to create a new TestResult with code "TR_012345678901_000"
+            with certain results you would::
+
+                results = {"one": 1, "two": 2}
+                tr = TestResult("TR_012345678901_000",results=results,search=False)
+
+            setting search to false is required if a test result without the passed kim_code doesn't yet exist
+
+            To find a test result for the test "TE_000000000000_000" and model "MO_000000000000_000" you would::
+
+                tr = TestResult(pair=(Test("TE_000000000000_000"), Model("MO_000000000000_000")))              
+        """
 
         if pair and kim_code:
             raise SyntaxWarning, "TestResult should have a pair, or a kim_code or neither, not both"
@@ -394,17 +511,17 @@ class TestResult(KIMObject):
 
     @property
     def files(self):
-        """ A list of all of the files in the test_result """
+        """ A list of all of the files in the test_result from the @FILE directive """
         return map(os.path.basename,template.files_from_results(self.results))
     
     @property
     def full_file_paths(self):
-        """ Files with a full path """
+        """ generator of files from the @FILE directive with a full path """
         return ( os.path.join(self.path, filename) for filename in self.files )
 
     @property
     def file_handlers(self):
-        """ return file handlers for all of the files """
+        """ return a generator of file handlers for all of the files """
         return ( open(filename) for filename in self.full_file_paths )
 
     def _is_property(self,key):
@@ -413,17 +530,17 @@ class TestResult(KIMObject):
 
     @property
     def property_codes(self):
-        """ Return a list of all property codes computed in this test result """
+        """ Return a generator of all property kim_codes computed in this test result """
         return ( x for x in filter(self._is_property, self.results.keys() ) )    
 
     @property
     def predictions(self):
-        """ Return a dictionary with kim Property objects pointing to the results """
+        """ Return a dictionary with kim Property objects pointing to the resulting data """
         return { Property(key): value for key,value in self.results.iteritems() if key in self.property_codes }
 
     @property
     def properties(self):
-        """ Return a list of properties """
+        """ Return a generator of properties in this result """
         return ( Property(x) for x in self.property_codes )
 
     def __getitem__(self,key):
@@ -431,12 +548,15 @@ class TestResult(KIMObject):
         return self.results.__getitem__(key)
 
     def __getattr__(self,attr):
-        """ if we didn't find the attr, look in self.results """
+        """ if we didn't find the attr, look in self.results for the attr,
+            
+            This magic allows the result object to behave like its result dictionary magically
+        """
         return self.results.__getattribute__(attr)
 
     @classmethod
     def test_result_exists(cls,test,model):
-        """ Check to see if the test result exists """
+        """ Check to see if the test result exists for a (test,model) pair """
         try:
             cls(pair=(test,model))
         except PipelineDataMissing:
@@ -445,7 +565,8 @@ class TestResult(KIMObject):
 
     @classmethod
     def duplicates(cls):
-        """ Return a list of all of the duplicated results """
+        """ Return a generator of all of the duplicated results, 
+        duplication meaning the exact same (test,model) pairs """
         pairs = set()
         for result in cls.all():
             pair = (result.test, result.model)
@@ -455,32 +576,39 @@ class TestResult(KIMObject):
                 pairs.add(pair)
 
 
-
-
-
-
-
 #------------------------------------------
 # TestDriver
 #------------------------------------------
 
 class TestDriver(KIMObject):
-    """ A test driver """
+    """ A test driver, a KIMObject with,
+    
+        Settings:
+            required_leader = "TD"
+            makeable = True
+
+        Attributes:
+            executable
+                the executable for the TestDriver
+    """
     required_leader = "TD"
     makeable = True
 
-    def __init__(self,kim_code):
+    def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the TestDriver, with a kim_code """
-        super(TestDriver,self).__init__(kim_code)
+        super(TestDriver,self).__init__(kim_code,*args,**kwargs)
         self.executable = os.path.join(self.path, self.kim_code)
 
     def __call__(self,*args,**kwargs):
+        """ Make the TestDriver callable, executing its executable in its own directory,
+            passing args and kwargs to ``subprocess.check_call``
+        """
         with self.in_dir():
             subprocess.check_call(self.executable,*args,**kwargs)
 
     @property
     def tests(self):
-        """ Return a list of tests """
+        """ Return a generator of all tests using this TestDriver """
         return ( test for test in Test.all() if self in test.dependencies )
 
 
@@ -489,17 +617,22 @@ class TestDriver(KIMObject):
 #------------------------------------------
 
 class ModelDriver(KIMObject):
-    """ A model driver """
+    """ A model driver, a KIMObject with,
+    
+        Settings:
+            required_leader = "MD"
+            makeable = True
+    """
     required_leader = "MD"
     makeable = True
 
-    def __init__(self,kim_code):
+    def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the ModelDriver, with a kim_code """
-        super(ModelDriver,self).__init__(kim_code)
+        super(ModelDriver,self).__init__(kim_code,*args,**kwargs)
 
     @property
     def models(self):
-        """ Return all of the models using this model driver """
+        """ Return a generator of all of the models using this model driver """
         return ( model for model in Model.all() if self==model.model_driver )
 
 
@@ -508,22 +641,31 @@ class ModelDriver(KIMObject):
 #------------------------------------------
 
 class Property(KIMObject):
-    """ A kim property """
+    """ A kim property, a KIMObject with,
+    
+        Settings:
+            required_leader = "PR"
+            makeable = False
+    """
     required_leader = "PR"
     makeable = False
 
-    def __init__(self,kim_code):
+    def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Property, with a kim_code """
-        super(Property,self).__init__(kim_code)
+        super(Property,self).__init__(kim_code,*args,**kwargs)
 
     @property
     def results(self):
-        """ Return a list of results that compute this property """
+        """ Return a generator of results that compute this property """
         return ( tr for tr in TestResult.all() if self in tr.properties )
 
     @property
     def data(self):
-        """ Return the data in this thing """
+        """ Return the data in this thing
+            
+            .. todo::
+                Empty Property data!!
+        """
         return None
 
     @property
@@ -543,16 +685,27 @@ class Property(KIMObject):
 #------------------------------------------
 
 class VerificationCheck(KIMObject):
-    """ A verification check """
+    """ A verification check, a KIMObject with:
+        
+        Settings:
+            required_leader = "VC"
+            makeable = True
+
+        Attributes:
+            executable
+                The executable for the VC
+    """
     required_leader = "VC"
     makeable = True
 
-    def __init__(self,kim_code):
+    def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the VerificationCheck, with a kim_code """
-        super(VerificationCheck,self).__init__(kim_code)
+        super(VerificationCheck,self).__init__(kim_code,*args,**kwargs)
         self.executable = os.path.join(self.path,self.kim_code)
 
     def __call__(self,*args,**kwargs):
+        """ Make the VC callable, executing in its own directory,
+            args and kwargs passed to ``subprocess.check_call`` """
         with self.in_dir():
             subprocess.check_call(self.executable,*args,**kwargs)
 
@@ -561,13 +714,18 @@ class VerificationCheck(KIMObject):
 #------------------------------------------
 
 class VerificationResult(KIMObject):
-    """ A verification result """
+    """ A verification result, a KIMObject with:
+    
+        Settings:
+            required_leader = "VR"
+            makeable = False
+    """
     required_leader = "VR"
     makeable = False
 
-    def __init__(self,kim_code):
+    def __init__(self,kim_code,*args,**kwargs):
         """Initialize the VerificationResult, with a kim_code """
-        super(VerificationResult,self).__init__(kim_code)
+        super(VerificationResult,self).__init__(kim_code,*args,**kwargs)
 
 
 #------------------------------------------
@@ -575,38 +733,50 @@ class VerificationResult(KIMObject):
 #------------------------------------------
 
 class ReferenceDatum(KIMObject):
-    """ a piece of reference data """
+    """ a piece of reference data, a KIMObject with:
+        
+        Settings:
+            required_leader = "RD"
+            makeable = False
+
+        .. todo::
+
+            Not really implemented!
+
+    """
     required_leader = "RD"
     makeable = False
 
-    def __init__(self,kim_code):
+    def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the ReferenceDatum, with a kim_code """
-        super(ReferenceDatum,self).__init__(kim_code)
+        super(ReferenceDatum,self).__init__(kim_code,*args,**kwargs)
 
 #------------------------------------------
 # VirtualMachine
 #------------------------------------------
 
 class VirtualMachine(KIMObject):
-    """ for a virtual machine """
+    """ for a virtual machine, a KIMObject with:
+        
+        Settings:
+            required_leader = "VM"
+            makeable = False
+    """
     required_leader = "VM"
     makeable = False
 
-    def __init__(self,kim_code):
+    def __init__(self,kim_code,*args,**kwargs):
         """ Initialize a VirtualMachine with a kim_code """
-        super(VirtualMachine,self).__init__(kim_code)
+        super(VirtualMachine,self).__init__(kim_code,*args,**kwargs)
 
 
 # two letter codes to the associated class
 code_to_model = {"TE": Test, "MO": Model, "TD": TestDriver, "TR": TestResult , "VC": VerificationCheck, "VR": VerificationResult, "RD": ReferenceDatum, "PR": Property , "VM": VirtualMachine, "MD": ModelDriver }
 
 def kim_obj(kim_code):
-    """ Just given a kim_code try to make the right object """
+    """ Just given a kim_code try to make the right object, i.e. try to make a TE code a Test, etc. """
     name,leader,num,version = database.parse_kim_code(kim_code)
     cls = code_to_model.get(leader, KIMObject)
     return cls(kim_code)
 
 
-
-if __name__ == "__main__":
-    result = TestResult("TR_127663948908_000")

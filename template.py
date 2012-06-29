@@ -1,5 +1,20 @@
 """
 Holds the templating logic for the kim preprocessor
+
+The simple markup language as the following directives:
+
+    * @FILE[filename] - if used in the output of a test, tells the pipeline
+        to move the corresponding file
+    * @MODELNAME - replaced by the pipeline with the running model's kimid, for use
+        in the pipeline.in file so the test can execute the appropriate model
+    * @PATH[kim_code] - for use in pipeline.in gives the path of the corresponding kim_code;
+        the executable if its a test or a test driver, and the folder otherwise
+    * @DATA[RD_2342...] - gives the data contained in the corresponding reference datum, the
+        version is optional, if omitted get the latest version
+    * @DATA[TR_232...][PR_2342...] - get the data stored for the PR code given in the test result (TR) code given
+        both kim_codes can lack trailing versions, if so, get the latest
+    * @DATA[TE_234...][MO_234...][PR_234...] - Get the data for the PR code given as a result of the specified TE, MO pair
+        if it exists, if not, run it. version numbers can be ommited.
 """
 import re, shutil, os
 from config import *
@@ -31,7 +46,7 @@ RE_TEST     = re.compile("(@TESTNAME)")
 
 def files_from_results(results):
     """ Given a dictionary of results,
-    return the filenames for any files contained in the results """
+    return the filenames for any files contained in the results, from the @FILE directive """
     logger.debug("parsing results for file directives")
     testname = results["_testname"]
     test = models.Test(testname)
@@ -54,7 +69,7 @@ def get_file(string,testdir):
 def data_path_from_match(match):
     """ Given a match, try to find where it exists
     
-    RETRUNS:
+    outputs:
         exists - bool
         path - either a kim_code, or a pair that must be run
     """
@@ -86,6 +101,7 @@ def data_path_from_match(match):
     raise PipelineTemplateError, "didn't understand the in file"
         
 def data_from_match(match):
+    """ Get the data from a re match """
     groups = match.groups()
     logger.debug("looking at groups %r",groups)
     try:
@@ -160,6 +176,7 @@ def dependency_processor(line):
         yield data_path_from_match(match)
 
 def dependency_path_processor(line):
+    """ get the paths of all PATH directives for dependency checking """
     matches = re.finditer(RE_PATH,line)
     for match in matches:
         yield (True, path_kim_obj_from_match(match))
@@ -175,7 +192,7 @@ def testname_processor(line,model,test):
 processors = [testname_processor, path_processor, data_processor, modelname_processor]
 
 def process_line(line,*args):
-    """ Takes a string for the line and processes it """
+    """ Takes a string for the line and processes it, appling all processors """
     for processor in processors:
         line = processor(line,*args)
         #logger.debug("current line is: %r",line)
@@ -228,7 +245,7 @@ def dependency_check(inp):
 
 
 def process(inp, model, test):
-    """ takes in a file like object and retuns a processed file like object """
+    """ takes in a file like object and retuns a processed file like object, writing a copy to TEMP_INPUT_FILE """
     logger.info("attempting to process %r for (%r,%r)",inp,model,test)
     with open(TEMP_INPUT_FILE,'w') as out:
         for line in inp:
