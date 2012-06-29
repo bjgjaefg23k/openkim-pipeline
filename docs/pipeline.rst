@@ -1,44 +1,85 @@
 OpenKIM Pipeline
 ===================
 
-Introduction
+Overview
 ------------
-The OpenKIM pipeline is the backbone of the computational resources that the KIM 
-project will use.  The goal is to provide a reliable provenance for the computational
-results that are central to the goals of KIM.  The pipeline will run verification checks
-and tests for every model in order to best compare and understand the uses of 
-interatomic models.  The results of these tests must be reproducable and their origins
-trusted so that it may become a resource to the scientific community.  
-
-In order to do so, we have designed a system that relies on many standard software packages
-that allow us to abstract locations and hardware to provide standard computational resources
-that have very little overhead to instantiate.  The key ingredients to the project are listed
-below.
-
-Virtual Machine
-^^^^^^^^^^^^^^^
-Hardware (CPUs, memory) have come a long way, as they tend to do.  Recently, virtualization
-support has become widely adopted enabling guest machines to run on a host with very little
-to no real overhead.  This allows us to make a VM that behaves almost exactly as a typical
-host machine.  The VM is key to allowing resources to live on a variety of hardware and in 
-varied locations.  They also ensure that the history and versions of results can be traced 
-back to a single software version that is frozen in history and can be repeated at any time
-down the road.
-
-Network tools
-^^^^^^^^^^^^^
-We rely on a large set of standard networking tools to allow the resources to live in the
-nethers of the internet.  SSH tunnels are employed to limit host dependencies on non-native
-port access - ssh is standard on any \*nix system and is highly restricting is configured correctly.  
-SFTP allows the transfer of these secure resources via authenticated download - the users
-of this system can be greatly restricted for security purposes.  RSYNC is used in the system for
-file transfer as well as it transfers only the changes of files to reduce network overhead - this 
-is tunneled through ssh for security).  BEANSTALKD is the queue we have chosen for its simplicity
-and implementation in C, Python, and Ruby.  
-
-Programming Languages
-^^^^^^^^^^^^^^^^^^^^^
-We have chosen the Python programming language for its large standard library, ease of development,
-large acceptance and community support, and ease of install.  
+The pipeline code is at the heart of the director or worker.  It is a set of Python
+modules which can rsync files, trace through the directory structure, gather and send
+jobs, run jobs, and return the results.  To do this, let's look at the modules 
+individually.
 
 
+Pipeline
+-----------
+This is the file that is actually run when launching a director or worker.  You can start it
+with either::
+
+    python pipeline.py director
+
+or::
+
+    python pipeline.py worker
+
+and it will begin the process of connecting and running jobs. The overall flow of the pipeline
+worker is:
+
+1. Create an ssh tunnel, port forwarding the beanstalkd port to the site machine
+2. Connect to the beanstalkd
+3. Wait for the jobs to roll in!
+4. When we get one, rsync the appropriate files as listed in the message
+5. Run the test, model pair
+6. Rsync the results back to the repo
+7. Repeat from 3.
+
+The work flow of the director is slightly different
+
+1. Create an ssh tunnel with the port forward
+2. Connect to beanstalkd.
+3. Listen for updated tests/models from the website
+4. Resolve the dependencies for the udpate.  If these exist, put them on the queue
+5. Put the original job on the queue with a list of required files to grab
+6. Wait for results back.
+7. Repeat from 3.
+
+These are wrapped in an infinite and run as a daemon process at init.d after networking comes up.
+
+
+rsync Tools
+--------------
+These are a series of wrappers to the ``rsync`` linux command which copies files across
+a network.  
+
+.. todo:: Set this up for port forwarding 
+
+
+Runner
+---------
+This is where the magic happens.  Finally, a test is run using the ``pipeline.in.tmp`` stdin
+file.  Errors are caught as necessary, otherwise the last line is grabbed as the json string
+of output.
+
+
+Template
+---------
+This the Python module which handles dependencies and templating for the pipeline.in file.  
+Most tests are not going to be as simple as simply running.  For example, a test will always
+at least need to know what the modelname is that it should run.  Therefore, we have created a simple
+templating engine that accepts some basic inputs.  These should be placed in a file called ``pipeline.in``
+and can contain the following::
+
+    @PATH[KIM_ID] -- returns the path to a kimid object in the repository
+    @FILE[./relative/path/to/file] -- will ensure that this file is copied back as a result
+    @MODELNAME -- fills in the modelname
+    @DATA[TR_ID][TEST_ID][MODEL_ID] -- will return previously computed data
+
+Before a test is submitted by the director, the ``@DATA`` directive is used to find
+dependencies of this test.  These are then resolved if they don't exist.  The other directives are
+filled in and the file passed to the test executable as a pipe (since all languages support stdin).
+
+
+
+Models
+------
+This is a Python abstraction of the Tests, Models, TestDrivers, ModelDrivers, TestResults... etc.  
+They have most of the methods that one would feel are natural to ask of the object.  For example,
+a test knows its testdriver, which results it produced and key metadata about itself.  
