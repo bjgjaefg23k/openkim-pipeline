@@ -24,6 +24,7 @@ below.
    network
    virtualbox
    code
+   developers
 
 Indices and tables
 ==================

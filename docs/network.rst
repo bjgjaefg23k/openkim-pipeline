@@ -30,4 +30,13 @@ These sites are then port forwarded to a Trusted machine via another set of SSH 
 for the worker side of things.  They host the beanstalkd queue and the rsync from which the workers and directors draw
 the information needed to run jobs.  
 
+Authorization
+-------------
+Public keys are the primary means of authentication.  Typically these allow anyway to go nutso on your system though.
+To restrict them, we use a series of ``chroot`` which creates a fake root filesystem with almost no utilities, and 
+an configured ``authorized_keys`` file which limits connections to port forwarding.  An example is provided
+here for posterity::
+
+    command="/bin/ls",permitopen="127.0.0.1:14176",permitopen="127.0.0.1:14177",no-X11-forwarding,no-agent-forwarding,no-pty,no-user-rc ecdsa-sha2-nistp521 <snip> pipeline@openkim.org
+
 
