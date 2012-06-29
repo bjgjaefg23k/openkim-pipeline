@@ -1,4 +1,7 @@
-""" Contains some wrapped KIM_API calls """
+""" Contains some wrapped KIM_API calls,
+
+    going through kimservice
+"""
 
 import os, sys
 import kimservice
@@ -10,7 +13,10 @@ logger = logger.getChild("repository")
 #======================================
 
 def valid_match(test,model):
-    """ Test to see if a test and model match using the kim API, returns bool """
+    """ Test to see if a test and model match using the kim API, returns bool
+        
+        Tests through ``kimservice.KIM_API_init``, running in its own forked process    
+    """
     #logger.debug("attempting to match %r with %r",testname,modelname)
     logger.debug("invoking KIMAPI for (%r,%r)",test,model)
     pid = os.fork()
