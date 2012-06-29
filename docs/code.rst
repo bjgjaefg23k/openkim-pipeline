@@ -7,11 +7,9 @@ Below is all of the code.
 config.py
 ----------------------
 
-.. currentmodule:: config
+see :ref:`../config.py`
 
-.. autosummary:: 
-    KIM_DIR
-    KIM_API_DIR
+.. includeliteral:: ../config.py
 
 The config module holds all of the variables needed in the rest of the scripts, 
 as well as the exceptions we'll use throughout
