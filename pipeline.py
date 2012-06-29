@@ -1,3 +1,7 @@
+"""
+Code that handles the Workers and Directors
+
+"""
 #!/usr/bin/env python
 from config import *
 import models as modelslib
@@ -14,15 +18,6 @@ import database
 import runner
 logger = logger.getChild("pipeline")
 
-"""
-Message format for the queue system:
-    "jobid":    id assigned from the director 
-    "priority": a string priority
-    "job":      (testid, modelid, testresult id)
-    "results":  the json message produced by the run
-    "errors":   the exception caught and returned as a string
-    "depends":  a list of tuples of jobs
-"""
 import simplejson
 
 PIPELINE_WAIT    = 10
@@ -45,6 +40,14 @@ KEY_CHILD    = "child"
 
 
 class Message(object):
+    """Message format for the queue system:
+        "jobid":    id assigned from the director 
+        "priority": a string priority
+        "job":      (testid, modelid, testresult id)
+        "results":  the json message produced by the run
+        "errors":   the exception caught and returned as a string
+        "depends":  a list of tuples of jobs
+    """
     def __init__(self, string=None, jobid=None, 
             priority=None, job=None, results=None, 
             errors=None, depends=None, child=None):
@@ -60,11 +63,13 @@ class Message(object):
             self.child = child
 
     def __repr__(self):
+        """ The repr of the string is a ``simplejson.dumps`` """
         return simplejson.dumps({KEY_JOBID: self.jobid, KEY_PRIORITY: self.priority,
             KEY_JOB: self.job, KEY_RESULTS: self.results, KEY_ERRORS: self.errors, 
             KEY_DEPENDS: self.depends, KEY_CHILD: self.child})
 
     def msg_from_string(self,string):
+        """ Generate a Message from a string """
         dic = simplejson.loads(string)
         self.jobid = dic[KEY_JOBID]
         self.priority = dic[KEY_PRIORITY]
@@ -76,6 +81,9 @@ class Message(object):
 
 
 class Director(object):
+    """ The Director object, knows to listen to incoming jobs, computes dependencies 
+    and passes them along to workers
+    """
     def __init__(self):
         self.ip   = GLOBAL_IP 
         self.port = GLOBAL_PORT 

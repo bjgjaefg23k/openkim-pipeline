@@ -1,5 +1,6 @@
 """
 Some scripts that let us run tests and the like
+
 """
 import time, simplejson, signal, itertools, sys
 from subprocess import Popen, PIPE
@@ -17,7 +18,9 @@ def line_filter(line):
     return bool(line.strip())
 
 def run_test_on_model(test,model):
-    """ run a test with the corresponding model, capture the output as a dict """
+    """ run a test with the corresponding model, 
+    with /usr/bin/time profilling,
+    capture the output as a dict, and return """
     logger.info("running %r with %r",test,model)
 
     #grab the executable
@@ -92,6 +95,9 @@ def run_test_on_model(test,model):
 
 #run all the tests on all the models
 def update_repo(force=False):
+    """ Attempt to run all valid matching test and model pairs,
+    meant to be used locally as a test.
+    """
     logger.info("attempting to update repo...")
     for test in models.Test.all():
         #logger.info("attempting to update test %r",test)
@@ -109,6 +115,9 @@ def update_repo(force=False):
 
 #run all the tests on all the models
 def update_repo_all(force=False):
+    """ Run all tests and models against one another, without first checking matches with KIM_API_init,
+    meant to be used locally as a test
+    """
     logger.info("attempting to update repo...")
     for model in models.Model.all():
         for test in models.Test.all():

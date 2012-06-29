@@ -13,6 +13,7 @@ Has a base ``KIMObject`` class and
  * TestResult
  * TestDriver
  * ModelDriver
+ * Property
  * ReferenceDatum
  * VerificationCheck
  * VerificationResult
