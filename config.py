@@ -1,5 +1,18 @@
 """
-Holds all of the GLOBAL configuration variables
+config.py holds all of the constants that are used throughout the pipeline scripts.
+
+Mostly folders and a preliminary list of all of the available tests and models, as well
+as the exceptions that will be used throughtout.
+
+By convention the constants are all in UPPER_CASE_WITH_UNDERSCORES,
+and this module is imported in star from at the top of all of the scripts::
+
+    from config import *
+
+doing so, we'll have access to all of the constants as well as the logger which ought to be
+made a child of eary::
+
+    logger = logger.getChild("<child name>")
 
 """
 
@@ -13,14 +26,6 @@ import os
 KIM_DIR = os.environ["KIM_DIR"] #the bash shell environ
 KIM_API_DIR = os.environ.get("KIM_API_DIR",
         os.path.join(KIM_DIR,"KIM_API"))
-#KIM_MODELS_DIR = os.environ.get("KIM_MODELS_DIR",
-#        os.path.join(KIM_DIR,"MODELs"))
-#KIM_MODEL_DRIVERS_DIR = os.environ.get("KIM_MODEL_DRIVERS_DIR",
-#        os.path.join(KIM_DIR,"MODEL_DRIVERs"))
-#KIM_TESTS_DIR = os.environ.get("KIM_TESTS_DIR",
-#        os.path.join(KIM_DIR,"TESTs"))
-#KIM_TEST_DRIVERS_DIR = os.environ.get("KIM_TEST_DRIVERS_DIR",
-#        os.path.join(KIM_DIR,"TEST_DRIVERs"))
 
 #get the repository dir from the symlink
 KIM_REPOSITORY_DIR = os.environ["KIM_REPOSITORY_DIR"]
@@ -66,15 +71,6 @@ GLOBAL_USER = "sethnagroup"
 GLOBAL_HOST = "cerbo.ccmr.cornell.edu"
 GLOBAL_DIR  = "/home/sethnagroup/vagrant/openkim-repository/"
 
-
-#============================
-# Stores
-#============================
-
-KIMID_STORE = os.path.join(KIM_PIPELINE_DIR,"kimidstore.json")
-TEST_RESULT_STORE = os.path.join(KIM_PIPELINE_DIR,"testresultstore.json")
-MATCH_STORE = os.path.join(KIM_PIPELINE_DIR,"matchstore.json")
-NAME_STORE = os.path.join(KIM_PIPELINE_DIR,"namestore.json")
 
 #============================
 # Runner Internals
