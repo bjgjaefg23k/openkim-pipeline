@@ -2,7 +2,8 @@ OpenKIM Network
 ===================
 
 
-Introduction
+Diagram
 ------------
 
+.. image:: network.png
 
