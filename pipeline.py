@@ -94,10 +94,12 @@ class Director(object):
         self.logger = logger.getChild("director")
 
     def run(self):
+        """ connect and grab the job thread """
         self.connect_to_daemon()
         self.job_thrd  = Process(target=Director.get_updates(self))
 
     def connect_to_daemon(self):
+        """ try to connect to the daemon, or launch one if we timeout """
         self.logger.info("Connecting to beanstalkd")
         try:
             self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
@@ -121,10 +123,12 @@ class Director(object):
 
 
     def disconnect_from_daemon(self):
+        """ close and kill """
         self.bsd.close()
         self.daemon.kill()
 
     def get_tr_id(self):
+        """ Get a TR id from the TUBE_TR_IDS """
         bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
         bsd.watch(TUBE_TR_IDS)
         request = bsd.reserve()
@@ -134,6 +138,7 @@ class Director(object):
         return tr_id
 
     def get_vr_id(self):
+        """ Get a VR id from TUBE_VR_IDS """
         bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
         bsd.watch(TUBE_VR_IDS)
         request = bsd.reserve()
@@ -143,6 +148,7 @@ class Director(object):
         return vr_id
 
     def get_updates(self):
+        """ Endless loop that waits for updates """
         while 1:
             request = self.bsd.reserve()
 
@@ -173,6 +179,7 @@ class Director(object):
         return priorities[priority]
 
     def push_jobs(self, update):
+        """ Push all of the jobs that need to be done given an update """
         self.bsd.use(TUBE_JOBS)
         kimid = update['kimid']
         priority_factor = self.priority_to_number(update['priority'])
@@ -197,6 +204,7 @@ class Director(object):
                 self.check_dependencies_and_push(test,model,priority)
 
     def check_dependencies_and_push(self, test, model, priority, child=None):
+        """ Check dependencies, and push them first if necessary """
         test_dir = test.path
         # run the test in its own directory
         with test.in_dir():
@@ -226,6 +234,7 @@ class Director(object):
         self.disconnect_from_daemon()
 
 class Worker(object):
+    """ Represents a worker, knows how to do jobs he is given, create results and rsync them back """
     def __init__(self):
         self.remote_user = GLOBAL_USER 
         self.remote_addr = GLOBAL_HOST 
@@ -235,6 +244,7 @@ class Worker(object):
         self.logger = logger.getChild("worker")
 
     def run(self):
+        """ Start to listen, launch the daemon if we timeout """
         # if we can't already connect to the daemon on localhost,
         # open an ssh tunnel to the daemon and start the beanstalk
         try:
@@ -250,6 +260,7 @@ class Worker(object):
         self.get_jobs()
 
     def start_listen(self):
+        """ Start to listen and connect to the TUBE_JOBS """
         # connect to the daemon we created
         self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
 
@@ -258,6 +269,7 @@ class Worker(object):
         self.bsd.ignore("default")
         
     def get_jobs(self):
+        """ Endless loop that awaits jobs to run """
         while 1:
             self.logger.info("Waiting for jobs...")
             job = self.bsd.reserve()
@@ -303,6 +315,7 @@ class Worker(object):
 
 
 class Site(object):
+    """ False stand in for the website, pushes TR ids for us and can update models or tests """
     def __init__(self):
         self.ip   = GLOBAL_IP 
         self.port = GLOBAL_PORT 
