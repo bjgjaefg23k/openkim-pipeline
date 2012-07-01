@@ -85,7 +85,6 @@ run::
 which creates a file ``package.box`` which you can then share.
 
 
-
 Features of our box
 --------------------
 We are running a Ubuntu Precise 64bit distribution that has a lot of base software
@@ -181,6 +180,33 @@ occurs as planned.  Currently (as of 29/06/2012) they are:
 * *openkim-pipeline.git* : the pipeline runner code.  creates workers and directors
 * *ase* : the Atomic Simulation Environment, a Python atomistic simulation code
 * *lammps* : a binary executable that has been built for the virtual box 
+
+
+Debugging setup scripts
+^^^^^^^^^^^^^^^^^^^^^^^
+After making changes to the setup scripts, you should check to make sure that they
+set the system up as you expect.  One of approaching this is to boot into a fresh
+VM and comment out the provisioning from the ``Vagrantfile``.  This involves
+putting a "#" in the beginning of the inline directive::
+
+    config.vm.provision :shell, :inline => "/persistent/runsetup <hostname>"
+
+goes to::
+
+    config.vm.provision :shell, :inline => "#/persistent/runsetup <hostname>"
+
+Then ssh into the box as normal, download your working version of the setup scripts
+from the correct source and try them out.  
+
+It is also possible to change the working branch from which the scripts are 
+downloaded.  In particular, the second option to runsetup accepts a branch
+name.  The default value is ``stable``, but can be replaced by any other branch
+such as master.  This will allow you to easily run through the entire setup process
+including authorizing a worker to see if it comes up properly.  The line
+listed above now becomes::
+
+    config.vm.provision :shell, :inline => "/persistent/runsetup <hostname> <otherbranch>"
+
 
 Size issues
 -----------
