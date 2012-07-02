@@ -122,6 +122,8 @@ requires:
 Yup! that's all it needs.  No ``<KIMID>.kim`` file or anything else.  Of course it can 
 have more, but this is all that is required.
 
+.. _desctests:
+
 Tests
 """""
 A test is all of the extra information that is required to run a test driver.  For the example
@@ -147,14 +149,14 @@ After this, you are all set.  Files 2 and 3 are described at :ref:`pipelineindoc
 
 JSON output
 ^^^^^^^^^^^
-We require that the output of your test be a machine readable form called JSON.  This is a standard way to
+We require that the output of your test be a machine readable form called JSON printed as 
+last line of your program (new newlines, carriage returns, etc).  This is a standard way to
 represent complex objects in ASCII text so that we do not have to create a new standard
 of how to print arrays or how to name a scalar.  If you wish to output a binary file, you should check
 out the :ref:`pipelineoutdocs` documentation.
 
 There is a library that deals with JSON in almost every language.  For C, it is https://live.gnome.org/JsonGlib,
-Python is http://pypi.python.org/pypi/simplejson/, C++ is http://jsoncpp.sourceforge.net/.  Documentation about
-the JSON format in general is provided at http://www.json.org/.  
+Python is http://pypi.python.org/pypi/simplejson/, C++ is http://jsoncpp.sourceforge.net/, Fortran 95 is https://github.com/josephalevin/fson.  Documentation about the JSON format in general is provided at http://www.json.org/.  
 
 Some brief examples of JSON are here though.  A dictionary of key, value pairs describing a lattice 
 constant would look like::
@@ -169,18 +171,104 @@ And the list could go on.
 
 Required Files
 ^^^^^^^^^^^^^^
+In order to recieve input from the pipeline to run your test, there is a specific form that 
+you should expect input.  In particular, there are two new files that you need to provide
+along with your output in JSON. 
+
 
 .. _pipelineindocs:
 
 pipeline.in
 """""""""""
+This maps the input you want to real values which the pipeline will provide.  Every line
+of the file will be provided to your 
+
 
 .. _pipelineoutdocs:
 
 pipeline.out
 """"""""""""
+This file maps the output dictionary keys to the KIM property ID (PR_*) that you would
+like to assign to each output.  It is simply in the form::
 
+    key_name1 : PR_###########1_###
+    key_name2 : PR_###########2_###
 
+and so on.  This is the simpler of the two pipeline files.
+
+A brief example
+^^^^^^^^^^^^^^^
+Let's pretend we have an executable that computes the energy of a cluster of atoms given
+by a configuration file that lives with the executable.  The test driver is called
+``energy__TD_000000000000_000`` because we were able to secure a special KIM code for 
+this exercise.  In the directory ``td/energy__TD_000000000000_000``, we have the files::
+
+    > ls -l energy__TD_000000000000_000
+    rw-r--r-- 1 vagrant vagrant configuration.dat
+    rwxr--r-- 1 vagrant vagrant energy__TD_000000000000_000
+
+The executable takes a number of command line arguments.  In particular, when it is 
+run, the user is prompted for the following information::
+
+    > ./energy__TD_000000000000_000
+    Please enter the species: Ar
+    Please enter the modelname: ex_model_Ar_P_LJ
+
+After this is entered, it loads the configuration file and calculates the energy.  As 
+specified above, the last line of the output is a JSON string which is a dictionary
+of output names and their values.  The full output of our sample program looks like 
+this::
+
+    Calculating energy of Ar atoms using ex_model_Ar_P_LJ using configuration.dat...
+    Loading configuration...
+    Successful completion, saving
+    {"total_energy": -1.9711}
+
+Notice the last line again is JSON, but all of the other lines can be whatever you please.
+
+Now, the problem is: "How does our test driver get a species with which to run?"  We need to
+create a test that knows these sorts of things.  We will name it in relation to our
+base test driver and call it ``energyAr__TE_000000000000_000``.  Again, the KIM code we
+recieved for our test is quite special.  This test is very simple, it will run the test driver
+and provide the option ``Ar`` where appropriate.  We need 5 files for our test, they are::
+
+    > ls te/energyAr__TE_000000000000_000   
+    energyAr__TE_000000000000_000 energyAr__TE_000000000000_000.kim Makefile
+    pipeline.in p  pipeline.out
+
+The contents of ``pipeline.in`` are::
+
+    @PATH[energy__TD_000000000000_000]
+    Ar
+    @MODELNAME
+
+The first line is going to be parsed by the pipeline so we can find the path of our test driver
+executable in the pipeline system.  The second two lines are in response to the test drivers questions. 
+Again, ``@MODLENAME`` is filled in by the pipeline
+when it is run.  In ``pipeline.out`` we find the lines::
+
+    total_energy : PR_000000000000_000
+
+where the property KIM code is the one we recieved from the website for our specific property
+the we are returning.  This tells the pipeline how to map your output.  The .kim file specifies
+what requirements your test driver has when run with these arguments, it won't be listed here.
+The ``Makefile`` can be as blank as possible (see :ref:`desctests`) as we will be using a 
+bash script as our main executable and it doesn't need to be made.  Finally, our bash 
+script runs the path as returned by the ``@PATH`` directive and then simply passes along 
+stdin input to our test driver.  The contents of this file are::
+
+    #!/bin/bash -e
+    read -p "enter test driver: " TESTDRIVER
+    read -p "enter species: " SPECIES
+    read -p "enter model name: " MODELNAME
+
+    echo -e "$SPECIES\n$MODELNAME" | $TESTDRIVER 
+
+There we have our simple test.  If we wanted to make more tests, we would need to change
+the name of folder, executable, and kim file.  Then we could change the species name
+in ``pipeline.in``. 
+
+ 
 
 Install your test
 ^^^^^^^^^^^^^^^^^
