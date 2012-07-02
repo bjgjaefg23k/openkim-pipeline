@@ -161,13 +161,18 @@ Python is http://pypi.python.org/pypi/simplejson/, C++ is http://jsoncpp.sourcef
 Some brief examples of JSON are here though.  A dictionary of key, value pairs describing a lattice 
 constant would look like::
 
-    '{"a0": 3.1415}' 
+    {"a0": 3.1415} 
 
 or an array of numbers that we would like to call the magic numbers is::
 
-    '{"magic_numbers": [4, 42, 163]}'
+    {"magic_numbers": [4, 42, 163]}
 
 And the list could go on.
+
+Addtionally, if you wish to store binary data you can have as our output a ``@FILE[filename]`` directive, that tells the processing pipeline that it should copy the listed file over to the
+results directory, i.e. if your test computes a plot, named ``interesting_plot.png``, the appropriate way to tell the processing pipeline that it is a result is to include an key,value pair in your JSON of the form::
+
+    {"plot_result", "@FILE[interesting_plot.png]"}
 
 Required Files
 ^^^^^^^^^^^^^^
@@ -180,8 +185,34 @@ along with your output in JSON.
 
 pipeline.in
 """""""""""
-This maps the input you want to real values which the pipeline will provide.  Every line
-of the file will be provided to your 
+
+The ``pipeline.in`` file will be passed to your test on standard input upon its executation by the pipeline.  You should ensure that your test works in this way.
+
+Additionally, the pipeline.in has a simple Templating language built in to help you obtain other pieces of information from the pipeline at runtime.
+
+The templating language has four directives
+ * @PATH[kim_code]
+    This directive will be replaced by the path to the kim code you've given.  If the object is executable (i.e. a test or test driver) the path given will be to its executable,
+    otherwise the path is to the folder the kim object lives in. For example, if you're test derives from a TestDriver, you will need to reference it's executable and pass in the
+    necessary inputs for it to run, if you wanted the executable for test driver ``TD_000000000001_000`` you would put::
+        
+        @PATH[TD_000000000001_000]
+
+    at the top of your pipeline.in file.  Like most things requesting kim codes, you are allowed to put partial kim codes (i.e. leaving out the name or the version number or both), leaving out the version number
+    will get you the latest version in the repository
+
+ * @MODELNAME
+    This one is required, and it will be replaced by the full kim name of the model your test is being run against.  Use this to invoke the KIM_API_init for the model you're running against
+
+ * @DATA
+    The DATA directive is used to request data in the repository, it has 3 valid forms
+     * @DATA[RD_############(_###)]
+        This gets the data stored in the given ReferenceDatum
+     * @DATA[TR_############(_###)][PR_############(_###)]
+        This gets the data for the property listed (PR code) computed in the given TestResult (TR code), versions are optional and if omitted the latest will be returned
+     * @DATA[(NAME)TE_############(_###)][(NAME)MO_############(_###)][PR_############_(###)]
+        This version will get the data for the property id given (PR code) as a result of the given TE, MO pair (TE, MO codes) if it exists, if the requested data does not exist, it will be computed before your test is run.
+        The names are optional, and the version numbers if omitted means you will get the latest version in the database
 
 
 .. _pipelineoutdocs:
@@ -195,6 +226,8 @@ like to assign to each output.  It is simply in the form::
     key_name2 : PR_###########2_###
 
 and so on.  This is the simpler of the two pipeline files.
+
+If you omit Property kim codes for some of your results, they will be stored, but people will not be able to associate your output across different tests.
 
 A brief example
 ^^^^^^^^^^^^^^^
