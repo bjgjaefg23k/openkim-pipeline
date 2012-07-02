@@ -40,3 +40,18 @@ here for posterity::
     command="/bin/ls",permitopen="127.0.0.1:14176",permitopen="127.0.0.1:14177",no-X11-forwarding,no-agent-forwarding,no-pty,no-user-rc ecdsa-sha2-nistp521 <snip> pipeline@openkim.org
 
 
+SSH and sftp
+------------
+These two tools are used in very standard ways.  As their complexity increases, documentation will appear here.
+
+
+Beanstalkd
+----------
+The beanstalk daemon we are running has a few tubes open that are non-standard.
+
+1. "jobs" - These are JSON encoded strings representations of jobs.  They include test-model pair and its dependencies
+2. "results" - These are JSON encoded strings of the test-model pair results.  Also includes extra profiling information. These are consumed by the website.
+3. "update" - This is the tube which the website sends pings to the worker.  This can include a priority flag which is one of `immediate`, `very high`, `high`, `normal`, `low`, and `very low`. 
+4. "errors" - These are the errors returned by a worker.  These are consumed by the directors.  
+5. "tr_ids" - The director is not able to make unique test result ids and so consumes them from a list created by the website.
+6. "vr_ids" - Also true of verification result ids.
