@@ -208,17 +208,6 @@ listed above now becomes::
     config.vm.provision :shell, :inline => "/persistent/runsetup <hostname> <otherbranch>"
 
 
-Size issues
------------
-The box will naturally inflate in actual disk usage on the host over time.  The swap will be
-used, the files created and destroyed never really get cleaned up.  If you wish to shrink
-the box down to reasonable sizes again, simply run::
-
-    sudo /home/vagrant/shrink
-
-This creates a huge file full of zeros and then deletes it.  It helps, trust me.
-
-
 Modifying the base box
 ----------------------
 If you would like to boot into ``root`` in order to make persistent changes to the 
@@ -234,4 +223,16 @@ This will cause the box to boot into the correct logical volume.  From there, yo
 your changes and repackage the box.  Before you do so, however, you need to reconfigure the
 essentials of the box.  **There is a script provided for this** inside ``openkim-pipeline-setup/static``
 that does most of the work for you. 
+
+
+Size issues
+-----------
+The box will naturally inflate in actual disk usage on the host over time.  The swap will be
+used, the files created and destroyed never really get cleaned up.  If you wish to shrink
+the box down to reasonable sizes again, simply run::
+
+    sudo /home/vagrant/shrink
+
+This creates a huge file full of zeros and then deletes it.  It helps, trust me.
+
 
