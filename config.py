@@ -37,6 +37,7 @@ INPUT_FILE = "pipeline.in"
 OUTPUT_FILE = "pipeline.out"    #with their words : property ids
 STDOUT_FILE = "pipeline.stdout"
 TEMP_INPUT_FILE = "pipeline.in.tmp"
+KIMLOG_FILE = "kim.log"
 
 #===========================
 # Directory codes
