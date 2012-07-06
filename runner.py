@@ -77,6 +77,7 @@ def run_test_on_model(test,model):
     
     #GET METADATA
     data = { output_info[key]:val for key,val in data.iteritems() }
+    data["_kimlog"] = "@FILE[{}]".format(KIMLOG_FILE)
     data["_stdout"] = "@FILE[{}]".format(STDOUT_FILE)
     data["_testname"] = test.kim_code
     data["_modelname"] = model.kim_code
