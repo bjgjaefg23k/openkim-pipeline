@@ -1,6 +1,6 @@
 rsync_tools.py
 -------------------
-`[source code] <_modules/rsync_tools.html>`_ :download:`[download] <../../rsync_tools.py>`
+`[source code] <../_modules/rsync_tools.html>`_ :download:`[download] <../../rsync_tools.py>`
 
 Contains a set of convience methods for handing all of our rsyncs.
 
