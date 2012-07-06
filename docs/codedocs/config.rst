@@ -1,7 +1,7 @@
 config.py
 ----------------------
 
-`[source code] <_modules/config.html>`_  :download:`[download] <../../config.py>`
+`[source code] <../_modules/config.html>`_  :download:`[download] <../../config.py>`
 
 .. automodule:: config
 
