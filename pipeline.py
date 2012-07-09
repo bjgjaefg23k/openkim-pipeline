@@ -15,7 +15,6 @@ Any of the classes below rely on a secure public key to open an ssh
 tunnel to the remote host.  It then connects to the beanstalkd
 across this tunnel.  
 """
-#!/usr/bin/env python
 from config import *
 import models as modelslib
 import database
