@@ -37,6 +37,7 @@ INPUT_FILE = "pipeline.in"
 OUTPUT_FILE = "pipeline.out"    #with their words : property ids
 STDOUT_FILE = "pipeline.stdout"
 TEMP_INPUT_FILE = "pipeline.in.tmp"
+KIMLOG_FILE = "kim.log"
 
 #===========================
 # Directory codes
@@ -67,6 +68,7 @@ KIM_MODEL_DRIVERS = [ dir for dir in os.listdir(KIM_MODEL_DRIVERS_DIR) if os.pat
 GLOBAL_IP   = "127.0.0.1"
 GLOBAL_PORT = 14177
 
+# FIXME - if we are using Sites as well, this can't be hard coded
 GLOBAL_USER = "sethnagroup"
 GLOBAL_HOST = "cerbo.ccmr.cornell.edu"
 GLOBAL_DIR  = "/home/sethnagroup/vagrant/openkim-repository/"
