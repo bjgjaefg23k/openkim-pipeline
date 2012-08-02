@@ -1,8 +1,20 @@
 """
-Code that handles the Workers and Directors
+Pipeline.py is the section of the pipeline that handles the network
+communication between directors, workers, and webiste through
+the beanstalk daemon.  It is also the main entrance point of the 
+pipeline worker or director.
 
+It can be called using::
+
+    python pipeline.py director
+    python pipeline.py worker
+
+in order to start it up.
+
+Any of the classes below rely on a secure public key to open an ssh
+tunnel to the remote host.  It then connects to the beanstalkd
+across this tunnel.  
 """
-#!/usr/bin/env python
 from config import *
 import models as modelslib
 import database
@@ -232,6 +244,8 @@ class Director(object):
 
     def halt(self):
         self.disconnect_from_daemon()
+
+
 
 class Worker(object):
     """ Represents a worker, knows how to do jobs he is given, create results and rsync them back """

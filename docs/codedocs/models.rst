@@ -1,7 +1,7 @@
 models.py
 ----------------------
 
-`[source code] <_modules/models.html>`_ :download:`[download] <../../models.py>`
+`[source code] <../_modules/models.html>`_ :download:`[download] <../../models.py>`
 
 .. automodule:: models
 
