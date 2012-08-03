@@ -8,8 +8,8 @@ import os
 import subprocess, tempfile
 import database
 
-RSYNC_ADDRESS =     "sethnagroup@cerbo.ccmr.cornell.edu"
-RSYNC_REMOTE_ROOT = "/home/sethnagroup/vagrant/openkim-repository"
+RSYNC_ADDRESS     = GLOBAL_USER+"@"+GLOBAL_HOST
+RSYNC_REMOTE_ROOT = GLOBAL_DIR
 RSYNC_FLAGS = "-avzR" # --delete ensures that we delete files that aren't on remote
 #RSYNC_PATH = '--rsync-path="cd {} && rsync"'.format(RSYNC_REMOTE_ROOT)
 RSYNC_PATH = RSYNC_ADDRESS + ":" + RSYNC_REMOTE_ROOT
