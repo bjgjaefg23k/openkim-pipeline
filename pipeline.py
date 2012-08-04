@@ -117,9 +117,10 @@ class Director(object):
             self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
         except:
             self.logger.info("No daemon found, starting on %r", self.remote_addr)
-            self.daemon = Popen("ssh {}@{} \"screen -dm beanstalkd -l {} -p {} -z {} -b beanlog -f 0\"".format(
-                self.remote_user, self.remote_addr, self.ip, self.port, self.msg_size), shell=True)
-            self.ssh = Popen("screen -dm ssh -L{}:{}:{} {}@{}".format(
+            # no need to start the daemon anymore for debug.  It's always going
+            #self.daemon = Popen("ssh {}@{} \"screen -dm beanstalkd -l {} -p {} -z {} -b beanlog -f 0\"".format(
+            #    self.remote_user, self.remote_addr, self.ip, self.port, self.msg_size), shell=True)
+            self.ssh = Popen("screen -dm ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -L{}:{}:{} {}@{}".format(
                 self.port,self.ip,self.port,self.remote_user,self.remote_addr), shell=True)
             self.logger.info("Waiting to connect to beanstalkd")
             time.sleep(PIPELINE_WAIT)
@@ -264,7 +265,7 @@ class Worker(object):
         try:
             self.start_listen()
         except:
-            self.ssh = Popen("screen -dm ssh -L{}:{}:{} {}@{}".format(
+            self.ssh = Popen("screen -dm ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -L{}:{}:{} {}@{}".format(
                 self.port,self.ip,self.port,self.remote_user,self.remote_addr), shell=True)
             self.logger.info("Waiting to connect to beanstalkd")
             time.sleep(PIPELINE_WAIT)
@@ -347,7 +348,7 @@ class Site(object):
         try:
             self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
         except:
-            self.ssh = Popen("screen -dm ssh -L{}:{}:{} {}@{}".format(
+            self.ssh = Popen("screen -dm ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -L{}:{}:{} {}@{}".format(
                 self.port,self.ip,self.port,self.remote_user,self.remote_addr), shell=True)
             time.sleep(1)
             self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
