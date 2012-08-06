@@ -26,7 +26,7 @@ import database
 # Keywords
 #==========================
 
-RE_KIMID    = r"((?:[_a-zA-Z][_a-zA-Z0-9]*?_?_)?[A-Z]{2}_[0-9]{12}(?:_[0-9]{3})?)"   
+RE_KIMID    = r"((?:[_a-zA-Z][_a-zA-Z0-9]*?_?_)?[A-Z]{2}_[0-9]{12}(?:_[0-9]{3})?)"
 #RE_KIMID = database.RE_KIMID
 #RE_KIMID    = r"(?:[_a-zA-Z][_a-zA-Z0-9]*?__)?[A-Z]{2}_[0-9]{10,12}(?:_[0-9]{3})?"
 
@@ -68,7 +68,7 @@ def get_file(string,testdir):
 
 def data_path_from_match(match):
     """ Given a match, try to find where it exists
-    
+
     outputs:
         exists - bool
         path - either a kim_code, or a pair that must be run
@@ -99,7 +99,7 @@ def data_path_from_match(match):
         else:
             return (True, tr)
     raise PipelineTemplateError, "didn't understand the in file"
-        
+
 def data_from_match(match):
     """ Get the data from a re match """
     groups = match.groups()
@@ -127,7 +127,7 @@ def data_from_match(match):
             pr = models.Property(pr_kcode)
 
             tr = te.result_with_model(mo)
-            data = tr[pr]
+            data = tr[pr.kim_code]
             return str(data)
     except KeyError:
         raise PipelineDataMissing, "We couldn't get the requested data"
@@ -158,7 +158,7 @@ def path_from_match(match):
 
 
 #-----------------------------------------
-# Processors 
+# Processors
 #-----------------------------------------
 
 def path_processor(line,model,test):
@@ -189,7 +189,7 @@ def testname_processor(line,model,test):
     """ replace testname directive with test name """
     return re.sub(RE_TEST,test,line)
 
-processors = [testname_processor, path_processor, data_processor, modelname_processor]
+processors = [testname_processor, modelname_processor, path_processor, data_processor]
 
 def process_line(line,*args):
     """ Takes a string for the line and processes it, appling all processors """
@@ -212,11 +212,11 @@ def dependency_check(inp):
         outputs:
             ready - bool
             dependencies_good_to_go - list of kids
-            dependencies_needed - tuple of tuples 
+            dependencies_needed - tuple of tuples
     """
     logger.debug("running a dependancy check for %r", os.path.basename(os.path.dirname(inp.name)))
     ready, dependencies = (True, [])
-    
+
     cands = []
     #try to find all of the possible dependencies
     for line in inp:
@@ -230,7 +230,7 @@ def dependency_check(inp):
 
     if not cands:
         return (True, None, None)
-    
+
     #cheap transpose
     candstranspose = zip(*cands)
     #is everyone ready?
@@ -244,15 +244,17 @@ def dependency_check(inp):
         return allready, ( kid for ready,kid in cands if ready ), ( pair for ready, pair in cands if not ready )
 
 
-def process(inp, model, test):
+def process(inp, modelname, testname):
     """ takes in a file like object and retuns a processed file like object, writing a copy to TEMP_INPUT_FILE """
-    logger.info("attempting to process %r for (%r,%r)",inp,model,test)
-    with open(TEMP_INPUT_FILE,'w') as out:
-        for line in inp:
-            #logger.debug("line to process is:\n\t %r",line)
-            newline = process_line(line,model,test)
-            #logger.debug("new line is:\n\t %r",newline)
-            out.write(newline)
+    logger.info("attempting to process %r for (%r,%r)",inp,modelname,testname)
+    test = models.Test(testname)
+    with test.in_dir():
+        with open(TEMP_INPUT_FILE,'w') as out:
+            for line in inp:
+                logger.debug("line to process is:\n\t %r",line)
+                newline = process_line(line,modelname,testname)
+                logger.debug("new line is:\n\t %r",newline)
+                out.write(newline)
 
-    return open(TEMP_INPUT_FILE)
+        return open(TEMP_INPUT_FILE)
 
