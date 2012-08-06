@@ -1,0 +1,48 @@
+#!/usr/bin/python
+"""
+Lattice constant Test Driver
+
+Computes the lattice constant for any material and any cubic crystal structure
+by minimizing the stress
+
+Date: 2012/09/03
+Author: Alex Alemi
+
+"""
+import fileinput
+from ase.structure import bulk
+import scipy.optimize as opt
+from kimcalculator import KIMCalculator
+from kimservice import KIM_API_get_data_double
+import simplejson
+from ase.constraints import StrainFilter
+from ase.optimize import BFGS
+
+#grab from stdin (or a file)
+symbol  = raw_input("element=")
+lattice = raw_input("lattice type=")
+model   = raw_input("modelname=")
+
+print symbol, lattice, model
+
+eps = 0.01
+
+#create the ase calculator
+calc = KIMCalculator(model)
+
+slab = bulk(symbol,lattice,a=1.0)
+slab.set_calculator(calc)
+
+BFGS(StrainFilter(slab)).run(eps)
+
+cell = slab.cell.tolist()
+a0 = slab.cell[0,0]
+
+energy = slab.get_potential_energy()
+
+# pack the results in a dictionary
+results = {"lattice_const": a0,
+            "energy": energy }
+
+#print json output
+print simplejson.dumps(results)

@@ -3,10 +3,9 @@
 from models import *
 from runner import *
 
-tr = TestResult("TR_117687325786_000")
-test = tr.test
-model = tr.model
 
+test = Test("LatticeConstantEnergy_Fe_fcc__TE_248695510051_000")
+model = Model("TB_Khakshouri_F_Fe__MO_853979044095_000")
 
 import kimapi
 print kimapi.valid_match(test,model)

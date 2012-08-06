@@ -1,0 +1,59 @@
+#!/usr/bin/python
+"""
+Lattice constant Test Driver
+
+Computes the lattice constant for any material and any cubic crystal structure
+by minimizing the energy using a simplex minimization
+
+Date: 2012/09/03
+Author: Alex Alemi
+
+"""
+import fileinput
+from ase.structure import bulk
+import scipy.optimize as opt
+from kimcalculator import KIMCalculator
+from kimservice import KIM_API_get_data_double
+import simplejson
+
+#grab from stdin (or a file)
+symbol  = raw_input("element=")
+lattice = raw_input("lattice type=")
+model   = raw_input("modelname=")
+
+print symbol, lattice, model
+
+#create the ase calculator
+calc = KIMCalculator(model)
+
+def energy(a):
+    """ Compute the energy of a lattice given the lattice constant """
+    slab = bulk(symbol, lattice, a=a)
+    slab.set_calculator(calc)
+    try:
+        energy = slab.get_potential_energy()
+    except:
+        energy = 1e10
+        raise
+    return energy
+
+# Attempt to read the cutoff of the model
+slab = bulk(symbol, lattice, a=100)
+slab.set_calculator(calc)
+cutoff = KIM_API_get_data_double(calc.pkim, "cutoff")[0]
+
+#results = opt.brent(energy, args=(calc,), brack=(cutoff*0.2,cutoff))
+
+aopt_arr, eopt, iterations, funccalls, warnflag = opt.fmin(energy, cutoff/2.0, full_output=True)
+
+aopt = aopt_arr[0]
+
+# pack the results in a dictionary
+results = {"lattice_const": aopt,
+            "energy": eopt,
+            "iterations": iterations,
+            "func_calls": funccalls,
+            "warnflag": warnflag }
+
+#print json output
+print simplejson.dumps(results)

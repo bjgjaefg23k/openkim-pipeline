@@ -18,7 +18,7 @@ def line_filter(line):
     return bool(line.strip())
 
 def run_test_on_model(test,model):
-    """ run a test with the corresponding model, 
+    """ run a test with the corresponding model,
     with /usr/bin/time profilling,
     capture the output as a dict, and return """
     logger.info("running %r with %r",test,model)
@@ -74,9 +74,9 @@ def run_test_on_model(test,model):
     except simplejson.JSONDecodeError:
         logger.error("We didn't get JSON back!")
         raise PipelineTemplateError, "test didn't return JSON"
-    
+
     #GET METADATA
-    data = { output_info[key]:val for key,val in data.iteritems() }
+    data = { output_info.get(key,key):val for key,val in data.iteritems() }
     data["_kimlog"] = "@FILE[{}]".format(KIMLOG_FILE)
     data["_stdout"] = "@FILE[{}]".format(STDOUT_FILE)
     data["_testname"] = test.kim_code

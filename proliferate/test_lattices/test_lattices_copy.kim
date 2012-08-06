@@ -4,6 +4,7 @@ Unit_energy :=eV
 Unit_charge :=e
 Unit_temperature :=K
 Unit_time :=fs
+
 SUPPORTED_AOM/PARTICLES_TYPES: 
 SYMBOL spec 18
 CONVENTIONS:
@@ -19,6 +20,7 @@ numberContributingParticles  integer  none  []
 get_neigh  method  none []
 neighObject  pointer  none  []
 boxSideLengths  real*8  length  [3]
+
 MODEL_OUTPUT: 
 compute  method  none  []
 reinit  method  none  []
