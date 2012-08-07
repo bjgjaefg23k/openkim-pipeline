@@ -10,7 +10,7 @@ import database
 
 RSYNC_ADDRESS     = GLOBAL_USER+"@"+GLOBAL_HOST
 RSYNC_REMOTE_ROOT = GLOBAL_DIR
-RSYNC_FLAGS = "-avzR -e 'ssh -i /home/vagrant/.ssh/id_rsa_pipeline' --exclude-from=/home/vagrant/.rsync-exclude" # --delete ensures that we delete files that aren't on remote
+RSYNC_FLAGS = "-avzRr --progress --stats -e 'ssh -i /home/vagrant/.ssh/id_rsa_pipeline' --exclude-from=/home/vagrant/openkim-pipline/.rsync-exclude" # --delete ensures that we delete files that aren't on remote
 #RSYNC_PATH = '--rsync-path="cd {} && rsync"'.format(RSYNC_REMOTE_ROOT)
 RSYNC_PATH = RSYNC_ADDRESS + ":" + RSYNC_REMOTE_ROOT
 
@@ -33,7 +33,7 @@ def rsync_command(files,read=True,path=None):
     paths from the LOCAL_REPO_ROOT
     """
     path = path or RSYNC_PATH
-    with tempfile.NamedTemporaryFile() as tmp:
+    with tempfile.NamedTemporaryFile(delete=True) as tmp:
         tmp.file.write("\n".join(files))
         tmp.file.close()
         try:
