@@ -70,7 +70,7 @@ GLOBAL_PORT = 14177
 
 GLOBAL_USER = "pipeline"
 GLOBAL_HOST = "pipeline.openkim.org"
-GLOBAL_DIR  = "/home/pipeline/write/"
+GLOBAL_DIR  = "/home/pipeline/write/pending/"
 
 
 #============================
@@ -113,7 +113,7 @@ logger.addHandler(console_handler)
 #====================================
 
 class InvalidKIMID(Exception):
-    """ Used for invalid KIM IDS """ 
+    """ Used for invalid KIM IDS """
 
 class PipelineResultsError(Exception):
     """ Used when the results are not of an understood type, i.e. not a valid JSON string """
