@@ -1,4 +1,4 @@
-""" 
+"""
 .. module:: models
     :synopsis: Holds the python object models for kim objects
 
@@ -38,7 +38,7 @@ import simplejson
 import kimapi
 
 #------------------------------------------------
-# Base KIMObject 
+# Base KIMObject
 #------------------------------------------------
 
 class KIMObject(object):
@@ -48,7 +48,7 @@ class KIMObject(object):
         required_leader
             the required two letter leader for all kim codes, meant to be overridden
             by subclassers
-        makeable 
+        makeable
             marks the type of kimobject as makeable or not, to be overriden by subclassers
         path
             the full path to the directory associated with the kim object
@@ -60,11 +60,11 @@ class KIMObject(object):
             the two digit prefix
         kim_code_number
             the 12 digit number as string
-        kim_code_version 
+        kim_code_version
             the version number as string
-        info 
+        info
             a persistent dict for the metadata.json file for this object
-        parent_dir 
+        parent_dir
             the parent directory of the object, i.e. the ``te`` directory for a test object
 
     """
@@ -75,7 +75,7 @@ class KIMObject(object):
 
     def __init__(self,kim_code,search=True):
         """ Initialize a KIMObject given the kim_code, where partial kim codes are promoted if possible,
-            if search is False, then don't look for existing ones 
+            if search is False, then don't look for existing ones
 
             Args:
                 kim_code (str)
@@ -90,29 +90,29 @@ class KIMObject(object):
         """
         logger.debug("Initializing a new KIMObject: %r", kim_code)
         name, leader, num, version = database.parse_kim_code(kim_code)
-       
+
         # test to see if we have the right leader
         if self.required_leader:
             assert leader==self.required_leader,"{} not a valid KIM code for {}".format(kim_code, self.__class__.__name__)
-        
+
         #grab the attributes
         self.kim_code_name = name
         self.kim_code_leader = leader
         self.kim_code_number = num
         self.kim_code_version = version
-       
+
         if not search:
             self.kim_code = kim_code
         #if we were given everything, we are good to go
         elif name and leader and num and version:
             self.kim_code = database.format_kim_code(name,leader,num,version)
-        
+
         #if we weren't given a name, see if one exists
         elif name is None and leader and num and version:
             name = database.look_for_name(leader,num,version)
             self.kim_code_name = name
             self.kim_code = database.format_kim_code(name,leader,num,version)
-        
+
         #if we weren't given a version
         elif name and leader and num and version is None:
             name,leader,num,version = database.get_latest_version(name,leader,num)
@@ -173,7 +173,7 @@ class KIMObject(object):
         """ Return the latest version object of this thing """
         name,leader,num,version = database.get_latest_version(self.kim_code_name, self.kim_code_leader, self.kim_code_number)
         return self.__class__(database.format_kim_code(name,leader,num,version))
-    
+
     @property
     def is_latest_version(self):
         """ Tells whether this is the latest version in the database """
@@ -202,7 +202,7 @@ class KIMObject(object):
         logger.debug("moved to dir: {}".format(self.path))
         yield
         os.chdir(cwd)
-    
+
     def make(self):
         """ Try to build the thing, by executing ``make`` in its directory """
         if self.makeable:
@@ -224,7 +224,7 @@ class KIMObject(object):
     def all(cls):
         """ Return a generator of all of this type """
         logger.debug("Attempting to find all %r...", cls.__name__)
-        type_dir = os.path.join(KIM_REPOSITORY_DIR, cls.required_leader.lower() ) 
+        type_dir = os.path.join(KIM_REPOSITORY_DIR, cls.required_leader.lower() )
         kim_codes =  ( subpath for subpath in dircache.listdir(type_dir) if os.path.isdir( os.path.join( type_dir, subpath) ) )
         return ( cls(x) for x in kim_codes )
 
@@ -249,7 +249,7 @@ class KIMObject(object):
 
 class Test(KIMObject):
     """ A kim test, it is a KIMObject, plus
-    
+
         Settings:
             required_leader = "TE"
             makeable = True
@@ -310,12 +310,12 @@ class Test(KIMObject):
         """ Return a generator of kim objects that are its dependencies """
         ready, goods, bads = self.dependency_check()
         if goods:
-            for kim_code in goods:
-                yield kim_obj(kim_code)
+            for guy in goods:
+                yield guy
         if bads:
-            for kim1, kim2 in bads:
-                yield kim_obj(kim1)
-                yield kim_obj(kim2)
+            for guy1, guy2 in bads:
+                yield guy1
+                yield guy2
 
     @property
     def test_drivers(self):
@@ -333,7 +333,7 @@ class Test(KIMObject):
             return next( result for result in self.results if result.model == model )
         except StopIteration:
             raise PipelineDataMissing, "Could not find a TestResult for ({}, {})".format(self,model)
-    
+
     def _outfile_to_dict(self):
         """ Convert the output file to a dict """
         outdata = open(self.outfile_path).read()
@@ -361,7 +361,7 @@ class Test(KIMObject):
 
 class Model(KIMObject):
     """ A KIM Model, KIMObject with
-        
+
         Settings:
             required_leader = "MO"
             makeable = True
@@ -400,7 +400,7 @@ class Model(KIMObject):
 
 class TestResult(KIMObject):
     """ A test result, KIMObject with
-        
+
         Settings:
             required_leader = "TR"
             makeable = False
@@ -418,7 +418,7 @@ class TestResult(KIMObject):
             TestResult has a little magic going on, if you try to request an attribute that it lacks
             it will forward the request to its own self.results result dictionary, this allows you to
             try to access its elements directly, i.e.::
-                
+
                 tr = TestResult("TR_000000000000_000")
                 tr["_testname"] == tr.results["_testname"]
     """
@@ -442,22 +442,22 @@ class TestResult(KIMObject):
 
             To find a test result for the test "TE_000000000000_000" and model "MO_000000000000_000" you would::
 
-                tr = TestResult(pair=(Test("TE_000000000000_000"), Model("MO_000000000000_000")))              
+                tr = TestResult(pair=(Test("TE_000000000000_000"), Model("MO_000000000000_000")))
         """
 
         if pair and kim_code:
             raise SyntaxWarning, "TestResult should have a pair, or a kim_code or neither, not both"
-        
+
         if pair:
             test, model = pair
             result = test.result_with_model(model)
             kim_code = result.kim_code
-        
+
         else:
             if not kim_code:
                 kim_code = database.new_test_result_id()
                 search = False
-        
+
         super(TestResult,self).__init__(kim_code,search=search)
 
         if not self.exists and not search:
@@ -468,18 +468,18 @@ class TestResult(KIMObject):
         #if we recieved a json string, write it out
         if results:
             logger.debug("Recieved results, writing out to %r", self.kim_code)
-            
+
             if isinstance(results,dict):
                 #we have a dict
                 incoming_results = results
-            else: 
+            else:
                 #if it is a json string try to convert it
                 try:
                     incoming_results = simplejson.loads(results)
                 except TypeError:
                     #wasn't convertable
                     raise PipelineResultsError, "Could not understand the format of the results: {}".format(results)
-            
+
             #also move all of the files
             testname = incoming_results["_testname"]
 
@@ -513,7 +513,7 @@ class TestResult(KIMObject):
     def files(self):
         """ A list of all of the files in the test_result from the @FILE directive """
         return map(os.path.basename,template.files_from_results(self.results))
-    
+
     @property
     def full_file_paths(self):
         """ generator of files from the @FILE directive with a full path """
@@ -531,7 +531,7 @@ class TestResult(KIMObject):
     @property
     def property_codes(self):
         """ Return a generator of all property kim_codes computed in this test result """
-        return ( x for x in filter(self._is_property, self.results.keys() ) )    
+        return ( x for x in filter(self._is_property, self.results.keys() ) )
 
     @property
     def predictions(self):
@@ -549,7 +549,7 @@ class TestResult(KIMObject):
 
     def __getattr__(self,attr):
         """ if we didn't find the attr, look in self.results for the attr,
-            
+
             This magic allows the result object to behave like its result dictionary magically
         """
         return self.results.__getattribute__(attr)
@@ -565,7 +565,7 @@ class TestResult(KIMObject):
 
     @classmethod
     def duplicates(cls):
-        """ Return a generator of all of the duplicated results, 
+        """ Return a generator of all of the duplicated results,
         duplication meaning the exact same (test,model) pairs """
         pairs = set()
         for result in cls.all():
@@ -582,7 +582,7 @@ class TestResult(KIMObject):
 
 class TestDriver(KIMObject):
     """ A test driver, a KIMObject with,
-    
+
         Settings:
             required_leader = "TD"
             makeable = True
@@ -618,7 +618,7 @@ class TestDriver(KIMObject):
 
 class ModelDriver(KIMObject):
     """ A model driver, a KIMObject with,
-    
+
         Settings:
             required_leader = "MD"
             makeable = True
@@ -642,7 +642,7 @@ class ModelDriver(KIMObject):
 
 class Property(KIMObject):
     """ A kim property, a KIMObject with,
-    
+
         Settings:
             required_leader = "PR"
             makeable = False
@@ -662,7 +662,7 @@ class Property(KIMObject):
     @property
     def data(self):
         """ Return the data in this thing
-            
+
             .. todo::
                 Empty Property data!!
         """
@@ -675,10 +675,10 @@ class Property(KIMObject):
 
     @property
     def tags(self):
-        """ Return a generator of all the tags used by the test writers to refer to this property """ 
+        """ Return a generator of all the tags used by the test writers to refer to this property """
         return set( value for key,value in result.test._reversed_out_dict.iteritems() if Property(key)==self for result in self.results )
 
-    
+
 
 #------------------------------------------
 # VerificationCheck
@@ -686,7 +686,7 @@ class Property(KIMObject):
 
 class VerificationCheck(KIMObject):
     """ A verification check, a KIMObject with:
-        
+
         Settings:
             required_leader = "VC"
             makeable = True
@@ -715,7 +715,7 @@ class VerificationCheck(KIMObject):
 
 class VerificationResult(KIMObject):
     """ A verification result, a KIMObject with:
-    
+
         Settings:
             required_leader = "VR"
             makeable = False
@@ -734,7 +734,7 @@ class VerificationResult(KIMObject):
 
 class ReferenceDatum(KIMObject):
     """ a piece of reference data, a KIMObject with:
-        
+
         Settings:
             required_leader = "RD"
             makeable = False
@@ -757,7 +757,7 @@ class ReferenceDatum(KIMObject):
 
 class VirtualMachine(KIMObject):
     """ for a virtual machine, a KIMObject with:
-        
+
         Settings:
             required_leader = "VM"
             makeable = False
