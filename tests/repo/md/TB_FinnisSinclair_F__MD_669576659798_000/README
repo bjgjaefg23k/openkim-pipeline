@@ -1,0 +1,25 @@
+!*      An implementation of the second moment approximation
+!*      interatomic potential due to Finnis and Sinclair
+!*
+!*          A simple empirical N-body potential for transition metals
+!*
+!*          M. W. Finnis and J. E. Sinclair
+!*          Philosophical Magazine A, 50: 1, 45 — 55 (1984)
+!*
+!*
+!*          A simple form of multi-ion interaction has been constructed for the purpose of
+!*          atomistic simulation of transition metals. The model energy consists of a bonding
+!*          term, which is the square-root of a site density rho_i, summed over atoms i, and a repulsive
+!*          pairwise term of the form sum_ij 1/2 V(R_ij). The site density rho_i is defined as a
+!*          sum over neighbouring sites j of a cohesive potential phi(R_ij). Both V and phi are
+!*          assumed to be short-ranged and are parameterized to fit the lattice constant,
+!*          cohesive energy and elastic moduli of the seven body-centred-cubic (b.c.c.) transition
+!*          metals. The result is a simple model which, unlike a pair-potential model,
+!*          can account for experimental vacancy-formation energies and does not require an
+!*          externally applied pressure to balance the 'Cauchy pressure'.
+!*
+!*          NOTE: see also PHILOSOPHICAL MAGAZINE, 1986, VOL. 53, NO. 1, 161 for erratum
+!*
+!*      author      :   Daniel Mason
+!*      revision    :   14/3/2012
+!*      version     :   1.0
