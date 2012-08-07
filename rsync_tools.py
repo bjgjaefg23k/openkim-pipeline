@@ -10,7 +10,8 @@ import database
 
 RSYNC_ADDRESS     = GLOBAL_USER+"@"+GLOBAL_HOST
 RSYNC_REMOTE_ROOT = GLOBAL_DIR
-RSYNC_FLAGS = "-avzR" # --delete ensures that we delete files that aren't on remote
+# RSYNC_REMOTE_ROOT = "/home/pipeline/test/"
+RSYNC_FLAGS = "-avzR -e 'ssh -i /home/vagrant/.ssh/id_rsa_pipeline'" # --delete ensures that we delete files that aren't on remote
 #RSYNC_PATH = '--rsync-path="cd {} && rsync"'.format(RSYNC_REMOTE_ROOT)
 RSYNC_PATH = RSYNC_ADDRESS + ":" + RSYNC_REMOTE_ROOT
 
@@ -61,28 +62,28 @@ def rsync_write(files):
 
 def full_sync():
     """ grab the whole repository """
-    rsync_read(["te/","mo/","md/","tr/","td/","vc/","vr/","pr/","rd/"])
+    rsync_read(["te/","mo/","md/","tr/","td/","vt/","vm/","vr/","pr/","rd/"])
 
 def full_write():
     """ write the whole repo """
-    rsync_write(["te/","mo/","md/","tr/","td/","vc/","vr/","pr/","rd/"])
+    rsync_write(["te/","mo/","md/","tr/","td/","vt/","vm/","vr/","pr/","rd/"])
 
 
-def temp_write(*args):
+def temp_write(files,*args):
     """ write things to the temporary write area """
     rsync_command(files,read=False,path=TEMP_WRITE_PATH)
 
-def temp_read(*args):
+def temp_read(files,*args):
     """ pull things from the temporary read area """
     rsync_command(files,read=True,path=TEMP_READ_PATH)
 
 
-def real_write(*args):
+def real_write(files,*args):
     """ FORBIDDEN:
         write things to the real write area """
-    rsync_command(files,read=True,path=REAL_WRITE_PATH)
+    rsync_command(files,read=False,path=REAL_WRITE_PATH)
 
-def real_read(*args):
+def real_read(files,*args):
     """ read things from the real read directory """
     rsync_command(files,read=True,path=REAL_READ_PATH)
 
@@ -101,7 +102,7 @@ def kid_to_folder(kid):
 
 def director_model_verification_read(modelname):
     """ when director needs to verify a model """
-    files = ["vc/"]
+    files = ["vm/"]
     files.append(kid_to_folder(modelname))
     temp_read(files)
 
