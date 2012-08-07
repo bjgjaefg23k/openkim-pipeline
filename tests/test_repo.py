@@ -10,6 +10,7 @@ os.chdir(CODE_DIR)
 sys.path.append(CODE_DIR)
 
 from config import *
+import models
 
 def test_hasfiles():
     assert os.path.exists(REPO2)
@@ -31,9 +32,17 @@ def test_builds():
 
 
 def test_orm_testobj():
-    pass
+    test = models.Test("LatticeConstantCubicEnergy_Fe_fcc__TE_248695510051_000")    
+    assert len( list(test.models) ) == 3
+    assert test.kim_code == "LatticeConstantCubicEnergy_Fe_fcc__TE_248695510051_000"
+    assert test.kim_code_name == "LatticeConstantCubicEnergy_Fe_fcc"
+    assert test.kim_code_leader == "TE"
+    assert test.kim_code_version == "000"
 
-
+   
+def test_orm_testobj_driver():
+    test = models.Test("LatticeConstantCubicEnergy_Fe_fcc__TE_248695510051_000")
+    assert "LatticeConstantCubicEnergy__TD_373755852346_000"  == list(test.test_drivers)[0].kim_code
 
 def test_rsync_write():
     pass

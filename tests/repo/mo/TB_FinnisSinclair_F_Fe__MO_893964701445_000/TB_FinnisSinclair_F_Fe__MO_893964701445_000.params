@@ -1,0 +1,17 @@
+1.828905d0
+1.8d0
+3.569745d0
+3.4d0
+1.2371147d0
+-0.3592185d0
+-0.0385607d0
+
+#   model parameters for Iron in order
+#   A,beta,d, c,c0,c1,c2
+#   See:
+#          A simple empirical N-body potential for transition metals
+#
+#          M. W. Finnis and J. E. Sinclair
+#          Philosophical Magazine A, 50: 1, 45 . 55 (1984)
+#   And:
+#          Philosophical Magazine A, 53: 1, 161 (1986) (erratum)
