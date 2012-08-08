@@ -1,0 +1,6 @@
+#!/bin/bash -e
+cd $KIM_DIR
+echo "Cleaning again..."
+make clean > /dev/null 2>&1
+echo "Rebuilding API with original environment..."
+make > /dev/null 2>&1

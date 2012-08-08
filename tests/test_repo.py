@@ -8,8 +8,6 @@ REPO2 = CODE_DIR + "/tests/repo"
 os.chdir(CODE_DIR)
 sys.path.append(CODE_DIR)
 
-from config import *
-import models
 
 def test_paths():
     assert os.environ['KIM_TESTS_DIR'] == REPO2+"/te/"
@@ -26,11 +24,12 @@ def test_hasfiles():
 
 def test_builds():
     os.chdir(API)
-    os.system("/usr/bin/env `cat /tmp/env` make >> /dev/null 2>&1")
+    os.system("/usr/bin/env `cat /tmp/env` make clean && make >> /dev/null 2>&1")
     os.chdir(CODE_DIR)
     assert os.path.exists(API+"/KIM_API/libkim.so")
 
 def test_orm_testobj():
+    import models
     test = models.Test("LatticeConstantCubicEnergy_Fe_fcc__TE_248695510051_000")    
     assert len( list(test.models) ) == 3
     assert test.kim_code == "LatticeConstantCubicEnergy_Fe_fcc__TE_248695510051_000"
@@ -40,6 +39,7 @@ def test_orm_testobj():
 
    
 def test_orm_testobj_driver():
+    import models
     test = models.Test("LatticeConstantCubicEnergy_Fe_fcc__TE_248695510051_000")
     assert "LatticeConstantCubicEnergy__TD_373755852346_000"  == list(test.test_drivers)[0].kim_code
 
@@ -49,3 +49,7 @@ def test_rsync_write():
 def test_rsync_read():
     pass
 
+def test_cleanup():
+    os.chdir(API)
+    os.system("/usr/bin/env `cat /tmp/env` make clean >> /dev/null 2>&1")
+    assert not os.path.exists(API+"/KIM_API/libkim.so")
