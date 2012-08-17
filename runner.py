@@ -47,7 +47,7 @@ def run_test_on_model(test,model):
                     signal.signal(signal.SIGALRM, old_handler)
                 signal.alarm(0)
             except PipelineTimeout:
-                logger.error("test %r timed out",testname)
+                logger.error("test %r timed out",test)
                 raise PipelineTimeout, "your test timed out"
 
             end_time = time.time()
@@ -81,6 +81,81 @@ def run_test_on_model(test,model):
     data["_stdout"] = "@FILE[{}]".format(STDOUT_FILE)
     data["_testname"] = test.kim_code
     data["_modelname"] = model.kim_code
+    data["_time"] = end_time-start_time
+    data["_created_at"] = time.time()
+    data["_vmversion"] = os.environ["VMVERSION"]
+
+    # get the information from the timing script
+    time_str = stderr.splitlines()[-1]
+    time_dat = simplejson.loads(time_str)
+    data.update(time_dat)
+
+    logger.debug("got data %r",data)
+    return data
+
+def run_verifier_on_subject(verifier,subject):
+    """ run a V{T,M} with the corresponding {TE,MO},
+    with /usr/bin/time profilling,
+    capture the output as a dict, and return """
+    logger.info("running %r with %r",verifier,subject)
+
+    #grab the executable
+    executable = [verifier.executable]
+    #profiling time thing
+    timeblock = ["/usr/bin/time","--format={\"_usertime\":%U,\"_memmax\":%M,\"_memavg\":%K}"]
+
+    # run the test in its own directory
+    with verifier.in_dir():
+        #grab the input file
+        output_info = verifier.out_dict
+        with verifier.processed_infile(subject) as kim_stdin_file:
+            kim_stdin = kim_stdin_file.read()
+            start_time = time.time()
+            process = Popen(timeblock+ executable,stdin=PIPE,stdout=PIPE,stderr=PIPE)
+            logger.info("launching run...")
+            try:
+                old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(RUNNER_TIMEOUT)
+                try:
+                    stdout, stderr = process.communicate(kim_stdin)
+                finally:
+                    signal.signal(signal.SIGALRM, old_handler)
+                signal.alarm(0)
+            except PipelineTimeout:
+                logger.error("test %r timed out",verifier)
+                raise PipelineTimeout, "your verification timed out"
+
+            end_time = time.time()
+            with open(STDOUT_FILE,"w") as stdout_file:
+                stdout_file.write(stdout)
+
+    # It seems the test didn't finish
+    # this probably doesn't end
+    if process.poll() is None:
+        process.kill()
+        raise KIMRuntimeError, "your test didn't terminate nicely"
+
+    #look backwards in the stdout for the first non whitespaced line
+    try:
+        data_string = next(itertools.ifilter(line_filter,reversed(stdout.splitlines())))
+        logger.debug("we have a data_string: %r",data_string)
+    except StopIteration:
+        #there was no output
+        #likely a kim error
+        logger.error("We probably had a KIM error")
+        raise KIMRuntimeError
+    try:
+        data = simplejson.loads(data_string)
+    except simplejson.JSONDecodeError:
+        logger.error("We didn't get JSON back!")
+        raise PipelineTemplateError, "verification didn't return JSON"
+
+    #GET METADATA
+    data = { output_info.get(key,key):val for key,val in data.iteritems() }
+    data["_kimlog"] = "@FILE[{}]".format(KIMLOG_FILE)
+    data["_stdout"] = "@FILE[{}]".format(STDOUT_FILE)
+    data["_verifiername"] = verifier.kim_code
+    data["_subjectname"] = subject.kim_code
     data["_time"] = end_time-start_time
     data["_created_at"] = time.time()
     data["_vmversion"] = os.environ["VMVERSION"]

@@ -31,6 +31,16 @@ def new_test_result_id(number=None):
         logger.info("Generated new TR kim_code: %r", kim_code)
         return kim_code
 
+def new_verification_result_id(number=None):
+    """ Generate or get a new verification result id, currently make them up, eventually request them from the website """
+    if number:
+        version = get_new_version(None,"VR",number)
+        return format_kim_code(None,"VR",number,version)
+    else:
+        kim_code =  new_vr_kimid()
+        logger.info("Generated new VR kim_code: %r", kim_code)
+        return kim_code
+
 def randint():
     """ Return a random kim integer """
     return random.randint(0,1e12)
@@ -41,6 +51,14 @@ def new_tr_kimid():
     kim_code = format_kim_code(None,"TR","{:012d}".format(randint()),"000")
     while kim_code in existing:
         kim_code = format_kim_code(None,"TR","{:012d}".format(randint()),"000")
+    return kim_code
+
+def new_vr_kimid():
+    """ Generate a new Test Result kimid """
+    existing = set( result.kim_code for result in models.VerificationResult.all() )
+    kim_code = format_kim_code(None,"VR","{:012d}".format(randint()),"000")
+    while kim_code in existing:
+        kim_code = format_kim_code(None,"VR","{:012d}".format(randint()),"000")
     return kim_code
 
 def parse_kim_code(kim_code):
