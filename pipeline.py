@@ -41,6 +41,7 @@ TUBE_JOBS    = "jobs"
 TUBE_RESULTS = "results"
 TUBE_UPDATE  = "updates"
 TUBE_ERRORS  = "errors"
+TUBE_LOG     = "logs"
 TUBE_TR_IDS  = "tr_ids"
 TUBE_VR_IDS  = "vr_ids"
 
@@ -53,17 +54,29 @@ KEY_DEPENDS  = "depends"
 KEY_CHILD    = "child"
 KEY_STATUS   = "status"
 
+BEANSTALK_LEVEL = logging.INFO
 
-class BeanstalkHander(logging.Handler):
+class BeanstalkHandler(logging.Handler):
     """ A beanstalk logging handler """
     def __init__(self,bsd):
         self.bsd = bsd
-        self.bsd.use(TUBE_ERRORS)
-        super(BeanstalkHander,self).__init__()
+        self.info = self.getinfo()
+        super(BeanstalkHandler,self).__init__()
+    def getinfo(self):
+        info = {}
+        things = ['sitename','username','boxtype','ipaddr']
+
+        for thing in things:
+            info[thing] = open(os.path.join('/persistent',thing)).read().strip()
+        return info
+
     def emit(self,record):
         """ Send the message """
-        message = self.format(record)
-        self.bsd.put(message)
+        err_message = self.format(record)
+        self.bsd.use(TUBE_LOG)
+        message = self.info.copy()
+        message['message'] = err_message
+        self.bsd.put(simplejson.dumps(message))
 
 
 class Message(object):
@@ -148,6 +161,12 @@ class Director(object):
         # we want to get updates from the webserver on the 'update' tube
         self.bsd.watch(TUBE_UPDATE)
         self.bsd.ignore("default")
+
+        #attach the beanstalk logger
+        beanstalk_handler = BeanstalkHandler(self.bsd)
+        beanstalk_handler.setLevel(BEANSTALK_LEVEL)
+        beanstalk_handler.setFormatter(log_formatter)
+        self.logger.addHandler(beanstalk_handler)
 
 
     def disconnect_from_daemon(self):
@@ -274,7 +293,7 @@ class Director(object):
             if hasattr(model, "model_driver"):
                 md = model.model_driver
                 if md:
-                    TR_ids += (md,)
+                    TR_ids += (md.kim_code,)
 
             if test.kim_code_leader == "VT" or test.kim_code_leader == "VM":
                 self.logger.info("Requesting new VR id")
@@ -334,6 +353,12 @@ class Worker(object):
 
         self.logger.info("Connected to daemon")
         self.get_jobs()
+
+        #attach the beanstalk logger
+        beanstalk_handler = BeanstalkHandler(self.bsd)
+        beanstalk_handler.setLevel(BEANSTALK_LEVEL)
+        beanstalk_handler.setFormatter(log_formatter)
+        self.logger.addHandler(beanstalk_handler)
 
     def start_listen(self):
         """ Start to listen and connect to the TUBE_JOBS """
