@@ -72,6 +72,9 @@ GLOBAL_USER = "pipeline"
 GLOBAL_HOST = "pipeline.openkim.org"
 GLOBAL_DIR  = "/write/pending/"
 
+RSYNC_USER  = "pipeline"
+RSYNC_HOST  = "openkim.org"
+RSYNC_DIR   = "/write/pending/"
 
 #============================
 # Runner Internals

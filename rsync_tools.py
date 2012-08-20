@@ -8,8 +8,8 @@ import os
 import subprocess, tempfile
 import database
 
-RSYNC_ADDRESS     = GLOBAL_USER+"@"+GLOBAL_HOST
-RSYNC_REMOTE_ROOT = GLOBAL_DIR
+RSYNC_ADDRESS     = RSYNC_USER+"@"+RSYNC_HOST
+RSYNC_REMOTE_ROOT = RSYNC_DIR
 RSYNC_FLAGS = "-avuzRrhEc --progress --stats -e 'ssh -i /persistent/id_ecdsa_pipeline' --exclude-from=/home/vagrant/openkim-pipeline/.rsync-exclude"
 # --delete ensures that we delete files that aren't on remote
 
