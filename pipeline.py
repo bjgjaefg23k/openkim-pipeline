@@ -271,6 +271,11 @@ class Director(object):
             ready, TRs, PAIRs = test.dependency_check()
             TR_ids = tuple(map(str,TRs))
 
+            if hasattr(model, "model_driver"):
+                md = model.model_driver
+                if md:
+                    TR_ids += (md,)
+
             if test.kim_code_leader == "VT" or test.kim_code_leader == "VM":
                 self.logger.info("Requesting new VR id")
                 trid = self.get_vr_id()
