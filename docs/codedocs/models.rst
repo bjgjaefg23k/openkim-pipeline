@@ -59,10 +59,10 @@ Property
     :members:
 
 
-VerificationCheck
+VerificationTest
 ^^^^^^^^^^^^^^^^^
 
-.. autoclass:: VerificationCheck
+.. autoclass:: VerificationTest
 
     .. automethod:: __call__
 

@@ -16,13 +16,13 @@ The tubes
 ---------
 As of the most recent edit, these are the tubes employed by the beanstalkd consumers:
 
-    * :ref:`_jobs_ref` - the jobs that are to be run by the workers
-    * :ref:`_results_ref` - the results (runtime, json output, error status, etc) of the runs
-    * :ref:`_updates_ref` - pokes to the pipeline provided by the website
-    * :ref:`_errors_ref` - serious failings of the pipeline during job runs
-    * :ref:`_logs_ref` - a convenient place to get the **full** logs from any of the directors and workers
-    * :ref:`_tr_ids_ref` - a list of TestResult ids as provided by the website
-    * :ref:`_vr_ids_ref` - a list of VerificationResult ids as provided by the website
+    * :ref:`jobs_ref` - the jobs that are to be run by the workers
+    * :ref:`results_ref` - the results (runtime, json output, error status, etc) of the runs
+    * :ref:`updates_ref` - pokes to the pipeline provided by the website
+    * :ref:`errors_ref` - serious failings of the pipeline during job runs
+    * :ref:`logs_ref` - a convenient place to get the **full** logs from any of the directors and workers
+    * :ref:`tr_ids_ref` - a list of TestResult ids as provided by the website
+    * :ref:`vr_ids_ref` - a list of VerificationResult ids as provided by the website
 
 Most are encoded JSON string of a dictionary, though two are plain text.  Read the descriptions following for 
 the expected format of messages.
@@ -50,9 +50,9 @@ results
 The results of a particular run are not only rsynced directly back to the repo but are also sent along a tube.
 This tube's information contains:
 
-    * *jobid* - the same jobid given to the Worker at first, :ref:`_jobs_ref`
-    * *job* - same tuple job as posted in :ref:`_jobs_ref`
-    * *priority* - echoing same as in :ref:`_jobs_ref`
+    * *jobid* - the same jobid given to the Worker at first, :ref:`jobs_ref`
+    * *job* - same tuple job as posted in :ref:`jobs_ref`
+    * *priority* - echoing same as in :ref:`jobs_ref`
     * *results* - the full JSON output string of the run coupling
 
 
@@ -79,9 +79,9 @@ This tube contains errors that the website may be curious about.  These are main
 failed job runs that could be addressed further with manual intervention or reruning.  
 The format of these messages is:
 
-    * *jobid* - the same jobid given to the Worker at first, :ref:`_jobs_ref`
-    * *job* - same tuple job as posted in :ref:`_jobs_ref`
-    * *priority* - echoing same as in :ref:`_jobs_ref`
+    * *jobid* - the same jobid given to the Worker at first, :ref:`jobs_ref`
+    * *job* - same tuple job as posted in :ref:`jobs_ref`
+    * *priority* - echoing same as in :ref:`jobs_ref`
     * *errors* - the error message coming back from the run
 
 
@@ -112,4 +112,4 @@ or the queue will get backed up.
 
 vr_ids
 ^^^^^^
-This is a consumable list of VerificationResult IDs.  It is **plain text** again.  See :ref:`_tr_ids_ref`.
+This is a consumable list of VerificationResult IDs.  It is **plain text** again.  See :ref:`tr_ids_ref`.
