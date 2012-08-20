@@ -1,0 +1,42 @@
+#! /usr/bin/env python
+""" Allows us to dump whats in the tubes """
+
+import os
+import sys
+from pipeline import Director
+import beanstalkc as bean
+
+d = Director()
+d.connect_to_daemon()
+bsd = d.bsd
+
+usual_channels = ["errors","results","logs"]
+full_channels = ["jobs","results","updates","errors","logs","tr_ids","vr_ids"]
+
+def dump_channel(channel):
+    print "dumping channel:", channel
+    try:
+        stats = bsd.stats_tube(channel)
+    except bean.CommandFailed:
+        print "No tube: ", channel
+        return
+
+    job_number = stats['current-jobs-ready']
+
+    with open(os.path.join('logs',channel),'a') as fl:
+        for i in xrange(job_number):
+            bsd.watch(channel)
+            j = bsd.reserve()
+            fl.write(j.body)
+            print "dumping message: ", j.body
+            fl.write('\n')
+            j.delete()
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        for channel in full_channels:
+            dump_channel(channel)
+    else:
+        for channel in usual_channels:
+            dump_channel(channel)
