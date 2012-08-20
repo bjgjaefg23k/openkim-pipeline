@@ -52,6 +52,7 @@ Table of Contents
 
    pipeline
    network
+   beanstalkd
    virtualbox
    developers
    orm
