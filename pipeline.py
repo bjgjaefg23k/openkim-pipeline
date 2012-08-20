@@ -1,7 +1,7 @@
 """
 Pipeline.py is the section of the pipeline that handles the network
 communication between directors, workers, and webiste through
-the beanstalk daemon.  It is also the main entrance point of the 
+the beanstalk daemon.  It is also the main entrance point of the
 pipeline worker or director.
 
 It can be called using::
@@ -13,13 +13,14 @@ in order to start it up.
 
 Any of the classes below rely on a secure public key to open an ssh
 tunnel to the remote host.  It then connects to the beanstalkd
-across this tunnel.  
+across this tunnel.
 """
 from config import *
 import models as modelslib
 import database
-import beanstalkc as bean 
+import beanstalkc as bean
 from subprocess import check_call, Popen, PIPE
+import subprocess
 from multiprocessing import Process
 import urllib
 import time
@@ -54,16 +55,16 @@ KEY_STATUS   = "status"
 
 class Message(object):
     """Message format for the queue system:
-        "jobid":    id assigned from the director 
+        "jobid":    id assigned from the director
         "priority": a string priority
         "job":      (testid, modelid, testresult id)
         "results":  the json message produced by the run
         "errors":   the exception caught and returned as a string
         "depends":  a list of tuples of jobs
     """
-    def __init__(self, string=None, jobid=None, 
-            priority=None, job=None, results=None, 
-            errors=None, depends=None, child=None, 
+    def __init__(self, string=None, jobid=None,
+            priority=None, job=None, results=None,
+            errors=None, depends=None, child=None,
             status=None):
         if string is not None:
             self.msg_from_string(string)
@@ -80,7 +81,7 @@ class Message(object):
     def __repr__(self):
         """ The repr of the string is a ``simplejson.dumps`` """
         return simplejson.dumps({KEY_JOBID: self.jobid, KEY_PRIORITY: self.priority,
-            KEY_JOB: self.job, KEY_RESULTS: self.results, KEY_ERRORS: self.errors, 
+            KEY_JOB: self.job, KEY_RESULTS: self.results, KEY_ERRORS: self.errors,
             KEY_DEPENDS: self.depends, KEY_CHILD: self.child, KEY_STATUS: self.status})
 
     def msg_from_string(self,string):
@@ -96,14 +97,14 @@ class Message(object):
         self.status = dic[KEY_STATUS]
 
 class Director(object):
-    """ The Director object, knows to listen to incoming jobs, computes dependencies 
+    """ The Director object, knows to listen to incoming jobs, computes dependencies
     and passes them along to workers
     """
     def __init__(self):
-        self.ip   = GLOBAL_IP 
-        self.port = GLOBAL_PORT 
-        self.timeout = PIPELINE_TIMEOUT 
-        self.msg_size = PIPELINE_MSGSIZE 
+        self.ip   = GLOBAL_IP
+        self.port = GLOBAL_PORT
+        self.timeout = PIPELINE_TIMEOUT
+        self.msg_size = PIPELINE_MSGSIZE
         self.remote_user = GLOBAL_USER
         self.remote_addr = GLOBAL_HOST
         self.logger = logger.getChild("director")
@@ -130,7 +131,7 @@ class Director(object):
             self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
 
         self.logger.info("Director ready")
-        
+
         # we want to get updates from the webserver on the 'update' tube
         self.bsd.watch(TUBE_UPDATE)
         self.bsd.ignore("default")
@@ -162,12 +163,12 @@ class Director(object):
         return vr_id
 
     def get_updates(self):
-        """ 
+        """
         Endless loop that waits for updates on the tube TUBE_UPDATE
-        
-        The update is a json string for a dictionary with key-values pairs 
+
+        The update is a json string for a dictionary with key-values pairs
         that look like:
-            
+
             * kimid : any form of the kimid that is recognized by the database package
             * priority : one of 'immediate', 'very high', 'high', 'normal', 'low', 'very low'
             * status : one of 'approved', 'pending' where pending signifies it has just been
@@ -188,7 +189,7 @@ class Director(object):
             request.delete()
 
     def priority_to_number(self,priority):
-        priorities = {"immediate": 0, "very high": 0.01, "high": 0.1, 
+        priorities = {"immediate": 0, "very high": 0.01, "high": 0.1,
                       "normal": 1, "low": 10, "very low": 100}
         if priority not in priorities.keys():
             priority = "normal"
@@ -205,12 +206,12 @@ class Director(object):
 
         # try to build the kimid before sending jobs
         if self.make_object(kimid) == 0:
-            rsync_tools.full_write()
+            rsync_tools.director_build_write(kimid)
         else:
             self.logger.error("Could not build %r", kimid)
             self.bsd.use(TUBE_ERRORS)
             self.bsd.put(simplejson.dumps({"error": "Could not build %r" % kimid}))
-            return 
+            return
 
         if leader=="VT":
             test = modelslib.VerificationTest(kimid)
@@ -220,7 +221,7 @@ class Director(object):
             test = modelslib.VerificationModel(kimid)
             models = modelslib.Model.all()
             tests = [test]
-        else:        
+        else:
             if status == "approved":
                 if leader=="TE":
                     test = modelslib.Test(kimid)
@@ -255,8 +256,8 @@ class Director(object):
         with test.in_dir():
             #grab the input file
             ready, TRs, PAIRs = test.dependency_check()
-            TR_ids = map(str,TRs)
-       
+            TR_ids = tuple(map(str,TRs))
+
             if test.kim_code_leader == "VT" or test.kim_code_leader == "VM":
                 self.logger.info("Requesting new VR id")
                 trid = self.get_vr_id()
@@ -269,7 +270,7 @@ class Director(object):
                 for (t,m) in PAIRs:
                     self.logger.info("Submitting dependency <%s, %s>" % (t, m))
                     depids.append(self.check_dependencies_and_push(str(t),str(m),priority/10,status,child=(str(test),str(model),trid)))
-            
+
             self.bsd.use(TUBE_JOBS)
             self.bsd.put(repr(Message(job=(str(test),str(model)),jobid=trid, child=child, depends=TR_ids+tuple(depids), status=status)), priority=priority)
 
@@ -277,7 +278,7 @@ class Director(object):
 
     def make_object(self, kimid):
         self.logger.debug("Building the source for %r", kimid)
-        kimobj = KIMObject(kimid)
+        kimobj = modelslib.KIMObject(kimid)
         with kimobj.in_dir():
             try:
                 subprocess.check_call("make")
@@ -293,10 +294,10 @@ class Director(object):
 class Worker(object):
     """ Represents a worker, knows how to do jobs he is given, create results and rsync them back """
     def __init__(self):
-        self.remote_user = GLOBAL_USER 
-        self.remote_addr = GLOBAL_HOST 
-        self.ip          = GLOBAL_IP 
-        self.timeout = PIPELINE_TIMEOUT 
+        self.remote_user = GLOBAL_USER
+        self.remote_addr = GLOBAL_HOST
+        self.ip          = GLOBAL_IP
+        self.timeout = PIPELINE_TIMEOUT
         self.port = GLOBAL_PORT
         self.logger = logger.getChild("worker")
 
@@ -321,10 +322,10 @@ class Worker(object):
         # connect to the daemon we created
         self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
 
-        # we want to get jobs from the 'jobs' tube 
+        # we want to get jobs from the 'jobs' tube
         self.bsd.watch(TUBE_JOBS)
         self.bsd.ignore("default")
-        
+
     def get_jobs(self):
         """ Endless loop that awaits jobs to run """
         while 1:
@@ -336,24 +337,24 @@ class Worker(object):
             # and return the results to the director
             #repo.rsync_update()
             jobmsg = Message(string=job.body)
-            
+
             # check to see if this is a verifier or an actual test
             name,leader,num,version = database.parse_kim_code(jobmsg.job[0])
             if leader == "VT" or leader == "VM":
                 try:
                     self.logger.info("rsyncing to repo %r", jobmsg.job+jobmsg.depends)
                     rsync_tools.worker_test_result_read(*jobmsg.job, depends=jobmsg.depends)
-                   
+
                     verifier_kcode, subject_kcode = jobmsg.job
                     verifier = models.Verifier(verifier_kcode)
                     subject  = models.Subject(subject_kcode)
-                    
+
                     self.logger.info("Running (%r,%r)",verifier,subject)
                     result = runner.run_verifier_on_subject(verifier,subject)
 
                     #create the verification result object (will be written)
                     vr = models.VerificationResult(jobmsg.jobid, results = result, search=False)
-                    
+
                     self.logger.info("rsyncing results %r", jobmsg.jobid)
                     rsync_tools.worker_test_result_write(jobmsg.jobid)
                     self.logger.info("sending result message back")
@@ -362,19 +363,19 @@ class Worker(object):
                     self.bsd.use(TUBE_RESULTS)
                     self.bsd.put(repr(resultsmsg))
                     job.delete()
-          
+
                 # could be that a dependency has not been met.
-                # put it back on the queue to wait 
+                # put it back on the queue to wait
                 except PipelineDataMissing as e:
                     if job.stats()['age'] < 5*PIPELINE_JOB_TIMEOUT:
                         self.logger.error("Run failed, missing data.  Returning to queue... (%r)" % e)
-                        job.release(delay=PIPELINE_JOB_TIMEOUT)    
+                        job.release(delay=PIPELINE_JOB_TIMEOUT)
                     else:
-                        self.logger.error("Run failed, missing data. Lifetime has expired, deleting (%r)" % e)  
+                        self.logger.error("Run failed, missing data. Lifetime has expired, deleting (%r)" % e)
                         job.delete()
-       
+
                 # another problem has occurred.  just remove the job
-                # and send the error back along the error queue 
+                # and send the error back along the error queue
                 except Exception as e:
                     self.logger.error("Run failed, deleting... %r" % e)
                     resultsmsg = Message(jobid=jobmsg.jobid, priority=jobmsg.priority,
@@ -383,23 +384,23 @@ class Worker(object):
                     self.bsd.put(repr(resultsmsg))
                     job.delete()
 
-                
+
 
             else:
                 try:
                     self.logger.info("rsyncing to repo %r", jobmsg.job+jobmsg.depends)
                     rsync_tools.worker_test_result_read(*jobmsg.job, depends=jobmsg.depends)
-                   
+
                     test_kcode, model_kcode = jobmsg.job
                     test = models.Test(test_kcode)
                     model = models.Model(model_kcode)
-                    
+
                     self.logger.info("Running (%r,%r)",test,model)
                     result = runner.run_test_on_model(test,model)
 
                     #create the test result object (will be written)
                     tr = models.TestResult(jobmsg.jobid, results = result, search=False)
-                    
+
                     self.logger.info("rsyncing results %r", jobmsg.jobid)
                     rsync_tools.worker_test_result_write(jobmsg.jobid)
                     self.logger.info("sending result message back")
@@ -408,19 +409,19 @@ class Worker(object):
                     self.bsd.use(TUBE_RESULTS)
                     self.bsd.put(repr(resultsmsg))
                     job.delete()
-          
+
                 # could be that a dependency has not been met.
-                # put it back on the queue to wait 
+                # put it back on the queue to wait
                 except PipelineDataMissing as e:
                     if job.stats()['age'] < 5*PIPELINE_JOB_TIMEOUT:
                         self.logger.error("Run failed, missing data.  Returning to queue... (%r)" % e)
-                        job.release(delay=PIPELINE_JOB_TIMEOUT)    
+                        job.release(delay=PIPELINE_JOB_TIMEOUT)
                     else:
-                        self.logger.error("Run failed, missing data. Lifetime has expired, deleting (%r)" % e)  
+                        self.logger.error("Run failed, missing data. Lifetime has expired, deleting (%r)" % e)
                         job.delete()
-       
+
                 # another problem has occurred.  just remove the job
-                # and send the error back along the error queue 
+                # and send the error back along the error queue
                 except Exception as e:
                     self.logger.error("Run failed, deleting... %r" % e)
                     resultsmsg = Message(jobid=jobmsg.jobid, priority=jobmsg.priority,
@@ -433,10 +434,10 @@ class Worker(object):
 class Site(object):
     """ False stand in for the website, pushes TR ids for us and can update models or tests """
     def __init__(self):
-        self.ip   = GLOBAL_IP 
-        self.port = GLOBAL_PORT 
-        self.timeout = PIPELINE_TIMEOUT 
-        self.msg_size = PIPELINE_MSGSIZE 
+        self.ip   = GLOBAL_IP
+        self.port = GLOBAL_PORT
+        self.timeout = PIPELINE_TIMEOUT
+        self.msg_size = PIPELINE_MSGSIZE
         self.remote_user = GLOBAL_USER
         self.remote_addr = GLOBAL_HOST
         self.logger = logger.getChild("website")
@@ -464,7 +465,7 @@ class Site(object):
 
     def send_update(self, kimid):
         self.bsd.use(TUBE_UPDATE)
-        self.bsd.put(simplejson.dumps({"kimid": kimid, "priority":"normal"}))
+        self.bsd.put(simplejson.dumps({"kimid": kimid, "priority":"normal", "status":"approved"}))
 
 
 
@@ -481,7 +482,7 @@ if __name__ == "__main__":
         elif sys.argv[1] == "site":
             obj = Site()
             obj.run()
-            obj.send_update("MO_607867530001_000")
+            obj.send_update("LatticeConstantCubicEnergy_Fe_fcc__TE_579232709975_000")
     else:
         print "Specify {worker|director|site}"
         exit(1)

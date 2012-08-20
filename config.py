@@ -70,7 +70,7 @@ GLOBAL_PORT = 14177
 
 GLOBAL_USER = "pipeline"
 GLOBAL_HOST = "pipeline.openkim.org"
-GLOBAL_DIR  = "/home/pipeline/write/pending/"
+GLOBAL_DIR  = "/write/pending/"
 
 
 #============================

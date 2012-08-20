@@ -10,7 +10,9 @@ import database
 
 RSYNC_ADDRESS     = GLOBAL_USER+"@"+GLOBAL_HOST
 RSYNC_REMOTE_ROOT = GLOBAL_DIR
-RSYNC_FLAGS = "-avuzRr --progress --stats -e 'ssh -i /home/vagrant/.ssh/id_rsa_pipeline' --exclude-from=/home/vagrant/openkim-pipeline/.rsync-exclude" # --delete ensures that we delete files that aren't on remote
+RSYNC_FLAGS = "-avuzRrhEc --progress --stats -e 'ssh -i /persistent/id_ecdsa_pipeline' --exclude-from=/home/vagrant/openkim-pipeline/.rsync-exclude"
+# --delete ensures that we delete files that aren't on remote
+
 #RSYNC_PATH = '--rsync-path="cd {} && rsync"'.format(RSYNC_REMOTE_ROOT)
 RSYNC_PATH = RSYNC_ADDRESS + ":" + RSYNC_REMOTE_ROOT
 
@@ -116,6 +118,12 @@ def director_new_test_read(testname):
     files = ["mo/","tr/"]
     files.append(kid_to_folder(testname))
     temp_read(files)
+
+def director_build_write(thingname):
+    """ when a director does a make """
+    files = []
+    files.append(kid_to_folder(thingname))
+    temp_write(files)
 
 #==================================
 # worker methods
