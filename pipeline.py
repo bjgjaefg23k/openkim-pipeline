@@ -53,6 +53,19 @@ KEY_DEPENDS  = "depends"
 KEY_CHILD    = "child"
 KEY_STATUS   = "status"
 
+
+class BeanstalkHander(logging.Handler):
+    """ A beanstalk logging handler """
+    def __init__(self,bsd):
+        self.bsd = bsd
+        self.bsd.use(TUBE_ERRORS)
+        super(BeanstalkHander,self).__init__()
+    def emit(self,record):
+        """ Send the message """
+        message = self.format(record)
+        self.bsd.put(message)
+
+
 class Message(object):
     """Message format for the queue system:
         "jobid":    id assigned from the director
