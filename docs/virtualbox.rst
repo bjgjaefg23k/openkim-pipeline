@@ -19,7 +19,7 @@ or a director/worker box.  To create either, you must first acquire the
 
     openkim-pipeline-setup/static/foruser/Vagrantfile
 
-Copy this to a new directory and run ``vagrant up``.  That's it!
+of the git repository. A direct link is `here <https://github.com/openkim/openkim-pipeline-setup/tree/stable/static/foruser>`_. Copy this to a new directory and run ``vagrant up``.  That's it!
 
 If you wish to make the box secure, you must also acquire::
 
