@@ -21,7 +21,7 @@ import database
 import beanstalkc as bean
 from subprocess import check_call, Popen, PIPE
 import subprocess
-from multiprocessing import Process
+from multiprocessing import Process, cpu_count
 import urllib
 import time
 import simplejson
@@ -516,16 +516,17 @@ class Site(object):
 if __name__ == "__main__":
     import sys
     if len(sys.argv) == 2:
-        if sys.argv[1] == "director":
-            obj = Director()
-            obj.run()
-        elif sys.argv[1] == "worker":
-            obj = Worker()
-            obj.run()
-        elif sys.argv[1] == "site":
-            obj = Site()
-            obj.run()
-            obj.send_update("LatticeConstantCubicEnergy_Fe_fcc__TE_579232709975_000")
+        for i in range(cpu_count()):
+            if sys.argv[1] == "director":
+                obj = Director()
+                thrd = Process(target=Director.run(obj))
+            elif sys.argv[1] == "worker":
+                obj = Worker()
+                thrd = Process(target=Worker.run(obj))
+            elif sys.argv[1] == "site":
+                obj = Site()
+                thrd = Process(target=Site.run(obj))
+                obj.send_update("LatticeConstantCubicEnergy_Fe_fcc__TE_579232709975_000")
     else:
         print "Specify {worker|director|site}"
         exit(1)
