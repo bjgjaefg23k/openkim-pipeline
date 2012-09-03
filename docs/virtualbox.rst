@@ -85,6 +85,22 @@ run::
 which creates a file ``package.box`` which you can then share.
 
 
+Transferring Files
+^^^^^^^^^^^^^^^^^^
+There are two main methods to get files onto the VM from another machine.  If the source machine
+has ssh access then you can scp the file using your credentials::
+
+    vagrant@vagrant-pipeline> scp user@remote:/path/to/file /local/path
+
+If the file is on the host machine then you have two options.  The prefered option is to copy the 
+file temporarily into the root folder where ``Vagrantfile`` lives.  This folder is mounted 
+on the VM and anything there will show up on the VM in the directory ``/persistent``.  
+Otherwise, one can issue the following command from the host machine::
+
+    user@machine> scp -p 2200 /local/file vagrant@127.0.0.1:/path/on/vm
+
+
+
 Features of our box
 --------------------
 We are running a Ubuntu Precise 64bit distribution that has a lot of base software
