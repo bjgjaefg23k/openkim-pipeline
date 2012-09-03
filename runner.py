@@ -13,6 +13,13 @@ import models
 def timeout_handler(signum, frame):
     raise PipelineTimeout()
 
+def getboxinfo(self):
+    info = {}
+    things = ['sitename','username','boxtype','ipaddr']
+
+    for thing in things:
+        info["_"+thing] = open(os.path.join('/persistent',thing)).read().strip()
+    return info
 
 def line_filter(line):
     return bool(line.strip())
@@ -84,6 +91,7 @@ def run_test_on_model(test,model):
     data["_time"] = end_time-start_time
     data["_created_at"] = time.time()
     data["_vmversion"] = os.environ["VMVERSION"]
+    data.update(getboxinfo())
 
     # get the information from the timing script
     time_str = stderr.splitlines()[-1]
@@ -159,6 +167,7 @@ def run_verifier_on_subject(verifier,subject):
     data["_time"] = end_time-start_time
     data["_created_at"] = time.time()
     data["_vmversion"] = os.environ["VMVERSION"]
+    data.update(getboxinfo())
 
     # get the information from the timing script
     time_str = stderr.splitlines()[-1]
