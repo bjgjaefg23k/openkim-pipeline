@@ -244,7 +244,7 @@ def dependency_check(inp):
         return allready, ( kid for ready,kid in cands if ready ), ( pair for ready, pair in cands if not ready )
 
 
-def process(inp, modelname, testname):
+def process(inp, modelname, testname, modelonly= False):
     """ takes in a file like object and retuns a processed file like object, writing a copy to TEMP_INPUT_FILE """
     logger.info("attempting to process %r for (%r,%r)",inp,modelname,testname)
     test = models.Test(testname)
@@ -252,7 +252,10 @@ def process(inp, modelname, testname):
         with open(TEMP_INPUT_FILE,'w') as out:
             for line in inp:
                 logger.debug("line to process is:\n\t %r",line)
-                newline = process_line(line,modelname,testname)
+                if modelonly:
+                    newline = modelname_processor(line, modelname, testname)
+                else:
+                    newline = process_line(line,modelname,testname)
                 logger.debug("new line is:\n\t %r",newline)
                 out.write(newline)
 

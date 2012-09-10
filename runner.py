@@ -13,7 +13,7 @@ import models
 def timeout_handler(signum, frame):
     raise PipelineTimeout()
 
-def getboxinfo(self):
+def getboxinfo():
     info = {}
     things = ['sitename','username','boxtype','ipaddr']
 
@@ -60,6 +60,8 @@ def run_test_on_model(test,model):
             end_time = time.time()
             with open(STDOUT_FILE,"w") as stdout_file:
                 stdout_file.write(stdout)
+            with open(STDERR_FILE,"w") as stderr_file:
+                stderr_file.write(stderr)
 
     # It seems the test didn't finish
     # this probably doesn't end
@@ -136,6 +138,8 @@ def run_verifier_on_subject(verifier,subject):
             end_time = time.time()
             with open(STDOUT_FILE,"w") as stdout_file:
                 stdout_file.write(stdout)
+            with open(STDERR_FILE,"w") as stderr_file:
+                stderr_file.write(stderr)
 
     # It seems the test didn't finish
     # this probably doesn't end

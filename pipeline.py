@@ -29,6 +29,7 @@ import rsync_tools
 import models
 import database
 import runner
+import traceback
 logger = logger.getChild("pipeline")
 
 import simplejson
@@ -140,21 +141,29 @@ class Director(object):
         self.connect_to_daemon()
         self.job_thrd  = Process(target=Director.get_updates(self))
 
+    def launch_screen(self):
+        """ Launch a screened ssh connection """
+        self.ssh = Popen("screen -dm ssh -i /persistent/id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -L{}:{}:{} {}@{}".format(
+            self.port,self.ip,self.port,self.remote_user,self.remote_addr), shell=True)
+        self.logger.info("Waiting to connect to beanstalkd")
+        time.sleep(PIPELINE_WAIT)
+
     def connect_to_daemon(self):
         """ try to connect to the daemon, or launch one if we timeout """
         self.logger.info("Connecting to beanstalkd")
         try:
             self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
-        except:
+        except bean.SocketError:
             self.logger.info("No daemon found, starting on %r", self.remote_addr)
             # no need to start the daemon anymore for debug.  It's always going
             #self.daemon = Popen("ssh {}@{} \"screen -dm beanstalkd -l {} -p {} -z {} -b beanlog -f 0\"".format(
             #    self.remote_user, self.remote_addr, self.ip, self.port, self.msg_size), shell=True)
-            self.ssh = Popen("screen -dm ssh -i /persistent/id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -L{}:{}:{} {}@{}".format(
-                self.port,self.ip,self.port,self.remote_user,self.remote_addr), shell=True)
-            self.logger.info("Waiting to connect to beanstalkd")
-            time.sleep(PIPELINE_WAIT)
-            self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
+            self.launch_screen()
+            try:
+                self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
+            except bean.SocketError:
+                # We failed to connect twice, this is really bad
+                self.logger.error("Failed to connect to beanstalk queue after launching ssh")
 
         self.logger.info("Director ready")
 
@@ -176,6 +185,7 @@ class Director(object):
 
     def get_tr_id(self):
         """ Get a TR id from the TUBE_TR_IDS """
+        self.logger.info("Requesting new TR id")
         bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
         bsd.watch(TUBE_TR_IDS)
         request = bsd.reserve()
@@ -186,6 +196,7 @@ class Director(object):
 
     def get_vr_id(self):
         """ Get a VR id from TUBE_VR_IDS """
+        self.logger.info("Requesting new VR id")
         bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
         bsd.watch(TUBE_VR_IDS)
         request = bsd.reserve()
@@ -209,14 +220,19 @@ class Director(object):
 
         """
         while 1:
+            self.logger.info("Director Waiting for message...")
             request = self.bsd.reserve()
 
             # got a request to update a model or test
             # from the website (or other trusted place)
             if request.stats()['tube'] == TUBE_UPDATE:
                 # update the repository,send it out as a job to compute
-                rsync_tools.full_sync()
-                self.push_jobs(simplejson.loads(request.body))
+                try:
+                    rsync_tools.full_sync()
+                    self.push_jobs(simplejson.loads(request.body))
+                except Exception as e:
+                    tb = traceback.format_exc()
+                    self.logger.error("Director had an error on update: {}\n {}".format(e, tb))
 
             request.delete()
 
@@ -287,8 +303,11 @@ class Director(object):
         depids = []
         with test.in_dir():
             #grab the input file
-            ready, TRs, PAIRs = test.dependency_check()
-            TR_ids = tuple(map(str,TRs))
+            ready, TRs, PAIRs = test.dependency_check(model)
+            if TRs:
+                TR_ids = tuple(map(str,TRs))
+            else:
+                TR_ids = ()
 
             if hasattr(model, "model_driver"):
                 md = model.model_driver
@@ -296,17 +315,16 @@ class Director(object):
                     TR_ids += (md.kim_code,)
 
             if test.kim_code_leader == "VT" or test.kim_code_leader == "VM":
-                self.logger.info("Requesting new VR id")
                 trid = self.get_vr_id()
             else:
-                self.logger.info("Requesting new TR id")
                 trid = self.get_tr_id()
             self.logger.info("Submitting job <%s, %s, %s> priority %i" % (test, model, trid, priority))
 
             if not ready:
-                for (t,m) in PAIRs:
-                    self.logger.info("Submitting dependency <%s, %s>" % (t, m))
-                    depids.append(self.check_dependencies_and_push(str(t),str(m),priority/10,status,child=(str(test),str(model),trid)))
+                if PAIRs:
+                    for (t,m) in PAIRs:
+                        self.logger.info("Submitting dependency <%s, %s>" % (t, m))
+                        depids.append(self.check_dependencies_and_push(str(t),str(m),priority/10,status,child=(str(test),str(model),trid)))
 
             self.bsd.use(TUBE_JOBS)
             self.bsd.put(repr(Message(job=(str(test),str(model)),jobid=trid, child=child, depends=TR_ids+tuple(depids), status=status)), priority=priority)
@@ -369,6 +387,14 @@ class Worker(object):
         self.bsd.watch(TUBE_JOBS)
         self.bsd.ignore("default")
 
+    def job_message(self, jobmsg, errors=None, results=None, tube=TUBE_ERRORS):
+        """ Send back a job message """
+        resultsmsg = Message(jobid=jobmsg.jobid, priority=jobmsg.priority,
+                job=jobmsg.job, results=results, errors=repr(errors))
+        self.bsd.use(tube)
+        self.bsd.put(repr(resultsmsg))
+
+
     def get_jobs(self):
         """ Endless loop that awaits jobs to run """
         while 1:
@@ -379,10 +405,29 @@ class Worker(object):
             # update the repository, attempt to run the job
             # and return the results to the director
             #repo.rsync_update()
-            jobmsg = Message(string=job.body)
+            try:
+                jobmsg = Message(string=job.body)
+            except simplejson.JSONDecodeError:
+                # message is not JSON decodeable
+                self.logger.error("Did not recieve valid JSON, {}".format(job.body))
+                job.delete()
+                continue
+            except KeyError:
+                # message does not have the right keys
+                self.logger.error("Did not recieve a valid message, missing key: {}".format(job.body))
+                job.delete()
+                continue
 
             # check to see if this is a verifier or an actual test
-            name,leader,num,version = database.parse_kim_code(jobmsg.job[0])
+            try:
+                name,leader,num,version = database.parse_kim_code(jobmsg.job[0])
+            except InvalidKIMID as e:
+                # we were not given a valid kimid
+                self.logger.error("Could not parse {} as a valid KIMID".format(jobmsg.job[0]))
+                self.job_message(jobmsg, errors=e)
+                job.delete()
+                continue
+
             if leader == "VT" or leader == "VM":
                 try:
                     self.logger.info("rsyncing to repo %r", jobmsg.job+jobmsg.depends)
@@ -401,10 +446,7 @@ class Worker(object):
                     self.logger.info("rsyncing results %r", jobmsg.jobid)
                     rsync_tools.worker_test_result_write(jobmsg.jobid)
                     self.logger.info("sending result message back")
-                    resultsmsg = Message(jobid=jobmsg.jobid, priority=jobmsg.priority,
-                            job=jobmsg.job, results=result, errors=None)
-                    self.bsd.use(TUBE_RESULTS)
-                    self.bsd.put(repr(resultsmsg))
+                    self.job_message(jobmsg, results=result, tube=TUBE_RESULTS)
                     job.delete()
 
                 # could be that a dependency has not been met.
@@ -421,10 +463,7 @@ class Worker(object):
                 # and send the error back along the error queue
                 except Exception as e:
                     self.logger.error("Run failed, deleting... %r" % e)
-                    resultsmsg = Message(jobid=jobmsg.jobid, priority=jobmsg.priority,
-                            job=jobmsg.job, results=None, errors=repr(e))
-                    self.bsd.use(TUBE_ERRORS)
-                    self.bsd.put(repr(resultsmsg))
+                    self.job_message(jobmsg, errors=e)
                     job.delete()
 
 
@@ -447,10 +486,7 @@ class Worker(object):
                     self.logger.info("rsyncing results %r", jobmsg.jobid)
                     rsync_tools.worker_test_result_write(jobmsg.jobid)
                     self.logger.info("sending result message back")
-                    resultsmsg = Message(jobid=jobmsg.jobid, priority=jobmsg.priority,
-                            job=jobmsg.job, results=result, errors=None)
-                    self.bsd.use(TUBE_RESULTS)
-                    self.bsd.put(repr(resultsmsg))
+                    self.job_message(jobmsg, results=result, tube=TUBE_RESULTS)
                     job.delete()
 
                 # could be that a dependency has not been met.
@@ -467,10 +503,7 @@ class Worker(object):
                 # and send the error back along the error queue
                 except Exception as e:
                     self.logger.error("Run failed, deleting... %r" % e)
-                    resultsmsg = Message(jobid=jobmsg.jobid, priority=jobmsg.priority,
-                            job=jobmsg.job, results=None, errors=repr(e))
-                    self.bsd.use(TUBE_ERRORS)
-                    self.bsd.put(repr(resultsmsg))
+                    self.job_message(jobmsg, errors=e )
                     job.delete()
 
 
@@ -526,7 +559,7 @@ if __name__ == "__main__":
             elif sys.argv[1] == "site":
                 obj = Site()
                 thrd = Process(target=Site.run(obj))
-                obj.send_update("LatticeConstantCubicEnergy_Fe_fcc__TE_579232709975_000")
+                obj.send_update("TB_Khakshouri_F_Fe__MO_853979044095_000")
     else:
         print "Specify {worker|director|site}"
         exit(1)

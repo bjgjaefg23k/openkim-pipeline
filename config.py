@@ -36,6 +36,7 @@ PIPELINE_INFO_FILE = "pipelineinfo.json"
 INPUT_FILE = "pipeline.in"
 OUTPUT_FILE = "pipeline.out"    #with their words : property ids
 STDOUT_FILE = "pipeline.stdout"
+STDERR_FILE = "pipeline.stderr"
 TEMP_INPUT_FILE = "pipeline.in.tmp"
 KIMLOG_FILE = "kim.log"
 
@@ -70,11 +71,13 @@ GLOBAL_PORT = 14177
 
 GLOBAL_USER = "pipeline"
 GLOBAL_HOST = "pipeline.openkim.org"
-GLOBAL_DIR  = "/write/approved/"
+# GLOBAL_DIR  = "/write/approved/"
+# GLOBAL_DIR  = "/write/pending/"
 
 RSYNC_USER  = "pipeline"
 RSYNC_HOST  = "openkim.org"
-RSYNC_DIR   = "/write/"
+RSYNC_DIR   = "/write/approved/"
+# RSYNC_DIR   = "/write/pending/"
 
 #============================
 # Runner Internals

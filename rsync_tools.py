@@ -139,7 +139,7 @@ def worker_model_verification_read(modelname,vcname,depends):
 
 def worker_test_result_read(testname,modelname,depends):
     """ when a worker needs to run a test result """
-    files = [kid_to_folder(modelname),kid_to_folder(testname)]
+    files = [kid_to_folder(modelname),kid_to_folder(testname),"pr/"]
     for depend in depends:
         files.append(kid_to_folder(depend))
     real_read(files)

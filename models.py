@@ -297,13 +297,13 @@ class Test(KIMObject):
         """ return a file object for the OUTPUT_FILE """
         return open(self.outfile_path)
 
-    def dependency_check(self):
+    def dependency_check(self, model):
         """ Ask template.py to do a dependency check
             returns a 3 tuple
                 ready - bool of whether good to go or not
                 dependencies_good_to_go - kids for ready dependencies
                 dependencies_not_ready - tuples of test/model pairs to run """
-        return template.dependency_check(self.infile)
+        return template.dependency_check(self.modelname_processed_infile(model))
 
     @property
     def dependencies(self):
@@ -348,6 +348,10 @@ class Test(KIMObject):
         """ Process the input file, with template, and return a file object to the result """
         template.process(self.infile,model.kim_code,self.kim_code)
         return open(os.path.join(self.path,TEMP_INPUT_FILE))
+
+    def modelname_processed_infile(self, model):
+        template.process(self.infile, model.kim_code, self.kim_code, modelonly=True)
+        return open(os.path.join(self.path, TEMP_INPUT_FILE))
 
     @property
     def models(self):
@@ -901,7 +905,7 @@ def Verifier(kimid):
     if leader == "VM":
         return VerificationModel(kimid)
 
-    return None 
+    return None
 
 def Subject(kimid):
     name,leader,num,version = database.parse_kim_code(kimid)
@@ -910,7 +914,7 @@ def Subject(kimid):
     if leader == "MO":
         return Model(kimid)
 
-    return None 
+    return None
 #------------------------------------------
 # VerificationResult
 #------------------------------------------
@@ -924,9 +928,9 @@ class VerificationResult(KIMObject):
         Attributes:
             results
                 A persistent dict for the results file in the objects directory
-            verifier 
+            verifier
                 The verification that generated the test result from self.results["_testname"] or None
-            subject 
+            subject
                 The subject of the verification results or None
 
     """
