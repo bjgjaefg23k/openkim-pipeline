@@ -613,7 +613,7 @@ class TestDriver(KIMObject):
     @property
     def tests(self):
         """ Return a generator of all tests using this TestDriver """
-        return ( test for test in Test.all() if self in test.dependencies )
+        return ( test for test in Test.all() if self in test.test_drivers )
 
 
 #------------------------------------------
