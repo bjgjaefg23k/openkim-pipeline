@@ -33,7 +33,7 @@ RE_KIMID    = r"((?:[_a-zA-Z][_a-zA-Z0-9]*?_?_)?[A-Z]{2}_[0-9]{12}(?:_[0-9]{3})?
 RE_FILE     = re.compile(r"(@FILE\[(.*)\])")     # matches @FILE[stuff] and returns stuff
 RE_MODEL    = re.compile(r"(@MODELNAME)")       # matches @MODELNAME as a word
 #RE_DATA     = re.compile(r"@DATA\[(.*)\]\[(.*)\]{2}")      # matches @DATA[RD_XXXX_000] fill-in, etc
-RE_DATA     = re.compile(r"(@DATA(?:\[" + RE_KIMID + r"\])(?:\[" + r"(?: (@MODELNAME)|" + RE_KIMID + r")" + r"\])?(?:\[" + RE_KIMID + "\])?)")
+RE_DATA     = re.compile(r"(@DATA(?:\[" + RE_KIMID + r"\])(?:\[" +  RE_KIMID +  r"\])?(?:\[" + RE_KIMID + "\])?)")
 #RE_CLEANER  = re.compile("(@[A-Z]*\[)(.*)(\])") # to remove the @FILE[] and @DATA[]
 RE_PATH     = re.compile("(@PATH\[(.*?)\])")
 RE_TEST     = re.compile("(@TESTNAME)")
@@ -204,7 +204,7 @@ def process_line(line,*args):
 #-----------------------------------------
 
 
-def dependency_check(inp):
+def dependency_check(inp, model=True):
     """ Given an input file
         find all of the data directives and obtain the pointers to the relevant data if it exists
         if it doesn't exist, return a false and a list of dependant tests
@@ -220,10 +220,10 @@ def dependency_check(inp):
     cands = []
     #try to find all of the possible dependencies
     for line in inp:
-        for cand in dependency_processor(line):
-            cands.append(cand)
-            logger.debug("found a candidate dependency: %r", cand)
-
+        if model:
+            for cand in dependency_processor(line):
+                cands.append(cand)
+                logger.debug("found a candidate dependency: %r", cand)
         for path_cand in dependency_path_processor(line):
             cands.append(path_cand)
             logger.debug("found a path candidate dependency: %r", path_cand)

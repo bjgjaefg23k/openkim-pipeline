@@ -305,7 +305,7 @@ class Test(KIMObject):
                 dependencies_not_ready - tuples of test/model pairs to run """
         if model:
             return template.dependency_check(self.modelname_processed_infile(model))
-        return template.dependency_check(self.infile)
+        return template.dependency_check(self.infile,model=False)
 
     @property
     def dependencies(self):
