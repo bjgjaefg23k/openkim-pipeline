@@ -14,8 +14,10 @@ def timeout_handler(signum, frame):
     raise PipelineTimeout()
 
 def getboxinfo():
+    os.system("cd /home/vagrant/openkim-pipeline; git log -n 1 | grep commit | sed s/commit\ // > /persistent/setuphash")
+
     info = {}
-    things = ['sitename','username','boxtype','ipaddr']
+    things = ['sitename','username','boxtype','ipaddr','vmversion','setuphash']
 
     for thing in things:
         info["_"+thing] = open(os.path.join('/persistent',thing)).read().strip()

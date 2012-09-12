@@ -62,10 +62,10 @@ KIM_TEST_DRIVERS = [ dir for dir in os.listdir(KIM_TEST_DRIVERS_DIR) if os.path.
 KIM_MODEL_DRIVERS = [ dir for dir in os.listdir(KIM_MODEL_DRIVERS_DIR) if os.path.isdir(os.path.join(KIM_MODEL_DRIVERS_DIR,dir))]
 
 
+
 #============================
 # Settings for remote access
 #============================
-
 GLOBAL_IP   = "127.0.0.1"
 GLOBAL_PORT = 14177
 
@@ -77,12 +77,11 @@ GLOBAL_HOST = "pipeline.openkim.org"
 RSYNC_USER  = "pipeline"
 RSYNC_HOST  = "openkim.org"
 RSYNC_DIR   = "/write/approved/"
-# RSYNC_DIR   = "/write/pending/"
+#RSYNC_DIR   = "/write/pending/"
 
 #============================
 # Runner Internals
 #============================
-
 RUNNER_TIMEOUT = 300
 
 #=============================
