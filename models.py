@@ -297,13 +297,15 @@ class Test(KIMObject):
         """ return a file object for the OUTPUT_FILE """
         return open(self.outfile_path)
 
-    def dependency_check(self, model):
+    def dependency_check(self, model=None):
         """ Ask template.py to do a dependency check
             returns a 3 tuple
                 ready - bool of whether good to go or not
                 dependencies_good_to_go - kids for ready dependencies
                 dependencies_not_ready - tuples of test/model pairs to run """
-        return template.dependency_check(self.modelname_processed_infile(model))
+        if model:
+            return template.dependency_check(self.modelname_processed_infile(model))
+        return template.dependency_check(self.infile)
 
     @property
     def dependencies(self):
@@ -613,7 +615,7 @@ class TestDriver(KIMObject):
     @property
     def tests(self):
         """ Return a generator of all tests using this TestDriver """
-        return ( test for test in Test.all() if self in test.dependencies )
+        return ( test for test in Test.all() if self in test.test_drivers )
 
 
 #------------------------------------------
