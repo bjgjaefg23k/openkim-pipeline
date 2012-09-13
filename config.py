@@ -82,7 +82,7 @@ RSYNC_DIR   = "/write/approved/"
 #============================
 # Runner Internals
 #============================
-RUNNER_TIMEOUT = 300
+RUNNER_TIMEOUT = 60*60*24*5 # sec-min-hr-days 
 
 #=============================
 # Logging stuff
