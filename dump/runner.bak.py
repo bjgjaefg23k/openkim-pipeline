@@ -40,21 +40,18 @@ def run_test_on_model(test,model):
     test_dir = test.path
     # run the test in its own directory
     with test.in_dir():
-        # So, I switched this to now use the file handlers in the popen command
-        # directly in the hopes that this will prevent issues of the buffer not
-        # clearing when a test with a lot of output is run.
-        with test.processed_infile(model) as kim_stdin_file, open(STDOUT_FILE,'w') as stdout_file, open(STDERR_FILE,'w') as stderr_file:
-            #grab the input file
-            output_info = test.out_dict
+        #grab the input file
+        output_info = test.out_dict
+        with test.processed_infile(model) as kim_stdin_file:
+            kim_stdin = kim_stdin_file.read()
             start_time = time.time()
-            process = Popen(timeblock+ executable,stdin=kim_stdin_file,stdout=stdout_file,stderr=stderr_file)
+            process = Popen(timeblock+ executable,stdin=PIPE,stdout=PIPE,stderr=PIPE)
             logger.info("launching run...")
             try:
                 old_handler = signal.signal(signal.SIGALRM, timeout_handler)
                 signal.alarm(RUNNER_TIMEOUT)
                 try:
-                    # try to run the process to completion.
-                    A,B = process.communicate()
+                    stdout, stderr = process.communicate(kim_stdin)
                 finally:
                     signal.signal(signal.SIGALRM, old_handler)
                 signal.alarm(0)
@@ -63,6 +60,10 @@ def run_test_on_model(test,model):
                 raise PipelineTimeout, "your test timed out"
 
             end_time = time.time()
+            with open(STDOUT_FILE,"w") as stdout_file:
+                stdout_file.write(stdout)
+            with open(STDERR_FILE,"w") as stderr_file:
+                stderr_file.write(stderr)
 
     # It seems the test didn't finish
     # this probably doesn't end
@@ -70,8 +71,6 @@ def run_test_on_model(test,model):
         process.kill()
         raise KIMRuntimeError, "your test didn't terminate nicely"
 
-    with test.in_dir(), open(STDOUT_FILE) as stdout_file:
-        stdout = stdout_file.read()
     #look backwards in the stdout for the first non whitespaced line
     try:
         data_string = next(itertools.ifilter(line_filter,reversed(stdout.splitlines())))
@@ -99,8 +98,6 @@ def run_test_on_model(test,model):
     data.update(getboxinfo())
 
     # get the information from the timing script
-    with test.in_dir(), open(STDERR_FILE) as stderr_file:
-        stderr = stderr_file.read()
     time_str = stderr.splitlines()[-1]
     time_dat = simplejson.loads(time_str)
     data.update(time_dat)
