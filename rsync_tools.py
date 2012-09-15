@@ -7,6 +7,7 @@ logger = logger.getChild("rsync_tools")
 import os
 import subprocess, tempfile
 import database
+from functools import partial
 
 RSYNC_ADDRESS     = RSYNC_USER+"@"+RSYNC_HOST
 RSYNC_REMOTE_ROOT = RSYNC_DIR
@@ -18,13 +19,20 @@ RSYNC_PATH = RSYNC_ADDRESS + ":" + RSYNC_REMOTE_ROOT
 
 RSYNC_LOG_FILE_FLAG = "--log-file={}/rsync.log".format(LOG_DIR)
 
-TEMP_WRITE_PATH =   os.path.join(RSYNC_PATH,"")
-TEMP_READ_PATH =    os.path.join(RSYNC_PATH,"")
-REAL_WRITE_PATH =   os.path.join(RSYNC_PATH,"")
-REAL_READ_PATH =    os.path.join(RSYNC_PATH,"")
+READ_APPROVED = os.path.join(RSYNC_PATH,"/read/approved/")
+READ_PENDING =  os.path.join(RSYNC_PATH,"/read/pending/")
+WRITE_APPROVED = os.path.join(RSYNC_PATH,"/write/approved/")
+WRITE_PENDING = os.path.join(RSYNC_PATH,"/write/pending/")
+
+if RSYNC_TEST_MODE:
+    READ_APPROVED = READ_PENDING = WRITE_APPROVED = WRITE_PENDING = os.path.join(RSYNC_PATH,"/write/testing/")
+
+# TEMP_WRITE_PATH =   os.path.join(RSYNC_PATH,"")
+# TEMP_READ_PATH =    os.path.join(RSYNC_PATH,"")
+# REAL_WRITE_PATH =   os.path.join(RSYNC_PATH,"")
+# REAL_READ_PATH =    os.path.join(RSYNC_PATH,"")
 
 LOCAL_REPO_ROOT = KIM_REPOSITORY_DIR
-
 
 #================================
 # rsync wrappers
@@ -52,42 +60,9 @@ def rsync_command(files,read=True,path=None):
             logger.error("RSYNC FAILED!")
             raise
 
-def rsync_read(files):
-    """ Do an rsync pull of files """
-    rsync_command(files,read=True)
-
-def rsync_write(files):
-    """ Do an rsync_write of files """
-    rsync_command(files,read=False)
-
-
-def full_sync():
-    """ grab the whole repository """
-    rsync_read(["te/","mo/","md/","tr/","td/","vt/","vm/","vr/","pr/","rd/"])
-
-def full_write():
-    """ write the whole repo """
-    rsync_write(["te/","mo/","md/","tr/","td/","vt/","vm/","vr/","pr/","rd/"])
-
-
-def temp_write(files,*args):
-    """ write things to the temporary write area """
-    rsync_command(files,read=False,path=TEMP_WRITE_PATH)
-
-def temp_read(files,*args):
-    """ pull things from the temporary read area """
-    rsync_command(files,read=True,path=TEMP_READ_PATH)
-
-
-def real_write(files,*args):
-    """ FORBIDDEN:
-        write things to the real write area """
-    rsync_command(files,read=False,path=REAL_WRITE_PATH)
-
-def real_read(files,*args):
-    """ read things from the real read directory """
-    rsync_command(files,read=True,path=REAL_READ_PATH)
-
+#======================================
+# Helper methods
+#======================================
 
 def kid_to_folder(kid):
     """ Convert a kim_code to its directory """
@@ -97,59 +72,124 @@ def kid_to_folder(kid):
     path = os.path.join(leader.lower(),kid)
     return path
 
+ktf = kid_to_folder
+
+rsync_read = partial(rsync_command, read=True)
+
+rsync_write = partial(rsync_command, read=False)
+
+def j(*s):
+    """ Convience for joining paths together """
+    return os.path.join(*s)
+
+RA = READ_APPROVED
+RP = READ_PENDING
+WA = WRITE_APPROVED
+WP = WRITE_PENDING
+
+#=============================
+# Not for realsy
+#   This next section is just convience, not to be relied on
+#============================
+
+# def full_sync():
+#     """ grab the whole repository """
+#     rsync_read(["te/","mo/","md/","tr/","td/","vt/","vm/","vr/","pr/","rd/"])
+
+# def full_write():
+#     """ write the whole repo """
+#     rsync_write(["te/","mo/","md/","tr/","td/","vt/","vm/","vr/","pr/","rd/"])
+
+# def temp_write(files,*args):
+#     """ write things to the temporary write area """
+#     rsync_command(files,read=False,path=TEMP_WRITE_PATH)
+
+# def temp_read(files,*args):
+#     """ pull things from the temporary read area """
+#     rsync_command(files,read=True,path=TEMP_READ_PATH)
+
+
+# def real_write(files,*args):
+#     """ FORBIDDEN:
+#         write things to the real write area """
+#     rsync_command(files,read=False,path=REAL_WRITE_PATH)
+
+# def real_read(files,*args):
+#     """ read things from the real read directory """
+#     rsync_command(files,read=True,path=REAL_READ_PATH)
+
 #=================================
 # director methods
 #=================================
 
-def director_model_verification_read(modelname):
-    """ when director needs to verify a model """
-    files = ["vm/"]
-    files.append(kid_to_folder(modelname))
-    temp_read(files)
+#READS
+def director_full_approved_read():
+    """ when a director trys to get everything """
+    files = [j(RA,"te/"),j(RA,"mo/"),j(RA,"md/"),j(RA,"tr/"),j(RA,"td/"),j(RA,"vt/"),j(RA,"vm/"),j(RA,"vr/"),j(RA,"pr/"),j(RA,"rd/")]
+    rsync_read(files)
 
 def director_new_model_read(modelname):
     """ when a director gets a new model """
-    files = ["te/","tr/"]
-    files.append(kid_to_folder(modelname))
-    temp_read(files)
+    files = [j(WA,"te/"),j(WA,"tr/"),j(WA,ktf(modelname))]
+    rsync_read(files)
 
 def director_new_test_read(testname):
     """ when a director gets a new test """
-    files = ["mo/","tr/"]
-    files.append(kid_to_folder(testname))
-    temp_read(files)
+    files = [j(WA,"mo/"),j(WA,"tr/"),j(WA,ktf(testname))]
+    rsync_read(files)
 
-def director_build_write(thingname):
+def director_model_verification_read(modelname):
+    """ when director needs to verify a model """
+    files = [j(WA,"vm/"), j(WP,ktf(modelname))]
+    rsync_read(files)
+
+def director_test_verification_read(testname):
+    """ when the director needs to verify a test """
+    files = [j(WA,"vt/"), j(WP,ktf(testname)) ]
+    rsync_read(files)
+
+def director_build_read_approved(kim_name):
+    """ when a director pulls before a make """
+    files = [j(RA,ktf(kim_name))]
+    rsync_read(files)
+
+def director_build_read_pending(kim_name):
+    """ when a director pulls before a make for a pending object """
+    files = [j(RP,ktf(kim_name))]
+    rsync_read(files)
+
+# WRITES
+def director_build_write_approved(kim_name):
     """ when a director does a make """
-    files = []
-    files.append(kid_to_folder(thingname))
-    temp_write(files)
+    rysnc_write(j(WA,ktf(kim_name)))
+
+def director_build_write_pending(kim_name):
+    """ when a director writes after a make for a pending object """
+    rsync_write(j(WP,ktf(kim_name)))
 
 #==================================
 # worker methods
 #==================================
 
 
-def worker_model_verification_read(modelname,vcname,depends):
-    """ when a worker needs to run a verification job """
-    files = [kid_to_folder(modelname), kid_to_folder(vcname)]
-    for depend in depends:
-        files.append(kid_to_folder(depend))
-    temp_read(files)
+def worker_verification_read(modelname,vmname):
+    """ when a worker needs to run a model verification job """
+    files = [j(WP,ktf(modelname)), j(WA,ktf(vmname))]
+    rsync_read(files)
 
 def worker_test_result_read(testname,modelname,depends):
     """ when a worker needs to run a test result """
-    files = [kid_to_folder(modelname),kid_to_folder(testname),"pr/"]
+    files = [j(WA,ktf(modelname)), j(WA,ktf(testname)), j(RA,"pr/")]
+    # FIXME: Do we really need the PR directory???
     for depend in depends:
-        files.append(kid_to_folder(depend))
-    real_read(files)
+        files.append(j(RA,ktf(depend)))
+        # FIXME: Make sure that this will be in RA
+    rsync_read(files)
 
-def worker_model_verification_write(vrname):
+def worker_verification_write(vrname):
     """ when a worker ran a model verification """
-    files = [kid_to_folder(vrname)]
-    temp_write(files)
+    rsync_write(j(WA,ktf(vrname)))
 
 def worker_test_result_write(trname):
     """ when a worker ran a test result """
-    files = [kid_to_folder(trname)]
-    real_write(files)
+    rsync_write(j(WA,ktf(trname)))

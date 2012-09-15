@@ -63,10 +63,10 @@ class BeanstalkHandler(logging.Handler):
         self.bsd = bsd
         self.info = self.getinfo()
         super(BeanstalkHandler,self).__init__()
-    
+
     def getinfo(self):
         os.system("cd /home/vagrant/openkim-pipeline; git log -n 1 | grep commit | sed s/commit\ // > /persistent/setuphash")
-        
+
         info = {}
         things = ['sitename','username','boxtype','ipaddr','vmversion','setuphash']
 
@@ -231,7 +231,8 @@ class Director(object):
             if request.stats()['tube'] == TUBE_UPDATE:
                 # update the repository,send it out as a job to compute
                 try:
-                    rsync_tools.full_sync()
+                    # rsync_tools.full_sync()
+                    # rsync_tools.director_full_approved_read()
                     self.push_jobs(simplejson.loads(request.body))
                 except Exception as e:
                     tb = traceback.format_exc()
@@ -256,41 +257,94 @@ class Director(object):
         name,leader,num,version = database.parse_kim_code(kimid)
 
         # try to build the kimid before sending jobs
-        if self.make_object(kimid) == 0:
-            rsync_tools.director_build_write(kimid)
-        else:
-            self.logger.error("Could not build %r", kimid)
-            self.bsd.use(TUBE_ERRORS)
-            self.bsd.put(simplejson.dumps({"error": "Could not build %r" % kimid}))
-            return
+        # if self.make_object(kimid) == 0:
+        #     rsync_tools.director_build_write(kimid)
+        # else:
+        #     self.logger.error("Could not build %r", kimid)
+        #     self.bsd.use(TUBE_ERRORS)
+        #     self.bsd.put(simplejson.dumps({"error": "Could not build %r" % kimid}))
+        #     return
 
         if leader=="VT":
+            # we have a new VT
+            # first pull it and build it
+            self.make_and_push(kimid)
+
+            # for every test launch
             test = modelslib.VerificationTest(kimid)
             models = modelslib.Test.all()
             tests = [test]
         elif leader=="VM":
+            # we have a new VM
+
+            # first pull it and build it
+            self.make_and_push(kimid)
+
+            #for all of the models, run a job
             test = modelslib.VerificationModel(kimid)
             models = modelslib.Model.all()
             tests = [test]
         else:
             if status == "approved":
                 if leader=="TE":
+                    # we have a new TE, first pull it and build it
+                    self.make_and_push(kimid)
+
+                    # for all of the models, add a job
                     test = modelslib.Test(kimid)
                     models = test.models
                     tests = [test]
                 elif leader=="MO":
+                    # we have a model, first pull it and build it
+                    self.make_and_push(kimid)
+
+                    # for all of the tests, add a job
                     model = modelslib.Model(kimid)
                     models = [model]
                     tests = model.tests
+                elif leader=="TD":
+                    # we have a new test driver, first pull and build it
+                    self.make_and_push(kimid)
+
+                    # FIXME
+                    # if it is a new version of an existing test driver, hunt
+                    # down all of the tests that use it and launch their
+                    # corresponding jobs
+                elif leader=="MD":
+                    # we have a new model driver, first build and push
+                    self.make_and_push(kimid)
+
+                    # FIXME:
+                    # if this is a new version, hunt down all of the models
+                    # that rely on it and recompute their results
                 else:
                     self.logger.error("Tried to update an invalid KIM ID!: %r",kimid)
             if status == "pending":
                 if leader=="TE":
+                    # a pending test
+                    self.make_and_push(kimid,pending=True)
+
+                    # run against all test verifications
                     tests = modelslib.VertificationTest.all()
                     models = [modelslib.Test(kimid)]
                 elif leader=="MO":
+                    # a pending model
+                    self.make_and_push(kimid, pending=True)
+
+                    # run against all model verifications
                     tests = modelslib.VertificationModel.all()
                     models = [modelslib.Model(kimid)]
+
+                elif leader=="TD":
+                    # a pending test driver
+                    self.make_and_push(kimid, pending=True)
+
+                    # no verifications really... ? FIXME
+                elif leader=="MD":
+                    # a pending model driver
+                    self.make_and_push(kimid, pending=True)
+
+                    # no verifications really... ? FIXME
                 else:
                     self.logger.error("Tried to update an invalid KIM ID!: %r",kimid)
 
@@ -343,6 +397,26 @@ class Director(object):
             except subprocess.CalledProcessError as e:
                 return 1
             return 0
+
+    def make_and_push(self, kimid, pending=False):
+        if pending:
+            reader = rsync_tools.director_build_read_pending
+            writer = rsync_tools.director_build_write_pending
+        else:
+            reader = rsync_tools.director_build_read_approved
+            writer = rsync_tools.director_build_write_approved
+
+        reader(kimid)
+        if self.make_object(kimid) == 0:
+            writer(kimid)
+            return 0
+        else:
+            self.logger.error("Could not build %r", kimid)
+            self.bsd.use(TUBE_ERRORS)
+            self.bsd.put(simplejson.dumps({"error": "Could not build %r" % kimid}))
+            raise RuntimeError, "a make failed for {}".format(kimid)
+            return 1
+
 
     def halt(self):
         self.disconnect_from_daemon()
@@ -434,7 +508,7 @@ class Worker(object):
             if leader == "VT" or leader == "VM":
                 try:
                     self.logger.info("rsyncing to repo %r", jobmsg.job+jobmsg.depends)
-                    rsync_tools.worker_test_result_read(*jobmsg.job, depends=jobmsg.depends)
+                    rsync_tools.worker_verification_read(*jobmsg.job, depends=jobmsg.depends)
 
                     verifier_kcode, subject_kcode = jobmsg.job
                     verifier = models.Verifier(verifier_kcode)
@@ -447,7 +521,7 @@ class Worker(object):
                     vr = models.VerificationResult(jobmsg.jobid, results = result, search=False)
 
                     self.logger.info("rsyncing results %r", jobmsg.jobid)
-                    rsync_tools.worker_test_result_write(jobmsg.jobid)
+                    rsync_tools.worker_verification_write(jobmsg.jobid)
                     self.logger.info("sending result message back")
                     self.job_message(jobmsg, results=result, tube=TUBE_RESULTS)
                     job.delete()
@@ -545,9 +619,6 @@ class Site(object):
     def send_update(self, kimid):
         self.bsd.use(TUBE_UPDATE)
         self.bsd.put(simplejson.dumps({"kimid": kimid, "priority":"normal", "status":"approved"}))
-
-
-
 
 if __name__ == "__main__":
     import sys

@@ -76,13 +76,15 @@ GLOBAL_HOST = "pipeline.openkim.org"
 
 RSYNC_USER  = "pipeline"
 RSYNC_HOST  = "openkim.org"
-RSYNC_DIR   = "/write/approved/"
+RSYNC_DIR   = "/"
 #RSYNC_DIR   = "/write/pending/"
+# RSYNC_READ_DIR = "/read/approved/"
+RSYNC_TEST_MODE = False
 
 #============================
 # Runner Internals
 #============================
-RUNNER_TIMEOUT = 60*60*24*5 # sec-min-hr-days 
+RUNNER_TIMEOUT = 60*60*24*5 # sec-min-hr-days
 
 #=============================
 # Logging stuff
