@@ -23,6 +23,9 @@ READ_APPROVED = os.path.join(RSYNC_PATH,"/read/approved/")
 READ_PENDING =  os.path.join(RSYNC_PATH,"/read/pending/")
 WRITE_APPROVED = os.path.join(RSYNC_PATH,"/write/approved/")
 WRITE_PENDING = os.path.join(RSYNC_PATH,"/write/pending/")
+WRITE_RESULTS = os.path.join(RSYNC_PATH, "/write/results/")
+
+# RSYNC_TEST_MODE = True
 
 if RSYNC_TEST_MODE:
     READ_APPROVED = READ_PENDING = WRITE_APPROVED = WRITE_PENDING = os.path.join(RSYNC_PATH,"/write/testing/")
@@ -86,15 +89,16 @@ RA = READ_APPROVED
 RP = READ_PENDING
 WA = WRITE_APPROVED
 WP = WRITE_PENDING
+WR = WRITE_RESULTS
 
 #=============================
 # Not for realsy
 #   This next section is just convience, not to be relied on
 #============================
 
-# def full_sync():
-#     """ grab the whole repository """
-#     rsync_read(["te/","mo/","md/","tr/","td/","vt/","vm/","vr/","pr/","rd/"])
+def full_test_sync():
+    """ grab the whole repository """
+    rsync_read([j(WP,"te/"),j(WP,"mo/"),j(WP,"md/"),j(WR,"tr/"),j(WP,"td/"),j(WP,"vt/"),j(WP,"vm/"),j(WP,"vr/"),j(WP,"pr/"),j(WP,"rd/")])
 
 # def full_write():
 #     """ write the whole repo """
@@ -125,17 +129,17 @@ WP = WRITE_PENDING
 #READS
 def director_full_approved_read():
     """ when a director trys to get everything """
-    files = [j(RA,"te/"),j(RA,"mo/"),j(RA,"md/"),j(RA,"tr/"),j(RA,"td/"),j(RA,"vt/"),j(RA,"vm/"),j(RA,"vr/"),j(RA,"pr/"),j(RA,"rd/")]
+    files = [j(RA,"te/"),j(RA,"mo/"),j(RA,"md/"),j(WR,"tr/"),j(RA,"td/"),j(RA,"vt/"),j(RA,"vm/"),j(RA,"vr/"),j(RA,"pr/"),j(RA,"rd/")]
     rsync_read(files)
 
 def director_new_model_read(modelname):
     """ when a director gets a new model """
-    files = [j(WA,"te/"),j(WA,"tr/"),j(WA,ktf(modelname))]
+    files = [j(WA,"te/"),j(WR,"tr/"),j(WA,ktf(modelname))]
     rsync_read(files)
 
 def director_new_test_read(testname):
     """ when a director gets a new test """
-    files = [j(WA,"mo/"),j(WA,"tr/"),j(WA,ktf(testname))]
+    files = [j(WA,"mo/"),j(WR,"tr/"),j(WA,ktf(testname))]
     rsync_read(files)
 
 def director_model_verification_read(modelname):
@@ -182,7 +186,10 @@ def worker_test_result_read(testname,modelname,depends):
     files = [j(WA,ktf(modelname)), j(WA,ktf(testname)), j(RA,"pr/")]
     # FIXME: Do we really need the PR directory???
     for depend in depends:
-        files.append(j(RA,ktf(depend)))
+        if depend.startswith("TR"):
+            files.append(j(WR,ktf(depend)))
+        else:
+            files.append(j(RA,ktf(depend)))
         # FIXME: Make sure that this will be in RA
     rsync_read(files)
 
@@ -192,4 +199,4 @@ def worker_verification_write(vrname):
 
 def worker_test_result_write(trname):
     """ when a worker ran a test result """
-    rsync_write(j(WA,ktf(trname)))
+    rsync_write(j(WR,ktf(trname)))
