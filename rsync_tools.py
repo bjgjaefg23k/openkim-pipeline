@@ -23,7 +23,7 @@ READ_APPROVED = os.path.join(RSYNC_PATH,"/read/approved/./")
 READ_PENDING =  os.path.join(RSYNC_PATH,"/read/pending/./")
 # WRITE_APPROVED = os.path.join(RSYNC_PATH,"/write/approved/")
 # WRITE_PENDING = os.path.join(RSYNC_PATH,"/write/pending/")
-WRITE_RESULTS = os.path.join(RSYNC_PATH, "/write/results/")
+WRITE_RESULTS = os.path.join(RSYNC_PATH, "/write/results/./")
 
 # FIXME: add explicit /./ here and remove in rsync_command
 
