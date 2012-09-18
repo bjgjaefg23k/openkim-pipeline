@@ -4,4 +4,4 @@
 *.o
 *.swp
 kim.log
-*/*/.metadata-history
+.metadata_history
