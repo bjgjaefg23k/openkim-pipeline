@@ -92,8 +92,8 @@ def j(*s):
 
 RA = READ_APPROVED
 RP = READ_PENDING
-WA = WRITE_APPROVED
-WP = WRITE_PENDING
+# WA = WRITE_APPROVED
+# WP = WRITE_PENDING
 WR = WRITE_RESULTS
 
 #=============================
