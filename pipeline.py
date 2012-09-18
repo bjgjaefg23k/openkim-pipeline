@@ -199,7 +199,7 @@ class Director(object):
 
     def get_tr_id(self):
         """ Generate a TR id """
-        database.new_test_result_id()
+        return database.new_test_result_id()
 
     def old_get_vr_id(self):
         """ Get a VR id from TUBE_VR_IDS """
@@ -214,7 +214,7 @@ class Director(object):
 
     def get_vr_id(self):
         """ Get VR id from database """
-        database.new_verification_result_id()
+        return database.new_verification_result_id()
 
     def get_updates(self):
         """
