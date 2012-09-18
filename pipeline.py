@@ -277,7 +277,8 @@ class Director(object):
         if leader=="VT":
             # we have a new VT
             # first pull it and build it
-            self.make_and_push(kimid)
+            rsync_tools.director_new_test_verification_read(kimid)
+            self.make_all()
 
             # for every test launch
             test = modelslib.VerificationTest(kimid)
@@ -287,7 +288,8 @@ class Director(object):
             # we have a new VM
 
             # first pull it and build it
-            self.make_and_push(kimid)
+            rsync_tools.director_new_model_verification_read(kimid)
+            self.make_all()
 
             #for all of the models, run a job
             test = modelslib.VerificationModel(kimid)
@@ -297,7 +299,8 @@ class Director(object):
             if status == "approved":
                 if leader=="TE":
                     # we have a new TE, first pull it and build it
-                    self.make_and_push(kimid)
+                    rsync_tools.director_new_test_read(kimid)
+                    self.make_all()
 
                     # for all of the models, add a job
                     test = modelslib.Test(kimid)
@@ -305,7 +308,8 @@ class Director(object):
                     tests = [test]
                 elif leader=="MO":
                     # we have a model, first pull it and build it
-                    self.make_and_push(kimid)
+                    rsync_tools.director_new_model_read(kimid)
+                    self.make_all()
 
                     # for all of the tests, add a job
                     model = modelslib.Model(kimid)
@@ -313,16 +317,14 @@ class Director(object):
                     tests = model.tests
                 elif leader=="TD":
                     # we have a new test driver, first pull and build it
-                    self.make_and_push(kimid)
-
+                    pass
                     # FIXME
                     # if it is a new version of an existing test driver, hunt
                     # down all of the tests that use it and launch their
                     # corresponding jobs
                 elif leader=="MD":
                     # we have a new model driver, first build and push
-                    self.make_and_push(kimid)
-
+                    pass
                     # FIXME:
                     # if this is a new version, hunt down all of the models
                     # that rely on it and recompute their results
@@ -331,14 +333,16 @@ class Director(object):
             if status == "pending":
                 if leader=="TE":
                     # a pending test
-                    self.make_and_push(kimid,pending=True)
+                    rsync_tools.director_test_verification_read(kimid)
+                    self.make_all()
 
                     # run against all test verifications
                     tests = modelslib.VertificationTest.all()
                     models = [modelslib.Test(kimid)]
                 elif leader=="MO":
                     # a pending model
-                    self.make_and_push(kimid, pending=True)
+                    rsync_tools.director_model_verification_read(kimid)
+                    self.make_all()
 
                     # run against all model verifications
                     tests = modelslib.VertificationModel.all()
@@ -346,13 +350,11 @@ class Director(object):
 
                 elif leader=="TD":
                     # a pending test driver
-                    self.make_and_push(kimid, pending=True)
-
+                    pass
                     # no verifications really... ? FIXME
                 elif leader=="MD":
                     # a pending model driver
-                    self.make_and_push(kimid, pending=True)
-
+                    pass
                     # no verifications really... ? FIXME
                 else:
                     self.logger.error("Tried to update an invalid KIM ID!: %r",kimid)
@@ -407,24 +409,19 @@ class Director(object):
                 return 1
             return 0
 
-    def make_and_push(self, kimid, pending=False):
-        if pending:
-            reader = rsync_tools.director_build_read_pending
-            writer = rsync_tools.director_build_write_pending
-        else:
-            reader = rsync_tools.director_build_read_approved
-            writer = rsync_tools.director_build_write_approved
-
-        reader(kimid)
-        if self.make_object(kimid) == 0:
-            writer(kimid)
-            return 0
-        else:
-            self.logger.error("Could not build %r", kimid)
+    def make_all(self):
+        self.logger.debug("Building everything...")
+        try:
+            subprocess.check_call("makekim",shell=True)
+        except subprocess.CalledProcessError as e:
+            self.logger.error("could not makekim")
             self.bsd.use(TUBE_ERRORS)
-            self.bsd.put(simplejson.dumps({"error": "Could not build %r" % kimid}))
-            raise RuntimeError, "a make failed for {}".format(kimid)
+            self.bsd.put(simplejson.dumps({"error": "could not makekim"}))
+
+            raise RuntimeError, "our makekim failed!"
             return 1
+        return 0
+
 
 
     def halt(self):
@@ -518,6 +515,7 @@ class Worker(object):
                 try:
                     self.logger.info("rsyncing to repo %r", jobmsg.job+jobmsg.depends)
                     rsync_tools.worker_verification_read(*jobmsg.job, depends=jobmsg.depends)
+                    self.make_all()
 
                     verifier_kcode, subject_kcode = jobmsg.job
                     verifier = models.Verifier(verifier_kcode)
@@ -558,6 +556,7 @@ class Worker(object):
                 try:
                     self.logger.info("rsyncing to repo %r", jobmsg.job+jobmsg.depends)
                     rsync_tools.worker_test_result_read(*jobmsg.job, depends=jobmsg.depends)
+                    self.make_all()
 
                     test_kcode, model_kcode = jobmsg.job
                     test = models.Test(test_kcode)
@@ -591,6 +590,19 @@ class Worker(object):
                     self.logger.error("Run failed, deleting... %r" % e)
                     self.job_message(jobmsg, errors=e )
                     job.delete()
+
+    def make_all(self):
+        self.logger.debug("Building everything...")
+        try:
+            subprocess.check_call("makekim",shell=True)
+        except subprocess.CalledProcessError as e:
+            self.logger.error("could not makekim")
+            self.bsd.use(TUBE_ERRORS)
+            self.bsd.put(simplejson.dumps({"error": "could not makekim"}))
+
+            raise RuntimeError, "our makekim failed!"
+            return 1
+        return 0
 
 
 class Site(object):
@@ -631,7 +643,7 @@ class Site(object):
 
 if __name__ == "__main__":
     import sys
-    if len(sys.argv) == 2:
+    if len(sys.argv) > 1:
         for i in range(cpu_count()):
             if sys.argv[1] == "director":
                 obj = Director()
@@ -642,7 +654,8 @@ if __name__ == "__main__":
             elif sys.argv[1] == "site":
                 obj = Site()
                 thrd = Process(target=Site.run(obj))
-                obj.send_update("TB_Khakshouri_F_Fe__MO_853979044095_000")
+                # obj.send_update("TB_Khakshouri_F_Fe__MO_853979044095_000")
+                obj.send_update(sys.argv[2])
     else:
         print "Specify {worker|director|site}"
         exit(1)

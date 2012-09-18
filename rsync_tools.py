@@ -21,9 +21,11 @@ RSYNC_LOG_FILE_FLAG = "--log-file={}/rsync.log".format(LOG_DIR)
 
 READ_APPROVED = os.path.join(RSYNC_PATH,"/read/approved/./")
 READ_PENDING =  os.path.join(RSYNC_PATH,"/read/pending/./")
-WRITE_APPROVED = os.path.join(RSYNC_PATH,"/write/approved/")
-WRITE_PENDING = os.path.join(RSYNC_PATH,"/write/pending/")
+# WRITE_APPROVED = os.path.join(RSYNC_PATH,"/write/approved/")
+# WRITE_PENDING = os.path.join(RSYNC_PATH,"/write/pending/")
 WRITE_RESULTS = os.path.join(RSYNC_PATH, "/write/results/")
+
+# FIXME: add explicit /./ here and remove in rsync_command
 
 # RSYNC_TEST_MODE = True
 
@@ -143,56 +145,48 @@ def director_full_result_read():
 
 def director_new_model_read(modelname):
     """ when a director gets a new model """
-    files = [j(WA,"te/"),j(WR,"tr/"),j(WA,ktf(modelname))]
+    files = [j(RA,"te/"),j(WR,"tr/"),j(RA,ktf(modelname))]
     rsync_read(files)
 
 def director_new_test_read(testname):
     """ when a director gets a new test """
-    files = [j(WA,"mo/"),j(WR,"tr/"),j(WA,ktf(testname))]
+    files = [j(RA,"mo/"),j(WR,"tr/"),j(RA,ktf(testname))]
+    rsync_read(files)
+
+def director_new_model_verification_read(vmname):
+    """ when a director gets a new vm """
+    files = [j(RA,"mo/"),j(RA,ktf(vmname))]
+    rsync_read(files)
+
+def director_new_test_verification_read(vtname):
+    """ when a director gets a new vt """
+    files = [j(RA,"te/"),j(RA,ktf(vtname))]
     rsync_read(files)
 
 def director_model_verification_read(modelname):
     """ when director needs to verify a model """
-    files = [j(WA,"vm/"), j(WP,ktf(modelname))]
+    files = [j(RA,"vm/"), j(RP,ktf(modelname))]
     rsync_read(files)
 
 def director_test_verification_read(testname):
     """ when the director needs to verify a test """
-    files = [j(WA,"vt/"), j(WP,ktf(testname)) ]
+    files = [j(RA,"vt/"), j(RP,ktf(testname)) ]
     rsync_read(files)
 
-def director_build_read_approved(kim_name):
-    """ when a director pulls before a make """
-    files = [j(RA,ktf(kim_name))]
-    rsync_read(files)
-
-def director_build_read_pending(kim_name):
-    """ when a director pulls before a make for a pending object """
-    files = [j(RP,ktf(kim_name))]
-    rsync_read(files)
-
-# WRITES
-def director_build_write_approved(kim_name):
-    """ when a director does a make """
-    rysnc_write([ktf(kim_name)],path=WA)
-
-def director_build_write_pending(kim_name):
-    """ when a director writes after a make for a pending object """
-    rsync_write([ktf(kim_name)],path=WP)
 
 #==================================
 # worker methods
 #==================================
 
 
-def worker_verification_read(modelname,vmname):
+def worker_verification_read(subject,verifier):
     """ when a worker needs to run a model verification job """
-    files = [j(WP,ktf(modelname)), j(WA,ktf(vmname))]
+    files = [j(RP,ktf(subject)), j(RA,ktf(verifier))]
     rsync_read(files)
 
 def worker_test_result_read(testname,modelname,depends):
     """ when a worker needs to run a test result """
-    files = [j(WA,ktf(modelname)), j(WA,ktf(testname)), j(RA,"pr/")]
+    files = [j(RA,ktf(modelname)), j(RA,ktf(testname)), j(RA,"pr/")]
     # FIXME: Do we really need the PR directory???
     for depend in depends:
         if depend.startswith("TR"):
