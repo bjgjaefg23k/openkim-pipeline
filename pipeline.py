@@ -186,7 +186,7 @@ class Director(object):
         self.bsd.close()
         self.daemon.kill()
 
-    def get_tr_id(self):
+    def old_get_tr_id(self):
         """ Get a TR id from the TUBE_TR_IDS """
         self.logger.info("Requesting new TR id")
         bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
@@ -197,7 +197,11 @@ class Director(object):
         bsd.close()
         return tr_id
 
-    def get_vr_id(self):
+    def get_tr_id(self):
+        """ Generate a TR id """
+        database.new_test_result_id()
+
+    def old_get_vr_id(self):
         """ Get a VR id from TUBE_VR_IDS """
         self.logger.info("Requesting new VR id")
         bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
@@ -207,6 +211,10 @@ class Director(object):
         request.delete()
         bsd.close()
         return vr_id
+
+    def get_vr_id(self):
+        """ Get VR id from database """
+        database.new_verification_result_id()
 
     def get_updates(self):
         """
@@ -233,6 +241,7 @@ class Director(object):
                 try:
                     # rsync_tools.full_sync()
                     # rsync_tools.director_full_approved_read()
+                    # rsync_tools.director_full_result_read()
                     self.push_jobs(simplejson.loads(request.body))
                 except Exception as e:
                     tb = traceback.format_exc()

@@ -100,6 +100,7 @@ def full_test_sync():
     """ grab the whole repository """
     rsync_read([j(WP,"te/"),j(WP,"mo/"),j(WP,"md/"),j(WR,"tr/"),j(WP,"td/"),j(WP,"vt/"),j(WP,"vm/"),j(WR,"vr/"),j(WP,"pr/"),j(WP,"rd/")])
 
+
 # def full_write():
 #     """ write the whole repo """
 #     rsync_write(["te/","mo/","md/","tr/","td/","vt/","vm/","vr/","pr/","rd/"])
@@ -130,6 +131,11 @@ def full_test_sync():
 def director_full_approved_read():
     """ when a director trys to get everything """
     files = [j(RA,"te/"),j(RA,"mo/"),j(RA,"md/"),j(WR,"tr/"),j(RA,"td/"),j(RA,"vt/"),j(RA,"vm/"),j(WR,"vr/"),j(RA,"pr/"),j(RA,"rd/")]
+    rsync_read(files)
+
+def director_full_result_read():
+    """ when a director gets all of the results """
+    files = [j(WR,"tr/"), j(WR,"vr/")]
     rsync_read(files)
 
 def director_new_model_read(modelname):
