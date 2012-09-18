@@ -19,8 +19,8 @@ RSYNC_PATH = RSYNC_ADDRESS + ":" + RSYNC_REMOTE_ROOT
 
 RSYNC_LOG_FILE_FLAG = "--log-file={}/rsync.log".format(LOG_DIR)
 
-READ_APPROVED = os.path.join(RSYNC_PATH,"/read/approved/")
-READ_PENDING =  os.path.join(RSYNC_PATH,"/read/pending/")
+READ_APPROVED = os.path.join(RSYNC_PATH,"/read/approved/./")
+READ_PENDING =  os.path.join(RSYNC_PATH,"/read/pending/./")
 WRITE_APPROVED = os.path.join(RSYNC_PATH,"/write/approved/")
 WRITE_PENDING = os.path.join(RSYNC_PATH,"/write/pending/")
 WRITE_RESULTS = os.path.join(RSYNC_PATH, "/write/results/")
@@ -45,16 +45,19 @@ def rsync_command(files,read=True,path=None):
     """ run rsync, syncing the files (or folders) listed in files, assumed to be paths or partial
     paths from the LOCAL_REPO_ROOT
     """
-    path = path or RSYNC_PATH
-    with tempfile.NamedTemporaryFile(delete=True) as tmp:
+    if path:
+        full_path = RSYNC_PATH + path + "/./"
+    else:
+        full_path = RSYNC_PATH
+    with tempfile.NamedTemporaryFile(delete=False) as tmp:
         tmp.file.write("\n".join(files))
         tmp.file.close()
         try:
             logger.info("running rsync for files: %r",files)
             if read:
-                cmd = " ".join(["rsync",RSYNC_FLAGS,path,RSYNC_LOG_FILE_FLAG,"--files-from={}".format(tmp.name),LOCAL_REPO_ROOT])
+                cmd = " ".join(["rsync",RSYNC_FLAGS,full_path,RSYNC_LOG_FILE_FLAG,"--files-from={}".format(tmp.name),LOCAL_REPO_ROOT])
             else:
-                cmd = " ".join(["rsync",RSYNC_FLAGS,RSYNC_LOG_FILE_FLAG,"--files-from={}".format(tmp.name),LOCAL_REPO_ROOT,path])
+                cmd = " ".join(["rsync",RSYNC_FLAGS,RSYNC_LOG_FILE_FLAG,"--files-from={}".format(tmp.name),LOCAL_REPO_ROOT,full_path])
             #print cmd
             #print open(tmp.name).read()
             logger.debug("rsync command = %r",cmd)
@@ -171,11 +174,11 @@ def director_build_read_pending(kim_name):
 # WRITES
 def director_build_write_approved(kim_name):
     """ when a director does a make """
-    rysnc_write(j(WA,ktf(kim_name)))
+    rysnc_write([ktf(kim_name)],path=WA)
 
 def director_build_write_pending(kim_name):
     """ when a director writes after a make for a pending object """
-    rsync_write(j(WP,ktf(kim_name)))
+    rsync_write([ktf(kim_name)],path=WP)
 
 #==================================
 # worker methods
@@ -201,8 +204,8 @@ def worker_test_result_read(testname,modelname,depends):
 
 def worker_verification_write(vrname):
     """ when a worker ran a model verification """
-    rsync_write(j(WR,ktf(vrname)))
+    rsync_write([ktf(vrname)],path=WR)
 
 def worker_test_result_write(trname):
     """ when a worker ran a test result """
-    rsync_write(j(WR,ktf(trname)))
+    rsync_write([ktf(trname)],path=WR)
