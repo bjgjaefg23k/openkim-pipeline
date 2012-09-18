@@ -3,5 +3,4 @@
 *.pyc
 *.o
 *.swp
-kim.log
 .metadata_history
