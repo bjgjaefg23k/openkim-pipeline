@@ -98,7 +98,7 @@ WR = WRITE_RESULTS
 
 def full_test_sync():
     """ grab the whole repository """
-    rsync_read([j(WP,"te/"),j(WP,"mo/"),j(WP,"md/"),j(WR,"tr/"),j(WP,"td/"),j(WP,"vt/"),j(WP,"vm/"),j(WP,"vr/"),j(WP,"pr/"),j(WP,"rd/")])
+    rsync_read([j(WP,"te/"),j(WP,"mo/"),j(WP,"md/"),j(WR,"tr/"),j(WP,"td/"),j(WP,"vt/"),j(WP,"vm/"),j(WR,"vr/"),j(WP,"pr/"),j(WP,"rd/")])
 
 # def full_write():
 #     """ write the whole repo """
@@ -129,7 +129,7 @@ def full_test_sync():
 #READS
 def director_full_approved_read():
     """ when a director trys to get everything """
-    files = [j(RA,"te/"),j(RA,"mo/"),j(RA,"md/"),j(WR,"tr/"),j(RA,"td/"),j(RA,"vt/"),j(RA,"vm/"),j(RA,"vr/"),j(RA,"pr/"),j(RA,"rd/")]
+    files = [j(RA,"te/"),j(RA,"mo/"),j(RA,"md/"),j(WR,"tr/"),j(RA,"td/"),j(RA,"vt/"),j(RA,"vm/"),j(WR,"vr/"),j(RA,"pr/"),j(RA,"rd/")]
     rsync_read(files)
 
 def director_new_model_read(modelname):
@@ -195,7 +195,7 @@ def worker_test_result_read(testname,modelname,depends):
 
 def worker_verification_write(vrname):
     """ when a worker ran a model verification """
-    rsync_write(j(WA,ktf(vrname)))
+    rsync_write(j(WR,ktf(vrname)))
 
 def worker_test_result_write(trname):
     """ when a worker ran a test result """
