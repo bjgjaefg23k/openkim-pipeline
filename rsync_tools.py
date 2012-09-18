@@ -28,7 +28,7 @@ WRITE_RESULTS = os.path.join(RSYNC_PATH, "/write/results/")
 # RSYNC_TEST_MODE = True
 
 if RSYNC_TEST_MODE:
-    READ_APPROVED = READ_PENDING = WRITE_APPROVED = WRITE_PENDING = os.path.join(RSYNC_PATH,"/write/testing/")
+    READ_APPROVED = READ_PENDING = WRITE_APPROVED = WRITE_PENDING = WRITE_RESULTS = os.path.join(RSYNC_PATH,"/write/testing/")
 
 # TEMP_WRITE_PATH =   os.path.join(RSYNC_PATH,"")
 # TEMP_READ_PATH =    os.path.join(RSYNC_PATH,"")
