@@ -145,12 +145,12 @@ def director_full_result_read():
 
 def director_new_model_read(modelname):
     """ when a director gets a new model """
-    files = [j(RA,"te/"),j(WR,"tr/"),j(RA,"md/"),j(RA,ktf(modelname))]
+    files = [j(RA,"te/"),j(RA,"td/"),j(WR,"tr/"),j(RA,"md/"),j(RA,ktf(modelname))]
     rsync_read(files)
 
 def director_new_test_read(testname):
     """ when a director gets a new test """
-    files = [j(RA,"mo/"),j(WR,"tr/"),j(RA,"td/"),j(RA,ktf(testname))]
+    files = [j(RA,"mo/"),j(RA,"md/"),j(WR,"tr/"),j(RA,"td/"),j(RA,ktf(testname))]
     rsync_read(files)
 
 def director_new_model_verification_read(vmname):
@@ -165,12 +165,12 @@ def director_new_test_verification_read(vtname):
 
 def director_model_verification_read(modelname):
     """ when director needs to verify a model """
-    files = [j(RA,"vm/"), j(RP,ktf(modelname))]
+    files = [j(RA,"vm/"), j(RA,"md/"), j(RP,ktf(modelname))]
     rsync_read(files)
 
 def director_test_verification_read(testname):
     """ when the director needs to verify a test """
-    files = [j(RA,"vt/"), j(RP,ktf(testname)) ]
+    files = [j(RA,"vt/"), j(RA,"td/"),j(RP,ktf(testname)) ]
     rsync_read(files)
 
 
