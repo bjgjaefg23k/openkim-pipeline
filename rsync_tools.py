@@ -11,7 +11,7 @@ from functools import partial
 
 RSYNC_ADDRESS     = RSYNC_USER+"@"+RSYNC_HOST
 RSYNC_REMOTE_ROOT = RSYNC_DIR
-RSYNC_FLAGS = "-vrtLhptgo -f \"- */tr\" --delete -uzREc --progress --stats -e 'ssh -i /persistent/id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' --exclude-from=/home/vagrant/openkim-pipeline/.rsync-exclude"
+RSYNC_FLAGS = "-vrtLhptgo -uzREc --progress --stats -e 'ssh -i /persistent/id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' --exclude-from=/home/vagrant/openkim-pipeline/.rsync-exclude"
 # --delete ensures that we delete files that aren't on remote
 
 #RSYNC_PATH = '--rsync-path="cd {} && rsync"'.format(RSYNC_REMOTE_ROOT)
@@ -54,12 +54,14 @@ def rsync_command(files,read=True,path=None):
     with tempfile.NamedTemporaryFile(delete=False) as tmp:
         tmp.file.write("\n".join(files))
         tmp.file.close()
+        flags = RSYNC_FLAGS
         try:
             logger.info("running rsync for files: %r",files)
-            if read:
-                cmd = " ".join(["rsync",RSYNC_FLAGS,full_path,RSYNC_LOG_FILE_FLAG,"--files-from={}".format(tmp.name),LOCAL_REPO_ROOT])
+            if read:    
+                flags = "-f \"- */tr\" --delete " + flags
+                cmd = " ".join(["rsync",flags,full_path,RSYNC_LOG_FILE_FLAG,"--files-from={}".format(tmp.name),LOCAL_REPO_ROOT])
             else:
-                cmd = " ".join(["rsync",RSYNC_FLAGS,RSYNC_LOG_FILE_FLAG,"--files-from={}".format(tmp.name),LOCAL_REPO_ROOT,full_path])
+                cmd = " ".join(["rsync",flags,RSYNC_LOG_FILE_FLAG,"--files-from={}".format(tmp.name),LOCAL_REPO_ROOT,full_path])
             #print cmd
             #print open(tmp.name).read()
             logger.debug("rsync command = %r",cmd)
