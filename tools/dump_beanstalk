@@ -23,7 +23,7 @@ def dump_channel(channel):
 
     job_number = stats['current-jobs-ready']
 
-    with open(os.path.join('logs',channel),'a') as fl:
+    with open(os.path.join('/home/vagrant/openkim-pipeline/logs',channel),'a') as fl:
         for i in xrange(job_number):
             bsd.watch(channel)
             j = bsd.reserve()

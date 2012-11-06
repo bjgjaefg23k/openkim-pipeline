@@ -11,7 +11,7 @@ from functools import partial
 
 RSYNC_ADDRESS     = RSYNC_USER+"@"+RSYNC_HOST
 RSYNC_REMOTE_ROOT = RSYNC_DIR
-RSYNC_FLAGS = "-avuzRrhEc --progress --stats -e 'ssh -i /persistent/id_ecdsa_pipeline -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' --exclude-from=/home/vagrant/openkim-pipeline/.rsync-exclude"
+RSYNC_FLAGS = "-vrtLhptgo -f \"- */tr\" --delete -uzREc --progress --stats -e 'ssh -i /persistent/id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' --exclude-from=/home/vagrant/openkim-pipeline/.rsync-exclude"
 # --delete ensures that we delete files that aren't on remote
 
 #RSYNC_PATH = '--rsync-path="cd {} && rsync"'.format(RSYNC_REMOTE_ROOT)
