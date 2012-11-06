@@ -638,7 +638,7 @@ class Site(object):
 
 
     def send_update(self, kimid):
-        self.bsd.use(TUBE_UPDATE)
+        self.bsd.use("web_updates")#TUBE_UPDATE)
         self.bsd.put(simplejson.dumps({"kimid": kimid, "priority":"normal", "status":"approved"}))
 
 if __name__ == "__main__":
@@ -654,7 +654,7 @@ if __name__ == "__main__":
             elif sys.argv[1] == "site":
                 obj = Site()
                 thrd = Process(target=Site.run(obj))
-                # obj.send_update("TB_Khakshouri_F_Fe__MO_853979044095_000")
+                #obj.send_update("TB_Khakshouri_F_Fe__MO_853979044095_000")
                 obj.send_update(sys.argv[2])
     else:
         print "Specify {worker|director|site}"

@@ -21,9 +21,11 @@ RSYNC_LOG_FILE_FLAG = "--log-file={}/rsync.log".format(LOG_DIR)
 
 READ_APPROVED = os.path.join(RSYNC_PATH,"/read/approved/./")
 READ_PENDING =  os.path.join(RSYNC_PATH,"/read/pending/./")
-# WRITE_APPROVED = os.path.join(RSYNC_PATH,"/write/approved/")
-# WRITE_PENDING = os.path.join(RSYNC_PATH,"/write/pending/")
-WRITE_RESULTS = os.path.join(RSYNC_PATH, "/write/results/./")
+
+if PIPELINE_DEBUG == True:
+    WRITE_RESULTS = os.path.join(RSYNC_PATH, "/write/debug/./")
+else:
+    WRITE_RESULTS = os.path.join(RSYNC_PATH, "/write/results/./")
 
 # FIXME: add explicit /./ here and remove in rsync_command
 
@@ -31,11 +33,6 @@ WRITE_RESULTS = os.path.join(RSYNC_PATH, "/write/results/./")
 
 if RSYNC_TEST_MODE:
     READ_APPROVED = READ_PENDING = WRITE_APPROVED = WRITE_PENDING = WRITE_RESULTS = os.path.join(RSYNC_PATH,"/write/testing/")
-
-# TEMP_WRITE_PATH =   os.path.join(RSYNC_PATH,"")
-# TEMP_READ_PATH =    os.path.join(RSYNC_PATH,"")
-# REAL_WRITE_PATH =   os.path.join(RSYNC_PATH,"")
-# REAL_READ_PATH =    os.path.join(RSYNC_PATH,"")
 
 LOCAL_REPO_ROOT = KIM_REPOSITORY_DIR
 

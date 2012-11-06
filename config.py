@@ -44,27 +44,18 @@ KIMLOG_FILE = "kim.log"
 # Settings for remote access
 #============================
 if PIPELINE_DEBUG == True:
-    GLOBAL_IP   = "127.0.0.1"
     GLOBAL_PORT = 14176
-    
-    GLOBAL_USER = "pipeline"
-    GLOBAL_HOST = "pipeline.openkim.org"
-    
-    RSYNC_USER  = "pipeline"
-    RSYNC_HOST  = "pipeline.openkim.org"
-    RSYNC_DIR   = "/repository_dbg/"
-    RSYNC_TEST_MODE = False
 else:
-    GLOBAL_IP   = "127.0.0.1"
     GLOBAL_PORT = 14177
     
-    GLOBAL_USER = "pipeline"
-    GLOBAL_HOST = "pipeline.openkim.org"
-    
-    RSYNC_USER  = "pipeline"
-    RSYNC_HOST  = "pipeline.openkim.org"
-    RSYNC_DIR   = "/repository/"
-    RSYNC_TEST_MODE = False
+GLOBAL_IP   = "127.0.0.1"
+GLOBAL_USER = "pipeline"
+GLOBAL_HOST = "pipeline.openkim.org"
+
+RSYNC_USER  = "pipeline"
+RSYNC_HOST  = "pipeline.openkim.org"
+RSYNC_DIR   = "/repository/"
+RSYNC_TEST_MODE = False
 
 #============================
 # Runner Internals
