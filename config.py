@@ -21,11 +21,15 @@ import os
 #==============================
 # KIM FLAGS
 #===============================
+if os.environ.has_key("PIPELINE_DEBUG"):
+    PIPELINE_DEBUG = True
+else:
+    PIPELINE_DEBUG = False
 
 #get the kim directories
-KIM_DIR = os.environ["KIM_DIR"] #the bash shell environ
-KIM_API_DIR = os.environ.get("KIM_API_DIR",
-        os.path.join(KIM_DIR,"KIM_API"))
+#KIM_DIR = os.environ["KIM_DIR"] #the bash shell environ
+#KIM_API_DIR = os.environ.get("KIM_API_DIR",
+#        os.path.join(KIM_DIR,"KIM_API"))
 
 #get the repository dir from the symlink
 KIM_REPOSITORY_DIR = os.environ["KIM_REPOSITORY_DIR"]
@@ -44,42 +48,50 @@ KIMLOG_FILE = "kim.log"
 # Directory codes
 #===========================
 
-KIM_TEST_RESULTS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"tr"))
-KIM_REFERENCE_DATA_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"rd"))
-KIM_MODELS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"mo"))
-KIM_MODEL_DRIVERS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"md"))
-KIM_TESTS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"te"))
-KIM_TEST_DRIVERS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"td"))
-KIM_REPO_DIRS = [KIM_TEST_RESULTS_DIR,KIM_REFERENCE_DATA_DIR,
-        KIM_MODELS_DIR,KIM_MODEL_DRIVERS_DIR,KIM_TESTS_DIR,KIM_TEST_DRIVERS_DIR]
+#KIM_TEST_RESULTS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"tr"))
+#KIM_REFERENCE_DATA_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"rd"))
+#KIM_MODELS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"mo"))
+#KIM_MODEL_DRIVERS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"md"))
+#KIM_TESTS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"te"))
+#KIM_TEST_DRIVERS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"td"))
+#KIM_REPO_DIRS = [KIM_TEST_RESULTS_DIR,KIM_REFERENCE_DATA_DIR,
+#        KIM_MODELS_DIR,KIM_MODEL_DRIVERS_DIR,KIM_TESTS_DIR,KIM_TEST_DRIVERS_DIR]
 
 
 #get all of the models
-KIM_MODELS = [ dir for dir in os.listdir(KIM_MODELS_DIR) if os.path.isdir(os.path.join(KIM_MODELS_DIR,dir)) ]
+#KIM_MODELS = [ dir for dir in os.listdir(KIM_MODELS_DIR) if os.path.isdir(os.path.join(KIM_MODELS_DIR,dir)) ]
 #and all of the tests
-KIM_TESTS =  [ dir for dir in os.listdir(KIM_TESTS_DIR) if os.path.isdir(os.path.join(KIM_TESTS_DIR,dir)) ]
-KIM_TEST_DRIVERS = [ dir for dir in os.listdir(KIM_TEST_DRIVERS_DIR) if os.path.isdir(os.path.join(KIM_TEST_DRIVERS_DIR,dir))]
-KIM_MODEL_DRIVERS = [ dir for dir in os.listdir(KIM_MODEL_DRIVERS_DIR) if os.path.isdir(os.path.join(KIM_MODEL_DRIVERS_DIR,dir))]
+#KIM_TESTS =  [ dir for dir in os.listdir(KIM_TESTS_DIR) if os.path.isdir(os.path.join(KIM_TESTS_DIR,dir)) ]
+#KIM_TEST_DRIVERS = [ dir for dir in os.listdir(KIM_TEST_DRIVERS_DIR) if os.path.isdir(os.path.join(KIM_TEST_DRIVERS_DIR,dir))]
+#KIM_MODEL_DRIVERS = [ dir for dir in os.listdir(KIM_MODEL_DRIVERS_DIR) if os.path.isdir(os.path.join(KIM_MODEL_DRIVERS_DIR,dir))]
 
 
 
 #============================
 # Settings for remote access
 #============================
-GLOBAL_IP   = "127.0.0.1"
-GLOBAL_PORT = 14177
-
-GLOBAL_USER = "pipeline"
-GLOBAL_HOST = "pipeline.openkim.org"
-# GLOBAL_DIR  = "/write/approved/"
-# GLOBAL_DIR  = "/write/pending/"
-
-RSYNC_USER  = "pipeline"
-RSYNC_HOST  = "openkim.org"
-RSYNC_DIR   = "/"
-#RSYNC_DIR   = "/write/pending/"
-# RSYNC_READ_DIR = "/read/approved/"
-RSYNC_TEST_MODE = False
+if PIPELINE_DEBUG == True:
+    GLOBAL_IP   = "127.0.0.1"
+    GLOBAL_PORT = 14178
+    
+    GLOBAL_USER = "pipeline"
+    GLOBAL_HOST = "pipeline.openkim.org"
+    
+    RSYNC_USER  = "pipeline"
+    RSYNC_HOST  = "pipeline.openkim.org"
+    RSYNC_DIR   = "/repository_dbg/"
+    RSYNC_TEST_MODE = False
+else:
+    GLOBAL_IP   = "127.0.0.1"
+    GLOBAL_PORT = 14177
+    
+    GLOBAL_USER = "pipeline"
+    GLOBAL_HOST = "pipeline.openkim.org"
+    
+    RSYNC_USER  = "pipeline"
+    RSYNC_HOST  = "pipeline.openkim.org"
+    RSYNC_DIR   = "/repository/"
+    RSYNC_TEST_MODE = False
 
 #============================
 # Runner Internals
@@ -89,7 +101,6 @@ RUNNER_TIMEOUT = 60*60*24*5 # sec-min-hr-days
 #=============================
 # Logging stuff
 #=============================
-
 import logging, logging.handlers
 
 logger = logging.getLogger("pipeline")
@@ -97,7 +108,6 @@ logger.setLevel(logging.DEBUG)
 
 #formatter
 log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
 
 LOG_DIR = os.path.join(KIM_PIPELINE_DIR,"logs")
 
@@ -118,7 +128,6 @@ logger.addHandler(console_handler)
 #====================================
 # KIM ERRORS
 #====================================
-
 class InvalidKIMID(Exception):
     """ Used for invalid KIM IDS """
 
