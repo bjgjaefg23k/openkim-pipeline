@@ -23,13 +23,9 @@ import os
 #===============================
 if os.environ.has_key("PIPELINE_DEBUG"):
     PIPELINE_DEBUG = True
+    print "DEBUG MODE: ON"
 else:
     PIPELINE_DEBUG = False
-
-#get the kim directories
-#KIM_DIR = os.environ["KIM_DIR"] #the bash shell environ
-#KIM_API_DIR = os.environ.get("KIM_API_DIR",
-#        os.path.join(KIM_DIR,"KIM_API"))
 
 #get the repository dir from the symlink
 KIM_REPOSITORY_DIR = os.environ["KIM_REPOSITORY_DIR"]
@@ -43,29 +39,6 @@ STDOUT_FILE = "pipeline.stdout"
 STDERR_FILE = "pipeline.stderr"
 TEMP_INPUT_FILE = "pipeline.in.tmp"
 KIMLOG_FILE = "kim.log"
-
-#===========================
-# Directory codes
-#===========================
-
-#KIM_TEST_RESULTS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"tr"))
-#KIM_REFERENCE_DATA_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"rd"))
-#KIM_MODELS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"mo"))
-#KIM_MODEL_DRIVERS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"md"))
-#KIM_TESTS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"te"))
-#KIM_TEST_DRIVERS_DIR = os.path.abspath(os.path.join(KIM_REPOSITORY_DIR,"td"))
-#KIM_REPO_DIRS = [KIM_TEST_RESULTS_DIR,KIM_REFERENCE_DATA_DIR,
-#        KIM_MODELS_DIR,KIM_MODEL_DRIVERS_DIR,KIM_TESTS_DIR,KIM_TEST_DRIVERS_DIR]
-
-
-#get all of the models
-#KIM_MODELS = [ dir for dir in os.listdir(KIM_MODELS_DIR) if os.path.isdir(os.path.join(KIM_MODELS_DIR,dir)) ]
-#and all of the tests
-#KIM_TESTS =  [ dir for dir in os.listdir(KIM_TESTS_DIR) if os.path.isdir(os.path.join(KIM_TESTS_DIR,dir)) ]
-#KIM_TEST_DRIVERS = [ dir for dir in os.listdir(KIM_TEST_DRIVERS_DIR) if os.path.isdir(os.path.join(KIM_TEST_DRIVERS_DIR,dir))]
-#KIM_MODEL_DRIVERS = [ dir for dir in os.listdir(KIM_MODEL_DRIVERS_DIR) if os.path.isdir(os.path.join(KIM_MODEL_DRIVERS_DIR,dir))]
-
-
 
 #============================
 # Settings for remote access
