@@ -21,8 +21,8 @@ As of the most recent edit, these are the tubes employed by the beanstalkd consu
     * :ref:`updates_ref` - pokes to the pipeline provided by the website
     * :ref:`errors_ref` - serious failings of the pipeline during job runs
     * :ref:`logs_ref` - a convenient place to get the **full** logs from any of the directors and workers
-    * :ref:`tr_ids_ref` - a list of TestResult ids as provided by the website
-    * :ref:`vr_ids_ref` - a list of VerificationResult ids as provided by the website
+    * :ref:`web_updates_ref` - the queue used to exchange messages between webserver and gateway
+    * :ref:`web_results_ref` - the other end of the webserver gateway exchange
 
 Most are encoded JSON string of a dictionary, though two are plain text.  Read the descriptions following for 
 the expected format of messages.
@@ -98,18 +98,17 @@ messages are as follows:
     * *username* - the box's associated username
     * *boxtype* - whether it is 'worker', 'director', or 'devel'
     * *message* - the logging message as output by the logging module in Python
+    * *setuphash* - the git hash of the setup script version
 
+.. _web_updates_ref:
 
-.. _tr_ids_ref:
+web_updates
+^^^^^^^^^^^
+Exactly the same as :ref:`updates_ref` except used to communicate from webserver to gateway instead of internally to the pipeline.
 
-tr_ids
-^^^^^^
-This is a consumable list of TestResult IDs.  It is a **plain text** list, not a dictionary or JSON.  
-These are the ids that the Directors supply Workers to assign test results.  It should always be full, 
-or the queue will get backed up.
+.. _web_results_ref:
 
-.. _vr_ids_ref:
+web_results
+^^^^^^^^^^^
+Exactly the same as :ref:`results_ref` except used to communicate from webserver to gateway instead of internally to the pipeline.
 
-vr_ids
-^^^^^^
-This is a consumable list of VerificationResult IDs.  It is **plain text** again.  See :ref:`tr_ids_ref`.

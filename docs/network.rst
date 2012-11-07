@@ -30,15 +30,6 @@ These sites are then port forwarded to a Trusted machine via another set of SSH 
 for the worker side of things.  They host the beanstalkd queue and the rsync from which the workers and directors draw
 the information needed to run jobs.  
 
-Authorization
--------------
-Public keys are the primary means of authentication.  Typically these allow anyway to go nutso on your system though.
-To restrict them, we use a series of ``chroot`` which creates a fake root filesystem with almost no utilities, and 
-an configured ``authorized_keys`` file which limits connections to port forwarding.  An example is provided
-here for posterity::
-
-    command="/bin/ls",permitopen="127.0.0.1:14176",permitopen="127.0.0.1:14177",no-X11-forwarding,no-agent-forwarding,no-pty,no-user-rc ecdsa-sha2-nistp521 <snip> pipeline@openkim.org
-
 
 SSH and sftp
 ------------
@@ -53,5 +44,3 @@ The beanstalk daemon we are running has a few tubes open that are non-standard.
 2. "results" - These are JSON encoded strings of the test-model pair results.  Also includes extra profiling information. These are consumed by the website.
 3. "update" - This is the tube which the website sends pings to the worker.  This can include a priority flag which is one of `immediate`, `very high`, `high`, `normal`, `low`, and `very low`. 
 4. "errors" - These are the errors returned by a worker.  These are consumed by the directors.  
-5. "tr_ids" - The director is not able to make unique test result ids and so consumes them from a list created by the website.
-6. "vr_ids" - Also true of verification result ids.

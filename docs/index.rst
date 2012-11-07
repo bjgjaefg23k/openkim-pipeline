@@ -52,9 +52,11 @@ Table of Contents
 
    pipeline
    network
+   gateway
    beanstalkd
    virtualbox
    developers
+   maintainers
    orm
    code
 

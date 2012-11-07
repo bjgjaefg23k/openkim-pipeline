@@ -198,49 +198,6 @@ occurs as planned.  Currently (as of 29/06/2012) they are:
 * *lammps* : a binary executable that has been built for the virtual box 
 
 
-Debugging setup scripts
-^^^^^^^^^^^^^^^^^^^^^^^
-After making changes to the setup scripts, you should check to make sure that they
-set the system up as you expect.  One of approaching this is to boot into a fresh
-VM and comment out the provisioning from the ``Vagrantfile``.  This involves
-putting a "#" in the beginning of the inline directive::
-
-    config.vm.provision :shell, :inline => "/persistent/runsetup <hostname>"
-
-goes to::
-
-    config.vm.provision :shell, :inline => "#/persistent/runsetup <hostname>"
-
-Then ssh into the box as normal, download your working version of the setup scripts
-from the correct source and try them out.  
-
-It is also possible to change the working branch from which the scripts are 
-downloaded.  In particular, the second option to runsetup accepts a branch
-name.  The default value is ``stable``, but can be replaced by any other branch
-such as master.  This will allow you to easily run through the entire setup process
-including authorizing a worker to see if it comes up properly.  The line
-listed above now becomes::
-
-    config.vm.provision :shell, :inline => "/persistent/runsetup <hostname> <otherbranch>"
-
-
-Modifying the base box
-----------------------
-If you would like to boot into ``root`` in order to make persistent changes to the 
-virtualbox, you would need to change the root directive in ``/boot/grub/grub.cfg`` from:: 
-
-    root=/dev/mapper/vagrant--pipeline-root_snap 
-
-to::
-
-    root=/dev/mapper/vagrant--pipeline-root 
-
-This will cause the box to boot into the correct logical volume.  From there, you can make
-your changes and repackage the box.  Before you do so, however, you need to reconfigure the
-essentials of the box.  **There is a script provided for this** inside ``openkim-pipeline-setup/static``
-that does most of the work for you. 
-
-
 Size issues
 -----------
 The box will naturally inflate in actual disk usage on the host over time.  The swap will be
