@@ -8,26 +8,26 @@ all of the authentication materials for the directors/workers.
 Organization
 ------------
 The only direct login to the machine is the user ``ubuntu`` which can be accessed through the pem keys
-as distributed through Amazon EC2.  The actual user that is responsible for the beanstalkd and gatewayd
-is pipeline, which has a locked password.  The only way to become the pipeline user is to ``sudo su pipeline``
+as distributed through Amazon EC2.  This is the user that is responsible for the beanstalkd and gatewayd
+as well. 
+
+The owner of ``/repository`` and ``/repository_dbg`` is the user pipeline in order to separate the privileges 
+on the system - i.e. the rsync user cannot read the ecdsa key needed to access the repository.
+The only way to become the pipeline user is to ``sudo su pipeline``
 from the ubuntu user or to login via ssh with a key.  However, when logging in through ssh, the shell is
 restricted to rsync_only so the only real way is through the Amazon account.  
 
-The pipeline user owns the beanstalkd and gateway processes.  They however are launched through scripts that
-masquerade as the pipeline user from the ubuntu user account.  Also owned by the pipeline user is ``/repository``
-and ``/repository_dbg`` which are the rsync destinations of the gatewayd.  During typical operation, 
-pipeline's home folder looks like::
-
-    drwxrwxr-x 2 pipeline pipeline 4.0K Nov  6 21:53 beanlog
-    drwxrwxr-x 2 pipeline pipeline 4.0K Nov  6 21:53 beanlog_dbg
-    drwxrwxr-x 3 pipeline pipeline 4.0K Nov  7 16:41 gateway
-    -rw------- 1 pipeline pipeline  365 Aug 20 14:47 id_ecdsa_pipeline
-
+The ubuntu user owns the beanstalkd and gateway processes.  They are launched through scripts 
+from the ubuntu user account.  During typical operation, pipeline's home folder is completely blank
 while ubuntu's home folder contains the scripts that launch the various important processes::
 
-    -rwxrwxr-x 1 ubuntu ubuntu 1.2K Aug 20 14:50 makeuser.sh
-    -rwxrwxr-x 1 ubuntu ubuntu  349 Nov  6 21:53 startdaemon.sh
-    -rwxrwxr-x 1 ubuntu ubuntu  196 Nov  6 21:34 startgateway.sh
+    drwxr--r-- 2 ubuntu ubuntu 4.0K Nov  8 23:17 beanlog
+    drwxr--r-- 2 ubuntu ubuntu 4.0K Nov  8 23:17 beanlog_dbg
+    drwxr--r-- 3 ubuntu ubuntu 4.0K Nov  8 23:12 gateway
+    -rw------- 1 ubuntu ubuntu  365 Nov  7 19:59 id_ecdsa_pipeline
+    -rwxr--r-- 1 ubuntu ubuntu 1.2K Aug 20 14:50 makeuser.sh
+    -rwxr--r-- 1 ubuntu ubuntu  250 Nov  8 23:16 startdaemon.sh
+    -rwxr--r-- 1 ubuntu ubuntu  146 Nov  8 23:07 startgateway.sh
 
 These launch both the beanstalkd and gatewayd for production and debug modes.  A typical screen
 of the ubuntu user should look like::
