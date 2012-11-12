@@ -83,8 +83,19 @@ rotfile_handler.setLevel(logging.DEBUG)
 rotfile_handler.setFormatter(log_formatter)
 logger.addHandler(rotfile_handler)
 
+import pygmentlog
+class PygmentHandler(logging.StreamHandler):
+    """ A beanstalk logging handler """
+    def __init__(self):
+        super(PygmentHandler,self).__init__()
+
+    def emit(self,record):
+        """ Send the message """
+        err_message = self.format(record)
+        pygmentlog.pygmentize(err_message)
+
 #create a console logger
-console_handler = logging.StreamHandler()
+console_handler = PygmentHandler()
 console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(log_formatter)
 logger.addHandler(console_handler)

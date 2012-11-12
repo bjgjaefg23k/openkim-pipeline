@@ -256,7 +256,7 @@ def process(inp, modelname, testname, modelonly= False):
                     newline = modelname_processor(line, modelname, testname)
                 else:
                     newline = process_line(line,modelname,testname)
-                logger.debug("new line is:\n\t %r",newline)
+                logger.debug("new line is: %r",newline)
                 out.write(newline)
 
         return open(TEMP_INPUT_FILE)
