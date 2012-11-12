@@ -49,13 +49,14 @@ class LogStyle(Style):
         String:                    "#cd0000",
         Number:                    "#cd00cd",
 
+        Punctuation:               "#FFFFFF",
         Generic.Heading:           "#FFFFFF",
         Generic.Subheading:        "#800080",
         Generic.Deleted:           "#cd3030",
         Generic.Inserted:          "#00cd00",
         Generic.Error:             "bold #FF0000 bg:#550000",
         Generic.Emph:              "bold italic #CCCCCC",
-        Generic.Strong:            "bold",
+        Generic.Strong:            "bold #FFFFFF",
         Generic.Prompt:            "bold #3030F0",
         Generic.Output:            "#888",
         Generic.Traceback:         "bold #04D",
@@ -106,7 +107,7 @@ class LogLexer(RegexLexer):
             (_info, Generic.Traceback),
             (_error, Generic.Error),
             ('[a-zA-Z_][a-zA-Z0-9_]*', Generic.Heading),
-            ("[\\='\"\[\]@.,:-]", Punctuation),
+            (r'[()\"\[\]@.,:-\\]', Punctuation),
             (r'[~!%^&*+=|?:<>/-]', Punctuation),
             (r"'", Punctuation)
         ]
