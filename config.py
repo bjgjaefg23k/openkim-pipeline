@@ -71,7 +71,7 @@ logger = logging.getLogger("pipeline")
 logger.setLevel(logging.DEBUG)
 
 #formatter
-log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+log_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
 
 LOG_DIR = os.path.join(KIM_PIPELINE_DIR,"logs")
 
