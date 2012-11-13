@@ -108,7 +108,7 @@ class LogLexer(RegexLexer):
             (_error, Generic.Error),
             (r'[0-9]+', Generic.Heading),
             ('[a-zA-Z_][a-zA-Z0-9_]*', Generic.Heading),
-            (r'[()\"\[\]@.,:-\\]', Punctuation),
+            (r'[{}`()\"\[\]@.,:-\\]', Punctuation),
             (r'[~!%^&*+=|?:<>/-]', Punctuation),
             (r"'", Punctuation)
         ]
@@ -124,4 +124,4 @@ def pygmentize(text, formatter='256', outfile=sys.stdout, style=LogStyle):
     highlight(text, lexer, fmtr, outfile)
 
 if __name__ == "__main__":
-    pygmentize(open("/home/vagrant/openkim-pipeline/logs/test.log").read()+"\n ERROR - needed more output")
+    pygmentize(open("/home/vagrant/openkim-pipeline/logs/test.log").read()+"\n `{}ERROR - needed more output")

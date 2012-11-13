@@ -43,8 +43,6 @@ TUBE_RESULTS = "results"
 TUBE_UPDATE  = "updates"
 TUBE_ERRORS  = "errors"
 TUBE_LOG     = "logs"
-TUBE_TR_IDS  = "tr_ids"
-TUBE_VR_IDS  = "vr_ids"
 
 KEY_JOBID    = "jobid"
 KEY_PRIORITY = "priority"
