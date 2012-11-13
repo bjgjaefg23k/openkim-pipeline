@@ -106,6 +106,7 @@ class LogLexer(RegexLexer):
             (_debug, Generic.Strong),
             (_info, Generic.Traceback),
             (_error, Generic.Error),
+            (r'[0-9]+', Generic.Heading),
             ('[a-zA-Z_][a-zA-Z0-9_]*', Generic.Heading),
             (r'[()\"\[\]@.,:-\\]', Punctuation),
             (r'[~!%^&*+=|?:<>/-]', Punctuation),
