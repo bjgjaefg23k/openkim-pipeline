@@ -38,9 +38,12 @@ PIPELINE_WAIT    = 10
 PIPELINE_TIMEOUT = 60
 PIPELINE_MSGSIZE = 2**20
 PIPELINE_JOB_TIMEOUT = 3600 #one hour
+TUBE_UPDATE  = "updates"
+
+# these tubes are duplicated upon submission to gtw_<tube>
+# so they can be maintained
 TUBE_JOBS    = "jobs"
 TUBE_RESULTS = "results"
-TUBE_UPDATE  = "updates"
 TUBE_ERRORS  = "errors"
 TUBE_LOG     = "logs"
 
@@ -75,11 +78,12 @@ class BeanstalkHandler(logging.Handler):
     def emit(self,record):
         """ Send the message """
         err_message = self.format(record)
-        self.bsd.use(TUBE_LOG)
         message = self.info.copy()
         message['message'] = err_message
+        self.bsd.use(TUBE_LOG)
         self.bsd.put(simplejson.dumps(message))
-
+        self.bsd.use("gtw_"+TUBE_LOG)
+        self.bsd.put(simplejson.dumps(message))
 
 class Message(object):
     """Message format for the queue system:
@@ -184,31 +188,9 @@ class Director(object):
         self.bsd.close()
         self.daemon.kill()
 
-    def old_get_tr_id(self):
-        """ Get a TR id from the TUBE_TR_IDS """
-        self.logger.info("Requesting new TR id")
-        bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
-        bsd.watch(TUBE_TR_IDS)
-        request = bsd.reserve()
-        tr_id = request.body
-        request.delete()
-        bsd.close()
-        return tr_id
-
     def get_tr_id(self):
         """ Generate a TR id """
         return database.new_test_result_id()
-
-    def old_get_vr_id(self):
-        """ Get a VR id from TUBE_VR_IDS """
-        self.logger.info("Requesting new VR id")
-        bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
-        bsd.watch(TUBE_VR_IDS)
-        request = bsd.reserve()
-        vr_id = request.body
-        request.delete()
-        bsd.close()
-        return vr_id
 
     def get_vr_id(self):
         """ Get VR id from database """
@@ -256,7 +238,6 @@ class Director(object):
 
     def push_jobs(self, update):
         """ Push all of the jobs that need to be done given an update """
-        self.bsd.use(TUBE_JOBS)
         kimid = update['kimid']
         status = update['status']
         priority_factor = self.priority_to_number(update['priority'])
@@ -394,6 +375,8 @@ class Director(object):
 
             self.bsd.use(TUBE_JOBS)
             self.bsd.put(repr(Message(job=(str(test),str(model)),jobid=trid, child=child, depends=TR_ids+tuple(depids), status=status)), priority=priority)
+            self.bsd.use("gtw_"+TUBE_JOBS)
+            self.bsd.put(repr(Message(job=(str(test),str(model)),jobid=trid, child=child, depends=TR_ids+tuple(depids), status=status)), priority=priority)
 
         return depids
 
@@ -413,14 +396,10 @@ class Director(object):
             subprocess.check_call("makekim",shell=True)
         except subprocess.CalledProcessError as e:
             self.logger.error("could not makekim")
-            self.bsd.use(TUBE_ERRORS)
-            self.bsd.put(simplejson.dumps({"error": "could not makekim"}))
 
             raise RuntimeError, "our makekim failed!"
             return 1
         return 0
-
-
 
     def halt(self):
         self.disconnect_from_daemon()
@@ -433,8 +412,8 @@ class Worker(object):
         self.remote_user = GLOBAL_USER
         self.remote_addr = GLOBAL_HOST
         self.ip          = GLOBAL_IP
-        self.timeout = PIPELINE_TIMEOUT
-        self.port = GLOBAL_PORT
+        self.timeout     = PIPELINE_TIMEOUT
+        self.port        = GLOBAL_PORT
         self.logger = logger.getChild("worker")
 
     def run(self):
@@ -474,6 +453,8 @@ class Worker(object):
                 job=jobmsg.job, results=results, errors=repr(errors))
         self.bsd.use(tube)
         self.bsd.put(repr(resultsmsg))
+        self.bsd.use("gtw_"+tube)
+        self.bsd.put(repr(resultsmsg))
 
 
     def get_jobs(self):
@@ -505,7 +486,7 @@ class Worker(object):
             except InvalidKIMID as e:
                 # we were not given a valid kimid
                 self.logger.error("Could not parse {} as a valid KIMID".format(jobmsg.job[0]))
-                self.job_message(jobmsg, errors=e)
+                self.job_message(jobmsg, errors=e, tube=TUBE_ERRORS)
                 job.delete()
                 continue
 
@@ -545,11 +526,8 @@ class Worker(object):
                 # and send the error back along the error queue
                 except Exception as e:
                     self.logger.error("Run failed, deleting... %r" % e)
-                    self.job_message(jobmsg, errors=e)
+                    self.job_message(jobmsg, errors=e, tube=TUBE_ERRORS)
                     job.delete()
-
-
-
             else:
                 try:
                     self.logger.info("rsyncing to repo %r", jobmsg.job+jobmsg.depends)
@@ -586,7 +564,7 @@ class Worker(object):
                 # and send the error back along the error queue
                 except Exception as e:
                     self.logger.error("Run failed, deleting... %r" % e)
-                    self.job_message(jobmsg, errors=e )
+                    self.job_message(jobmsg, errors=e, tube=TUBE_ERRORS)
                     job.delete()
 
     def make_all(self):
@@ -595,8 +573,7 @@ class Worker(object):
             subprocess.check_call("makekim",shell=True)
         except subprocess.CalledProcessError as e:
             self.logger.error("could not makekim")
-            self.bsd.use(TUBE_ERRORS)
-            self.bsd.put(simplejson.dumps({"error": "could not makekim"}))
+            self.job_message(job, errors="could not makekim!", tube=TUBE_ERRORS)
 
             raise RuntimeError, "our makekim failed!"
             return 1
@@ -629,10 +606,6 @@ class Site(object):
 
         self.logger.info("Website ready")
         self.logger.info("Pushing jobs")
-
-        self.bsd.use(TUBE_TR_IDS)
-        for i in range(10):
-            self.bsd.put(database.new_tr_kimid())
 
 
     def send_update(self, kimid):
