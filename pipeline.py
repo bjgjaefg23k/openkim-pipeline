@@ -62,18 +62,8 @@ class BeanstalkHandler(logging.Handler):
     """ A beanstalk logging handler """
     def __init__(self,bsd):
         self.bsd = bsd
-        self.info = self.getinfo()
+        self.info = runner.getboxinfo()
         super(BeanstalkHandler,self).__init__()
-
-    def getinfo(self):
-        os.system("cd /home/vagrant/openkim-pipeline; git log -n 1 | grep commit | sed s/commit\ // > /persistent/setuphash")
-
-        info = {}
-        things = ['sitename','username','boxtype','ipaddr','vmversion','setuphash']
-
-        for thing in things:
-            info[thing] = open(os.path.join('/persistent',thing)).read().strip()
-        return info
 
     def emit(self,record):
         """ Send the message """
@@ -110,11 +100,14 @@ class Message(object):
             self.child = child
             self.status = status
 
+    def todict(self):
+        return {KEY_JOBID: self.jobid, KEY_PRIORITY: self.priority,
+            KEY_JOB: self.job, KEY_RESULTS: self.results, KEY_ERRORS: self.errors,
+            KEY_DEPENDS: self.depends, KEY_CHILD: self.child, KEY_STATUS: self.status} 
+
     def __repr__(self):
         """ The repr of the string is a ``simplejson.dumps`` """
-        return simplejson.dumps({KEY_JOBID: self.jobid, KEY_PRIORITY: self.priority,
-            KEY_JOB: self.job, KEY_RESULTS: self.results, KEY_ERRORS: self.errors,
-            KEY_DEPENDS: self.depends, KEY_CHILD: self.child, KEY_STATUS: self.status})
+        return simplejson.dumps(self.todict())
 
     def msg_from_string(self,string):
         """ Generate a Message from a string """
@@ -140,6 +133,7 @@ class Director(object):
         self.remote_user = GLOBAL_USER
         self.remote_addr = GLOBAL_HOST
         self.logger = logger.getChild("director")
+        self.boxinfo = runner.getboxinfo()
 
     def run(self):
         """ connect and grab the job thread """
@@ -373,12 +367,20 @@ class Director(object):
                         self.logger.info("Submitting dependency <%s, %s>" % (t, m))
                         depids.append(self.check_dependencies_and_push(str(t),str(m),priority/10,status,child=(str(test),str(model),trid)))
 
-            self.bsd.use(TUBE_JOBS)
-            self.bsd.put(repr(Message(job=(str(test),str(model)),jobid=trid, child=child, depends=TR_ids+tuple(depids), status=status)), priority=priority)
-            self.bsd.use("gtw_"+TUBE_JOBS)
-            self.bsd.put(repr(Message(job=(str(test),str(model)),jobid=trid, child=child, depends=TR_ids+tuple(depids), status=status)), priority=priority)
+            msg = Message(job=(str(test),str(model)),jobid=trid, child=child, depends=TR_ids+tuple(depids), status=status) 
+            self.job_message(msg)
 
         return depids
+
+    def job_message(self, jobmsg, tube=TUBE_JOBS):
+        """ Send back a job message """
+        dic = jobmsg.todict()
+        dic.update(self.boxinfo)
+        msg = simplejson.dumps(dic)
+        self.bsd.use(tube)
+        self.bsd.put(msg)
+        self.bsd.use("gtw_"+tube)
+        self.bsd.put(msg)
 
     def make_object(self, kimid):
         self.logger.debug("Building the source for %r", kimid)
@@ -415,6 +417,7 @@ class Worker(object):
         self.timeout     = PIPELINE_TIMEOUT
         self.port        = GLOBAL_PORT
         self.logger = logger.getChild("worker")
+        self.boxinfo = runner.getboxinfo()
 
     def run(self):
         """ Start to listen, launch the daemon if we timeout """
@@ -451,11 +454,13 @@ class Worker(object):
         """ Send back a job message """
         resultsmsg = Message(jobid=jobmsg.jobid, priority=jobmsg.priority,
                 job=jobmsg.job, results=results, errors=repr(errors))
+        dic = resultsmsg.todict()
+        dic.update(self.boxinfo)
+        msg = simplejson.dumps(dic)
         self.bsd.use(tube)
-        self.bsd.put(repr(resultsmsg))
+        self.bsd.put(msg)
         self.bsd.use("gtw_"+tube)
-        self.bsd.put(repr(resultsmsg))
-
+        self.bsd.put(msg)
 
     def get_jobs(self):
         """ Endless loop that awaits jobs to run """
