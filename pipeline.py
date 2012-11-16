@@ -23,14 +23,13 @@ from subprocess import check_call, Popen, PIPE
 import subprocess
 from multiprocessing import cpu_count,Process
 from threading import Event
-import urllib
 import time
 import simplejson
 import rsync_tools
 import models
-import database
 import runner
 import traceback
+import signal, sys
 logger = logger.getChild("pipeline")
 
 import simplejson
@@ -58,7 +57,14 @@ KEY_CHILD    = "child"
 KEY_STATUS   = "status"
 
 BEANSTALK_LEVEL = logging.INFO
+
 shutdown_event = Event()
+def signal_handler(signal, frame):
+    print "Sending signal to flush, wait 10 sec..."
+    shutdown_event.set()
+    time.sleep(10)
+    sys.exit(1)
+signal.signal(signal.SIGINT, signal_handler)
 
 class BeanstalkHandler(logging.Handler):
     """ A beanstalk logging handler """
