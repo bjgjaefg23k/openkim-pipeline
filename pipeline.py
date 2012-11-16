@@ -21,7 +21,8 @@ import database
 import beanstalkc as bean
 from subprocess import check_call, Popen, PIPE
 import subprocess
-from multiprocessing import Process, cpu_count
+from multiprocessing import cpu_count,Process
+from threading import Event
 import urllib
 import time
 import simplejson
@@ -57,6 +58,7 @@ KEY_CHILD    = "child"
 KEY_STATUS   = "status"
 
 BEANSTALK_LEVEL = logging.INFO
+shutdown_event = Event()
 
 class BeanstalkHandler(logging.Handler):
     """ A beanstalk logging handler """
@@ -125,20 +127,21 @@ class Director(object):
     """ The Director object, knows to listen to incoming jobs, computes dependencies
     and passes them along to workers
     """
-    def __init__(self):
+    def __init__(self, num=0):
         self.ip   = GLOBAL_IP
         self.port = GLOBAL_PORT
         self.timeout = PIPELINE_TIMEOUT
         self.msg_size = PIPELINE_MSGSIZE
         self.remote_user = GLOBAL_USER
         self.remote_addr = GLOBAL_HOST
-        self.logger = logger.getChild("director")
+        self.logger = logger.getChild("director-%i" % num)
         self.boxinfo = runner.getboxinfo()
+        self.num = num
 
     def run(self):
         """ connect and grab the job thread """
         self.connect_to_daemon()
-        self.job_thrd  = Process(target=Director.get_updates(self))
+        self.get_updates()
 
     def launch_screen(self):
         """ Launch a screened ssh connection """
@@ -204,9 +207,13 @@ class Director(object):
                 run after verification or update
 
         """
-        while 1:
+        while not shutdown_event.is_set():
             self.logger.info("Director Waiting for message...")
             request = self.bsd.reserve()
+            self.request = request
+
+            # make sure it doesn't come alive again soon
+            request.bury()
 
             # got a request to update a model or test
             # from the website (or other trusted place)
@@ -222,6 +229,10 @@ class Director(object):
                     self.logger.error("Director had an error on update: {}\n {}".format(e, tb))
 
             request.delete()
+            self.request = None
+        
+        if self.request is not None:
+            self.request.delete()
 
     def priority_to_number(self,priority):
         priorities = {"immediate": 0, "very high": 0.01, "high": 0.1,
@@ -410,13 +421,13 @@ class Director(object):
 
 class Worker(object):
     """ Represents a worker, knows how to do jobs he is given, create results and rsync them back """
-    def __init__(self):
+    def __init__(self, num=0):
         self.remote_user = GLOBAL_USER
         self.remote_addr = GLOBAL_HOST
         self.ip          = GLOBAL_IP
         self.timeout     = PIPELINE_TIMEOUT
         self.port        = GLOBAL_PORT
-        self.logger = logger.getChild("worker")
+        self.logger = logger.getChild("worker-%i"% num)
         self.boxinfo = runner.getboxinfo()
 
     def run(self):
@@ -433,13 +444,13 @@ class Worker(object):
             self.start_listen()
 
         self.logger.info("Connected to daemon")
-        self.get_jobs()
-
         #attach the beanstalk logger
         beanstalk_handler = BeanstalkHandler(self.bsd)
         beanstalk_handler.setLevel(BEANSTALK_LEVEL)
         beanstalk_handler.setFormatter(log_formatter)
         self.logger.addHandler(beanstalk_handler)
+
+        self.get_jobs()
 
     def start_listen(self):
         """ Start to listen and connect to the TUBE_JOBS """
@@ -464,9 +475,14 @@ class Worker(object):
 
     def get_jobs(self):
         """ Endless loop that awaits jobs to run """
-        while 1:
+        while not shutdown_event.is_set():
             self.logger.info("Waiting for jobs...")
             job = self.bsd.reserve()
+            self.job = job
+            # if appears that there is a 120sec re-birth of jobs that have been reserved
+            # and I do not want to put an artificial time limit, so let's bury jobs
+            # when we get them
+            job.bury()              
             self.bsd.use("gtw_running")
             self.bsd.put(job.body)
 
@@ -573,7 +589,12 @@ class Worker(object):
                     self.logger.error("Run failed, deleting... %r" % e)
                     self.job_message(jobmsg, errors=e, tube=TUBE_ERRORS)
                     job.delete()
-
+            self.job = None
+    
+        # we got the signal to shutdown, so release the job first
+        if self.job is not None:
+            self.job.delete()
+    
     def make_all(self):
         self.logger.debug("Building everything...")
         try:
@@ -614,26 +635,37 @@ class Site(object):
         self.logger.info("Website ready")
         self.logger.info("Pushing jobs")
 
-
     def send_update(self, kimid):
-        self.bsd.use("web_updates")#TUBE_UPDATE)
+        self.bsd.use("web_updates")
         self.bsd.put(simplejson.dumps({"kimid": kimid, "priority":"normal", "status":"approved"}))
 
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1:
-        for i in range(cpu_count()):
-            if sys.argv[1] == "director":
-                obj = Director()
-                thrd = Process(target=Director.run(obj))
-            elif sys.argv[1] == "worker":
-                obj = Worker()
-                thrd = Process(target=Worker.run(obj))
-            elif sys.argv[1] == "site":
-                obj = Site()
-                thrd = Process(target=Site.run(obj))
-                #obj.send_update("TB_Khakshouri_F_Fe__MO_853979044095_000")
-                obj.send_update(sys.argv[2])
+        if sys.argv[1] != "site":
+            thrds = cpu_count() 
+            pipe = {}
+            procs = {}
+            for i in range(thrds):
+                if sys.argv[1] == "director":
+                    pipe[i] = Director(i)
+                    procs[i] = Process(target=Director.run, args=(pipe[i],), name='director-%i'%i)
+                elif sys.argv[1] == "worker":
+                    pipe[i] = Worker(i)
+                    procs[i] = Process(target=Worker.run, args=(pipe[i],), name='worker-%i'%i)
+            for i in range(thrds):
+                procs[i].start()
+
+            try:
+                while True:
+                    for i in range(thrds):
+                        procs[i].join(timeout=1.0)
+            except (KeyboardInterrupt, SystemExit):
+                shutdown_event.set()
+            
+        elif sys.argv[1] == "site":
+            obj = Site()
+            obj.run()
+            obj.send_update(sys.argv[2])
     else:
         print "Specify {worker|director|site}"
-        exit(1)
