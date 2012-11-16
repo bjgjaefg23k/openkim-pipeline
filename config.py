@@ -45,8 +45,10 @@ KIMLOG_FILE = "kim.log"
 #============================
 if PIPELINE_DEBUG == True:
     GLOBAL_PORT = 14176
+    RSYNC_DIR   = "/repository_dbg/"
 else:
     GLOBAL_PORT = 14177
+    RSYNC_DIR   = "/repository/"
     
 GLOBAL_IP   = "127.0.0.1"
 GLOBAL_USER = "pipeline"
@@ -54,7 +56,6 @@ GLOBAL_HOST = "pipeline.openkim.org"
 
 RSYNC_USER  = "pipeline"
 RSYNC_HOST  = "pipeline.openkim.org"
-RSYNC_DIR   = "/repository/"
 RSYNC_TEST_MODE = False
 
 #============================

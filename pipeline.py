@@ -467,6 +467,8 @@ class Worker(object):
         while 1:
             self.logger.info("Waiting for jobs...")
             job = self.bsd.reserve()
+            self.bsd.use("gtw_running")
+            self.bsd.put(job.body)
 
             # got a job -----
             # update the repository, attempt to run the job

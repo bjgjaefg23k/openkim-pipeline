@@ -11,7 +11,7 @@ d.connect_to_daemon()
 bsd = d.bsd
 
 usual_channels = ["errors","results","logs"]
-full_channels = ["jobs","results","updates","errors","logs","tr_ids","vr_ids"]
+full_channels = ["jobs","results","updates","errors","logs","tr_ids","vr_ids","gtw_results","gtw_jobs", "gtw_errors", "gtw_running", "gtw_logs"]
 
 def dump_channel(channel):
     print "dumping channel:", channel

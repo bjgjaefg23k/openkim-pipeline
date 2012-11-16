@@ -55,7 +55,7 @@ def rsync_command(files,read=True,path=None):
         try:
             logger.info("running rsync for files: %r",files)
             if read:    
-                flags = "-f \"- */tr\" --delete " + flags
+                flags = "-f \"- */tr\" " + flags
                 cmd = " ".join(["rsync",flags,full_path,RSYNC_LOG_FILE_FLAG,"--files-from={}".format(tmp.name),LOCAL_REPO_ROOT])
             else:
                 cmd = " ".join(["rsync",flags,RSYNC_LOG_FILE_FLAG,"--files-from={}".format(tmp.name),LOCAL_REPO_ROOT,full_path])
