@@ -59,12 +59,6 @@ KEY_STATUS   = "status"
 BEANSTALK_LEVEL = logging.INFO
 
 shutdown_event = Event()
-def signal_handler(signal, frame):
-    print "Sending signal to flush, wait 10 sec..."
-    shutdown_event.set()
-    time.sleep(10)
-    sys.exit(1)
-signal.signal(signal.SIGINT, signal_handler)
 
 class BeanstalkHandler(logging.Handler):
     """ A beanstalk logging handler """
@@ -237,7 +231,8 @@ class Director(object):
             request.delete()
             self.request = None
         
-        if self.request is not None:
+    def exit_safe(self):
+        if hasattr(self, request) and self.request is not None:
             self.request.delete()
 
     def priority_to_number(self,priority):
@@ -597,11 +592,14 @@ class Worker(object):
                     self.job_message(jobmsg, errors=e, tube=TUBE_ERRORS)
                     job.delete()
             self.job = None
-    
+            self.jobsmsg = None
+ 
+    def exit_safe(self): 
         # we got the signal to shutdown, so release the job first
-        if self.job is not None:
+        if hasattr(self, job) and self.job is not None:
             self.job.delete()
-            self.job_message(self.jobmsg, errors="Caught SIGINT and killed", tube=TUBE_ERRORS)
+            if hasattr(self, jobmsg) and self.jobmsg is not None: 
+                self.job_message(self.jobmsg, errors="Caught SIGINT and killed", tube=TUBE_ERRORS)
     
     def make_all(self):
         self.logger.debug("Building everything...")
@@ -647,12 +645,21 @@ class Site(object):
         self.bsd.use("web_updates")
         self.bsd.put(simplejson.dumps({"kimid": kimid, "priority":"normal", "status":"approved"}))
 
+pipe = {}
+def signal_handler(signal, frame):
+    print "Sending signal to flush, wait 1 sec..."
+    shutdown_event.set()
+    for p in pipe.values():
+        p.exit_safe()
+    time.sleep(1)
+    sys.exit(1)
+signal.signal(signal.SIGINT, signal_handler)
+
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1:
         if sys.argv[1] != "site":
             thrds = cpu_count() 
-            pipe = {}
             procs = {}
             for i in range(thrds):
                 if sys.argv[1] == "director":
