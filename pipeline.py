@@ -232,7 +232,7 @@ class Director(object):
             self.request = None
         
     def exit_safe(self):
-        if hasattr(self, request) and self.request is not None:
+        if hasattr(self, 'request') and self.request is not None:
             self.request.delete()
 
     def priority_to_number(self,priority):
@@ -596,9 +596,9 @@ class Worker(object):
  
     def exit_safe(self): 
         # we got the signal to shutdown, so release the job first
-        if hasattr(self, job) and self.job is not None:
+        if hasattr(self, 'job') and self.job is not None:
             self.job.delete()
-            if hasattr(self, jobmsg) and self.jobmsg is not None: 
+            if hasattr(self, 'jobmsg') and self.jobmsg is not None: 
                 self.job_message(self.jobmsg, errors="Caught SIGINT and killed", tube=TUBE_ERRORS)
     
     def make_all(self):
