@@ -503,6 +503,7 @@ class Worker(object):
                 job.delete()
                 continue
 
+            self.jobmsg = jobmsg
             # check to see if this is a verifier or an actual test
             try:
                 name,leader,num,version = database.parse_kim_code(jobmsg.job[0])
@@ -594,6 +595,7 @@ class Worker(object):
         # we got the signal to shutdown, so release the job first
         if self.job is not None:
             self.job.delete()
+            self.job_message(self.jobmsg, errors="Caught SIGINT and killed", tube=TUBE_ERRORS)
     
     def make_all(self):
         self.logger.debug("Building everything...")
