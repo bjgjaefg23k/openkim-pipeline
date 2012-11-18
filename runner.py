@@ -26,6 +26,20 @@ def getboxinfo():
 def line_filter(line):
     return bool(line.strip())
 
+def tail(f, n=5):
+    try:
+        stdin,stdout = os.popen2("tail -n "+str(n)+" "+f)
+        stdin.close()
+        lines = stdout.readlines(); 
+        stdout.close()
+    except:
+        lines = "<NONE>"
+    return lines
+
+def last_output_lines(test, stdout, stderr):
+    with test.in_dir():
+        return tail(stdout), tail(stderr) 
+
 def run_test_on_model(test,model):
     """ run a test with the corresponding model,
     with /usr/bin/time profilling,
@@ -80,12 +94,13 @@ def run_test_on_model(test,model):
         #there was no output
         #likely a kim error
         logger.error("We probably had a KIM error")
-        raise KIMRuntimeError
+        raise KIMRuntimeError, "No output was present after completion."
     try:
         data = simplejson.loads(data_string)
     except simplejson.JSONDecodeError:
         logger.error("We didn't get JSON back!")
-        raise PipelineTemplateError, "test didn't return JSON"
+        last_out, last_err = last_output_lines(test, STDOUT_FILE, STDERR_FILE)
+        raise PipelineTemplateError, "Test didn't return JSON! {{STDOUT: %s }} {{STDERR: %s}}" % (last_out, last_err)
 
     #GET METADATA
     data = { output_info.get(key,key):val for key,val in data.iteritems() }
