@@ -55,7 +55,7 @@ class LogStyle(Style):
         Generic.Deleted:           "nobold #cd3",
         Generic.Inserted:          "#00cd00",
         Generic.Error:             "bold #FF0000",
-        Generic.Emph:              "bold italic #CCCCCC",
+        Generic.Emph:              "bold #FFFFFF",
         Generic.Strong:            "bold #FFFFFF",
         Generic.Prompt:            "bold #3030F0",
         Generic.Output:            "#888",
@@ -76,7 +76,7 @@ class LogLexer(RegexLexer):
     mimetypes = ['text/x-log']
 
     flags = re.VERBOSE 
-    _logger = r'-\s(pipeline)\.([a-z._-]+)\s-'
+    _logger = r'-\s(pipeline)(\.([a-z._\-0-9]+))+\s-'
     _kimid  = r"((?:[_a-zA-Z][_a-zA-Z0-9]*?_?_)?[A-Z]{2}_[0-9]{12}(?:_[0-9]{3})?)"
     _path   = r'(?:[a-zA-Z0-9_-]{0,}/{1,2}[a-zA-Z0-9_\.-]+)+'
     _debug  = r'DEBUG'
