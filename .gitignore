@@ -1,0 +1,7 @@
+*.pyc
+logs/*
+*.json
+*.tmp
+kim.log
+*.swp
+docs/_build

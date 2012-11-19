@@ -1,0 +1,372 @@
+
+Structure of the KIM RD, KIM API, KIM Pipeline, and KIM Repository git repositories
+
+Friday 18-Nov-2011
+Noam Bernstein, Ryan Elliott, Valeriu Smirichinski and Ellad Tadmor
+
+======
+KIM RD
+======
+
+openkim-rd-dev           Root of the KIM RD git repository.
+  |      
+  |---RD                    KIM Requirements Document (RD).
+  |    |
+  |    |---...              KIM RD content.
+  |
+
+
+=======
+KIM API
+=======
+
+openkim-api-dev              Root of the KIM API git repository.
+  |
+  |---DOCs                   Contains various documentation files.
+  |     |
+  |     |---TEMPLATEs        Contains templates for creating new KIM Models and 
+  |                          Model drivers.
+  |
+  |---EXAMPLE_LEGOs          Contains Makefile for creating example Tests and
+  |     |                    Models using lego structure.
+  |     |
+  |     |---model_legos      Various fragments and other files needed to 
+  |     |                    construct example Models.
+  |     |
+  |     |---test_legos       Various fragments and other files needed to
+  |                          construct example Tests.
+  |      
+  |---KIM_API                Files associated with the KIM API including
+  |     |                    source files, header files and files defining
+  |     |                    the KIM API standard.
+  |     |
+  |     |---...              KIM API content.
+  |      
+  |---EXAMPLE_MODEL_DRIVERs  Empty directory (aside from documentation README
+  |                          files). Is populated by executing `make examples'
+  |                          in EXAMPLE_LEGOs.
+  |      
+  |---EXAMPLE_MODELs         Empty directory (aside from documentation README
+  |                          files). Is populated by executing `make examples'
+  |                          in EXAMPLE_LEGOs.
+  |      
+  |---EXAMPLE_TESTs          Empty directory (aside from documentation README
+                             files). Is populated by executing `make examples'
+                             in EXAMPLE_LEGOs.
+   
+
+
+============
+KIM Pipeline
+============
+
+openkim-pipeline-dev       Root of the KIM Pipeline git repository
+  |
+  |---DOCs                 Contains various documentation files.
+  |      
+  |---KIM_PIPELINE         Files associated with the KIM PIPELINE including
+        |                  source files, header files and files defining
+        |                  the KIM PIPELINE standard.
+        |
+        |---...            KIM PIPELINE content.
+   
+
+
+==============
+KIM Repository
+==============
+
+openkim-repository-dev      Root of the KIM Repository git repository.
+  |
+  |---openkim-api           Pointer to the openkim-api.git repository.
+  |
+  |---openkim-pipeline      Pointer to the openkim-pipeline repository.
+  |
+  |---MODEL_DRIVERs         Contains the KIM Model Drivers. Model Drivers
+  |     |                   are designed to take in as input a parameter
+  |     |                   file which completes the model's definition.
+  |     |                   The parameter files are stored under MODELs in
+  |     |                   separate directories.
+  |     |
+  |     |---model_driver1   The sub-directory structure for a Model Driver
+  |     |     |             is only shown here but applies to all Model Drivers.
+  |     |     |
+  |     |     |---lib       Contains the Model Driver library files.
+  |     |     |
+  |     |     |---obj       Contains compiled object file of the Model Driver.
+  |     |     |
+  |     |     |---pkg       Contains the Model Driver information managed by
+  |     |           |       the developers.
+  |     |           |
+  |     |           |---src   Contains the Model Driver source code.
+  |     |           |
+  |     |           |---docs  Documentation files associated with the Model Driver.
+  |     |
+  |     |---model_driver2
+  |     |
+  |     |---...
+  |      
+  |---MODELs                Contains the KIM Models. These are either
+  |     |                   stand-alone computer codes or parameter files
+  |     |                   to be inputted into a Model Driver.
+  |     |
+  |     |---model1          The sub-directory structure for a Model
+  |     |     |             is only shown here but applies to all Models.
+  |     |     |
+  |     |     |---lib       Contains the Model library files.
+  |     |     |
+  |     |     |---obj       Contains compiled object file of the Model.
+  |     |     |
+  |     |     |---pkg       Contains the Model information managed by
+  |     |           |       the developers.
+  |     |           |
+  |     |           |---src   Contains the Model source code (for a stand-alone
+  |     |           |         Model) or the Model parameter file (for a driven 
+  |     |           |         Model).
+  |     |           |
+  |     |           |---docs  Documentation files associated with the Model.
+  |     |
+  |     |---model2
+  |     |
+  |     |---...
+  |      
+  |---PREDICTIONs           Contains the Predictions generated by valid
+  |     |                   Test--Model couplings.
+  |     |
+  |     |---BOOLEANs        Boolean result (true/false). The sub-directory
+  |     |     |             structure is given only for `BOOLEANs' but applies
+  |     |     |             to all Prediction types.
+  |     |     |
+  |     |     |---PropID1   Property ID which uniquely defines this property
+  |     |     |     |       in terms of keywords that describe it (e.g. Bulk,
+  |     |     |     |       B2, Stability). This could be a concatenated list
+  |     |     |     |       or a hash of the literal list if it is too long or a 
+  |     |     |     |       combination of both.
+  |     |     |     |
+  |     |     |     |---SpecList1  Ordered concatenated list of species associated
+  |     |     |     |     |        with this property (e.g. NiAl for the stability
+  |     |     |     |     |        of the NiAl B2 structure). The ordering is 
+  |     |     |     |     |        defined by the keyword in PropID1 that refers
+  |     |     |     |     |        that includes information on species (e.g.
+  |     |     |     |     |        the keyword specifying the crystal structure).
+  |     |     |     |     |
+  |     |     |     |     |---test1  This directory contains all of the predictions
+  |     |     |     |     |          made by Test `test1'. The files in this
+  |     |     |     |     |          directory have the following standard names:
+  |     |     |     |     |          
+  |     |     |     |     |          model1.dat
+  |     |     |     |     |          model2.dat
+  |     |     |     |     |          ...
+  |     |     |     |     |          
+  |     |     |     |     |          where `model1' is the full model name.
+  |     |     |     |     |          Each file contains the output generated
+  |     |     |     |     |          by test1 when coupled to that model (for
+  |     |     |     |     |          SpecList1) in the standard Prediction
+  |     |     |     |     |          output format.
+  |     |     |     |     |
+  |     |     |     |     |---test2
+  |     |     |     |     |
+  |     |     |     |     |---...
+  |     |     |     |
+  |     |     |     |
+  |     |     |     |---SpecList2
+  |     |     |     |
+  |     |     |     |---...
+  |     |     |
+  |     |     |---PropID2
+  |     |     |
+  |     |     |---...
+  |     |
+  |     |---CONFIGURATIONs  Atomic configuration.
+  |     |
+  |     |---GRAPHs          Graph (a collection of ordered pairs).
+  |     |
+  |     |---SCALARs         Scalar (real-valued result)
+  |     |
+  |     |---SCALAR_FIELDs   Scalar field (a real-valued scalar field defined
+  |     |                   over points in physical space).
+  |     |
+  |     |---TENSORs         Tensor (a real-valued n-dimensional array, where n>1).
+  |     |
+  |     |---TENSOR_FIELDs   Tensor field (a real-valued n-dimensional array field,
+  |     |                   where n>1, defined over points in physical space).
+  |     |
+  |     |---VECTORs         Vector (a real-valued one-dimensional array).
+  |     |
+  |     |---VECTOR_FIELDs   Vector field (a real-valued one-dimensional array 
+  |     |                   field defined over points in physical space).
+  |     |
+  |     |---...
+  |
+  |---REFERENCE_DATA        Contains the Reference Data with which Predictions
+  |     |                   can be compared. The Reference Data types and PropIDs
+  |     |                   listed below must conform to the ones defined for
+  |     |                   Predictions.
+  |     |
+  |     |---BOOLEANs        Boolean result (true/false). The sub-directory
+  |     |     |             structure is given only for `BOOLEANs' but applies
+  |     |     |             to all Reference Data types.
+  |     |     |
+  |     |     |---PropID1   Property ID which uniquely defines this property
+  |     |     |     |       in terms of keywords that describe it (e.g. Bulk,
+  |     |     |     |       FCC, Stability). This could be a concatenated list
+  |     |     |     |       or a hash of the literal list if it is too long or a 
+  |     |     |     |       combination of both.
+  |     |     |     |
+  |     |     |     |
+  |     |     |     |---SpecList1  Ordered concatenated list of species associated
+  |     |     |     |     |        with this property (e.g. NiAl for the stability
+  |     |     |     |     |        of the NiAl B2 structure). The ordering is 
+  |     |     |     |     |        defined by the keyword in PropID1 that refers
+  |     |     |     |     |        that includes information on species (e.g.
+  |     |     |     |     |        the keyword specifying the crystal structure).
+  |     |     |     |     |
+  |     |     |     |     |---DFT    This directory contains density functional
+  |     |     |     |     |          theory (DFT) results. The files in this 
+  |     |     |     |     |          directory have the following standard names:
+  |     |     |     |     |
+  |     |     |     |     |          source1.dat
+  |     |     |     |     |          source2.dat
+  |     |     |     |     |          ...
+  |     |     |     |     |
+  |     |     |     |     |          where `source1' is a unique identifier for the
+  |     |     |     |     |          source of the results. The file contains the
+  |     |     |     |     |          data in the standard Prediction output format.
+  |     |     |     |     |
+  |     |     |     |     |---EXP    This directory contains experimental results.
+  |     |     |     |     |          The files in this directory have the following
+  |     |     |     |     |          standard names:
+  |     |     |     |     |
+  |     |     |     |     |          source1.dat
+  |     |     |     |     |          source2.dat
+  |     |     |     |     |          ...
+  |     |     |     |     |
+  |     |     |     |     |          where `source1' is a unique identifier for the
+  |     |     |     |     |          source of the results. The file contains the
+  |     |     |     |     |          data in the standard Prediction output format.
+  |     |     |     |     |
+  |     |     |     |     |---...
+  |     |     |     |
+  |     |     |     |
+  |     |     |     |---SpecList2
+  |     |     |     |
+  |     |     |     |---...
+  |     |     |
+  |     |     |---PropID2
+  |     |     |
+  |     |     |---...
+  |     |
+  |     |---CONFIGURATIONs  Atomic configuration.
+  |     |
+  |     |---GRAPHs          Graph (a collection of ordered pairs).
+  |     |
+  |     |---SCALARs         Scalar (real-valued result)
+  |     |
+  |     |---SCALAR_FIELDs   Scalar field (a real-valued scalar field defined
+  |     |                   over points in physical space).
+  |     |
+  |     |---TENSORs         Tensor (a real-valued n-dimensional array, where n>1).
+  |     |
+  |     |---TENSOR_FIELDs   Tensor field (a real-valued n-dimensional array field,
+  |     |                   where n>1, defined over points in physical space).
+  |     |
+  |     |---VECTORs         Vector (a real-valued one-dimensional array).
+  |     |
+  |     |---VECTOR_FIELDs   Vector field (a real-valued one-dimensional array 
+  |     |                   field defined over points in physical space).
+  |     |
+  |     |---...
+  |
+  |---SIMULATORs           External simulation codes that can be used to run
+  |     |                  KIM Tests (e.g. LAMMPS, MiniMol, QUIP, ...)
+  |     |
+  |     |---simulator1      The sub-directory structure for a Simulator
+  |     |     |             is only shown here but applies to all Simulators.
+  |     |     |
+  |     |     |---bin       Contains the Simulator executable.
+  |     |     |
+  |     |     |---pkg       Contains the Simulator package as received from
+  |     |           |       the developers with an associated directory structure.
+  |     |           |
+  |     |           |---src   Contains the Simulator source code.
+  |     |           |
+  |     |           |---docs  Documentation files associated with the Simulator.
+  |     |
+  |     |
+  |     |---simulator2
+  |     |
+  |     |---simulator3
+  |     |
+  |     |---...
+  |
+  |---TEST_DRIVERs          Contains the KIM Test Drivers. Test Drivers
+  |     |                   are designed to read in an input file which
+  |     |                   fully species the particular Test out of a class
+  |     |                   to be run. The input files are stored under TESTs in
+  |     |                   separate directories.
+  |     |
+  |     |---test_driver1    The sub-directory structure for a Test Driver
+  |     |     |             is only shown here but applies to all Test Drivers.
+  |     |     |
+  |     |     |---bin       Contains the Test Driver executable. This is either an
+  |     |     |             executable generated from the source in the `src'
+  |     |     |             directory or a script that runs a Simulator.
+  |     |     |
+  |     |     |---obj       Contains compiled object file of the Test Driver.
+  |     |     |
+  |     |     |---pkg       Contains the Test Driver information managed by
+  |     |           |       the developers.
+  |     |           |
+  |     |           |---src   Contains the Test Driver source code.
+  |     |           |
+  |     |           |---docs  Documentation files associated with the Test Driver.
+  |     |
+  |     |
+  |     |---test_driver2
+  |     |
+  |     |---...
+  |      
+  |---TESTs                 Contains the KIM Tests. 
+        |                   Tests can either be stand-alone computer codes or
+        |                   scripts that run Simulators. A Test reads in a KIM
+        |                   Model name and a list of atomic species from
+        |                   standard input.  The atomic species list is
+        |                   generated based on the Test's .kim file. The
+        |                   species listed in the .kim file can either be
+        |                   static or variable in which case the processing
+        |                   pipeline will generate all possible permutations
+        |                   and execute the Test multiple times.  A Test must
+        |                   output a Prediction in a standard format to
+        |                   standard output. This output is collected by the
+        |                   processing pipeline and stored under `PREDICTIONs'.
+        |                   A Test must write any warning and error messages to
+        |                   a file named `kim_test_status.txt' in the current
+        |                   directory.  The last line of this file must contain
+        |                   `OK' or `ERROR'.  The presence of the `OK' string
+        |                   will be used by the processing pipeline as an
+        |                   indicator that the Test completed successfully.
+        |
+        |---test1           The sub-directory structure for a Test
+        |     |             is only shown here but applies to all Tests.
+        |     |
+        |     |---bin       Contains the Test executable. This is either an
+        |     |             executable generated from the source in the `src'
+        |     |             directory or a script that runs a Simulator.
+        |     |
+        |     |---obj       Contains compiled object file of the Test (if it
+        |     |             is compiled from source code).
+        |     |
+        |     |---pkg       Contains the Test Driver information managed by
+        |           |       the developers.
+        |           |
+        |           |---src   Contains the Test source code (for a stand-alone 
+        |           |         Test), the Test's .kim file, and possible input files 
+        |           |         to the Test.
+        |           |
+        |           |---docs  Documentation files associated with the Test.
+        |
+        |
+        |---test2
+        |
+        |---...
+   
