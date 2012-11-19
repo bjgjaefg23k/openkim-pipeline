@@ -33,8 +33,8 @@ def tail(f, n=5):
         lines = stdout.readlines(); 
         stdout.close()
     except:
-        lines = "<NONE>"
-    return lines
+        lines = ["<NONE>"]
+    return "".join(lines)
 
 def last_output_lines(test, stdout, stderr):
     with test.in_dir():
@@ -100,7 +100,7 @@ def run_test_on_model(test,model):
     except simplejson.JSONDecodeError:
         logger.error("We didn't get JSON back!")
         last_out, last_err = last_output_lines(test, STDOUT_FILE, STDERR_FILE)
-        raise PipelineTemplateError, "Test didn't return JSON! {{STDOUT: %s }} {{STDERR: %s}}" % (last_out, last_err)
+        raise PipelineTemplateError, "Test didn't return JSON! \n<<STDOUT: \n%s>> \n<<STDERR: \n%s>>" % (last_out, last_err)
 
     #GET METADATA
     data = { output_info.get(key,key):val for key,val in data.iteritems() }

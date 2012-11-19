@@ -21,11 +21,11 @@ import os
 #==============================
 # KIM FLAGS
 #===============================
+PIPELINE_DEBUG = False
 if os.environ.has_key("PIPELINE_DEBUG"):
-    PIPELINE_DEBUG = True
-    print "DEBUG MODE: ON"
-else:
-    PIPELINE_DEBUG = False
+    if os.environ["PIPELINE_DEBUG"] == "1":
+        PIPELINE_DEBUG = True
+        print "DEBUG MODE: ON"
 
 #get the repository dir from the symlink
 KIM_REPOSITORY_DIR = os.environ["KIM_REPOSITORY_DIR"]
@@ -34,7 +34,7 @@ KIM_PIPELINE_DIR = os.path.abspath(os.path.dirname(__file__))
 METADATA_INFO_FILE = "metadata.json"
 PIPELINE_INFO_FILE = "pipelineinfo.json"
 INPUT_FILE = "pipeline.in"
-OUTPUT_FILE = "pipeline.out"    #with their words : property ids
+OUTPUT_FILE = "pipeline.out"
 STDOUT_FILE = "pipeline.stdout"
 STDERR_FILE = "pipeline.stderr"
 TEMP_INPUT_FILE = "pipeline.in.tmp"

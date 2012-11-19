@@ -30,6 +30,7 @@ import models
 import runner
 import traceback
 import signal, sys
+import kimapi
 logger = logger.getChild("pipeline")
 
 import simplejson
@@ -37,7 +38,7 @@ import simplejson
 PIPELINE_WAIT    = 10
 PIPELINE_TIMEOUT = 60
 PIPELINE_MSGSIZE = 2**20
-PIPELINE_JOB_TIMEOUT = 3600 #one hour
+PIPELINE_JOB_TIMEOUT = 3600*24 #one day 
 TUBE_UPDATE  = "updates"
 
 # these tubes are duplicated upon submission to gtw_<tube>
@@ -219,10 +220,12 @@ class Director(object):
             # from the website (or other trusted place)
             if request.stats()['tube'] == TUBE_UPDATE:
                 # update the repository,send it out as a job to compute
-                try:
-                    # rsync_tools.full_sync()
-                    # rsync_tools.director_full_approved_read()
-                    # rsync_tools.director_full_result_read()
+                try:    
+                    # FIXME - Alex, there are just so many dependencies, I'm going to read the
+                    # whole thing.  The latest was submitting a single test after a complete repo
+                    # wipe - it pulled the TRs to get a unique jobid to submit, but the TRs referred
+                    # tests which hadn't been pulled causing errors...
+                    rsync_tools.director_full_approved_read()
                     self.push_jobs(simplejson.loads(request.body))
                 except Exception as e:
                     tb = traceback.format_exc()
@@ -302,17 +305,38 @@ class Director(object):
                     tests = model.tests
                 elif leader=="TD":
                     # we have a new test driver, first pull and build it
-                    pass
-                    # FIXME
+                    rsync_tools.director_new_test_driver_read(kimid)
+                    self.make_all()
+
                     # if it is a new version of an existing test driver, hunt
                     # down all of the tests that use it and launch their
                     # corresponding jobs
+                    driver = modelslib.TestDriver(kimid)
+                    temp_tests = list(driver.tests)
+                    models = []
+                    tests = []
+                    for t in temp_tests:
+                        tmodels = list(t.models)
+                        if len(tmodels) > 0:
+                            models.extend(tmodels)
+                            tests.extend([t])
+
                 elif leader=="MD":
                     # we have a new model driver, first build and push
-                    pass
-                    # FIXME:
+                    rsync_tools.director_new_model_driver_read(kimid)
+                    self.make_all()
+
                     # if this is a new version, hunt down all of the models
                     # that rely on it and recompute their results
+                    driver = modelslib.ModelDriver(kimid)
+                    temp_models = list(driver.models)
+                    tests = []
+                    models = []
+                    for m in temp_models:
+                        mtests = list(m.tests)
+                        if len(mtests) > 0:
+                            tests.extend(mtests)
+                            models.extend([m])
                 else:
                     self.logger.error("Tried to update an invalid KIM ID!: %r",kimid)
             if status == "pending":
@@ -346,8 +370,9 @@ class Director(object):
 
         for test in tests:
             for model in models:
-                priority = int(priority_factor*database.test_model_to_priority(test,model) * 1000000)
-                self.check_dependencies_and_push(test,model,priority,status)
+                if kimapi.valid_match(test,model):
+                    priority = int(priority_factor*database.test_model_to_priority(test,model) * 1000000)
+                    self.check_dependencies_and_push(test,model,priority,status)
 
 
     def check_dependencies_and_push(self, test, model, priority, status, child=None):
@@ -357,6 +382,7 @@ class Director(object):
         with test.in_dir():
             #grab the input file
             ready, TRs, PAIRs = test.dependency_check(model)
+            self.logger.debug("Dependency check returned <%s, %s, %s>" % (ready, TRs, PAIRs))
             if TRs:
                 TR_ids = tuple(map(str,TRs))
             else:

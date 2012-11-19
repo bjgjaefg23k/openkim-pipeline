@@ -152,6 +152,16 @@ def director_new_test_read(testname):
     files = [j(RA,"mo/"),j(RA,"md/"),j(WR,"tr/"),j(RA,"td/"),j(RA,ktf(testname))]
     rsync_read(files)
 
+def director_new_test_driver_read(testname):
+    """ when a director gets a new test """
+    files = [j(RA,"mo/"),j(RA,"md/"),j(WR,"tr/"),j(RA,"td/"),j(RA,"te/")]
+    rsync_read(files)
+
+def director_new_model_driver_read(testname):
+    """ when a director gets a new test """
+    files = [j(RA,"mo/"),j(RA,"md/"),j(WR,"tr/"),j(RA,"td/"),j(RA,"te/")]
+    rsync_read(files)
+
 def director_new_model_verification_read(vmname):
     """ when a director gets a new vm """
     files = [j(RA,"mo/"),j(RA,"md/"),j(RA,ktf(vmname))]
