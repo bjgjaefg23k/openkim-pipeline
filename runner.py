@@ -115,17 +115,31 @@ def run_test_on_model(test,model):
 
     with test.in_dir(), open(STDOUT_FILE) as stdout_file:
         stdout = stdout_file.read()
+
     #look backwards in the stdout for the first non whitespaced line
-    try:
-        data_string = next(itertools.ifilter(line_filter,reversed(stdout.splitlines())))
-        logger.debug("we have a data_string: %r",data_string)
-    except StopIteration:
-        #there was no output, likely a kim error
-        logger.error("We probably had a KIM error")
-        raise KIMRuntimeError, "No output was present after completion."
-    try:
-        data = simplejson.loads(data_string)
-    except simplejson.JSONDecodeError:
+    #try:
+    #    data_string = next(itertools.ifilter(line_filter,reversed(stdout.splitlines())))
+    #    logger.debug("we have a data_string: %r",data_string)
+    #except StopIteration:
+    #    #there was no output, likely a kim error
+    #    logger.error("We probably had a KIM error")
+    #    raise KIMRuntimeError, "No output was present after completion."
+    #try:
+    #    data = simplejson.loads(data_string)
+    #except simplejson.JSONDecodeError:
+    #    logger.error("We didn't get JSON back!")
+    #    last_out, last_err = last_output_lines(test, STDOUT_FILE, STDERR_FILE)
+    #    raise PipelineTemplateError, "Test didn't return JSON! \n<<STDOUT: \n%s>> \n<<STDERR: \n%s>>" % (last_out, last_err)
+
+    data = None
+    for data_string in itertools.ifilter(line_filter, reversed(stdout.splitlines())):
+        try:
+            data = simplejson.loads(data_string)
+            break
+        except simplejson.JSONDecodeError:
+            continue
+
+    if data is None:
         logger.error("We didn't get JSON back!")
         last_out, last_err = last_output_lines(test, STDOUT_FILE, STDERR_FILE)
         raise PipelineTemplateError, "Test didn't return JSON! \n<<STDOUT: \n%s>> \n<<STDERR: \n%s>>" % (last_out, last_err)
