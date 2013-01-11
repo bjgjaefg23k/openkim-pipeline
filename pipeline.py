@@ -16,33 +16,21 @@ tunnel to the remote host.  It then connects to the beanstalkd
 across this tunnel.
 """
 from config import *
-import models as modelslib
-import database
 import beanstalkc as bean
-from subprocess import check_call, Popen, PIPE
-import subprocess
-from multiprocessing import cpu_count,Process
-from threading import Event
-import time
-import simplejson
-import rsync_tools
-import models
-import runner
-import traceback
-import signal, sys
-import kimapi
+from subprocess import check_call, Popen, PIPE, CalledProcessError
+from multiprocessing import cpu_count, Process
+from threading import Thread
+import time, simplejson, traceback, sys, zmq
+import rsync_tools, runner, kimapi, database 
+import models as modelslib
 logger = logger.getChild("pipeline")
 
-import simplejson
-
-PIPELINE_WAIT    = 10
+PIPELINE_WAIT    = 1
 PIPELINE_TIMEOUT = 60
 PIPELINE_MSGSIZE = 2**20
 PIPELINE_JOB_TIMEOUT = 3600*24 #one day 
-TUBE_UPDATE  = "updates"
 
-# these tubes are duplicated upon submission to gtw_<tube>
-# so they can be maintained
+TUBE_UPDATE  = "updates"
 TUBE_JOBS    = "jobs"
 TUBE_RESULTS = "results"
 TUBE_ERRORS  = "errors"
@@ -59,8 +47,50 @@ KEY_STATUS   = "status"
 
 BEANSTALK_LEVEL = logging.INFO
 
-shutdown_event = Event()
+def open_ports(port, rx, tx, user, addr, ip):
+    try:
+        bsd = bean.Connection(GLOBAL_IP, GLOBAL_PORT, PIPELINE_WAIT)
+        bsd.close()
+    except bean.SocketError:
+        st  = ""
+        st += "screen -dm ssh -i /persistent/id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "  
+        st +=                 "-L{}:{}:{}   -L{}:{}:{}  -L{}:{}:{}  {}@{}"
+        ssh = Popen(st.format(port,ip,port,  rx,ip,rx,  tx,ip,tx,   user,addr), shell=True)
+        logger.info("Waiting to open ports via ssh tunnels")
+        time.sleep(PIPELINE_WAIT)
 
+#==================================================================
+# communicator which gathers the information and sends out requests
+#==================================================================
+class Communicator(Thread):
+    def __init__(self):
+        # decide on the port order
+        self.port_tx = PORT_TX
+        self.port_rx = PORT_RX 
+        self.con = zmq.Context()
+ 
+        # open both the rx/tx lines, bound
+        self.sock_tx = self.con.socket(zmq.PUB)
+        self.sock_tx.connect("tcp://127.0.0.1:"+str(self.port_tx))
+ 
+        self.sock_rx = self.con.socket(zmq.SUB)
+        self.sock_rx.setsockopt(zmq.SUBSCRIBE, "")
+        self.sock_rx.connect("tcp://127.0.0.1:"+str(self.port_rx))
+ 
+        super(Communicator, self).__init__()
+        self.daemon = True
+ 
+    def run(self):
+        while 1:
+            obj = self.sock_rx.recv_pyobj()
+
+    def send_msg(self, tube, msg):
+        self.sock_tx.send_pyobj([tube, msg])
+
+
+#==================================================================
+# the logging handler for beanstalkd queues
+#==================================================================
 class BeanstalkHandler(logging.Handler):
     """ A beanstalk logging handler """
     def __init__(self,bsd):
@@ -74,8 +104,6 @@ class BeanstalkHandler(logging.Handler):
         message = self.info.copy()
         message['message'] = err_message
         self.bsd.use(TUBE_LOG)
-        self.bsd.put(simplejson.dumps(message))
-        self.bsd.use("gtw_"+TUBE_LOG)
         self.bsd.put(simplejson.dumps(message))
 
 class Message(object):
@@ -124,6 +152,9 @@ class Message(object):
         self.child = dic[KEY_CHILD]
         self.status = dic[KEY_STATUS]
 
+#==================================================================
+# director class for the pipeline
+#==================================================================
 class Director(object):
     """ The Director object, knows to listen to incoming jobs, computes dependencies
     and passes them along to workers
@@ -133,23 +164,18 @@ class Director(object):
         self.port = GLOBAL_PORT
         self.timeout = PIPELINE_TIMEOUT
         self.msg_size = PIPELINE_MSGSIZE
-        self.remote_user = GLOBAL_USER
-        self.remote_addr = GLOBAL_HOST
         self.logger = logger.getChild("director-%i" % num)
         self.boxinfo = runner.getboxinfo()
         self.num = num
+        self.halt = False
+
+        self.comm = Communicator()
+        self.comm.start()
 
     def run(self):
         """ connect and grab the job thread """
         self.connect_to_daemon()
         self.get_updates()
-
-    def launch_screen(self):
-        """ Launch a screened ssh connection """
-        self.ssh = Popen("screen -dm ssh -i /persistent/id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -L{}:{}:{} {}@{}".format(
-            self.port,self.ip,self.port,self.remote_user,self.remote_addr), shell=True)
-        self.logger.info("Waiting to connect to beanstalkd")
-        time.sleep(PIPELINE_WAIT)
 
     def connect_to_daemon(self):
         """ try to connect to the daemon, or launch one if we timeout """
@@ -157,16 +183,8 @@ class Director(object):
         try:
             self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
         except bean.SocketError:
-            self.logger.info("No daemon found, starting on %r", self.remote_addr)
-            # no need to start the daemon anymore for debug.  It's always going
-            #self.daemon = Popen("ssh {}@{} \"screen -dm beanstalkd -l {} -p {} -z {} -b beanlog -f 0\"".format(
-            #    self.remote_user, self.remote_addr, self.ip, self.port, self.msg_size), shell=True)
-            self.launch_screen()
-            try:
-                self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
-            except bean.SocketError:
-                # We failed to connect twice, this is really bad
-                self.logger.error("Failed to connect to beanstalk queue after launching ssh")
+            # We failed to connect, this is really bad
+            self.logger.error("Failed to connect to beanstalk queue after launching ssh")
 
         self.logger.info("Director ready")
 
@@ -179,7 +197,6 @@ class Director(object):
         beanstalk_handler.setLevel(BEANSTALK_LEVEL)
         beanstalk_handler.setFormatter(log_formatter)
         self.logger.addHandler(beanstalk_handler)
-
 
     def disconnect_from_daemon(self):
         """ close and kill """
@@ -208,7 +225,7 @@ class Director(object):
                 run after verification or update
 
         """
-        while not shutdown_event.is_set():
+        while not self.halt:
             self.logger.info("Director Waiting for message...")
             request = self.bsd.reserve()
             self.request = request
@@ -417,24 +434,23 @@ class Director(object):
         msg = simplejson.dumps(dic)
         self.bsd.use(tube)
         self.bsd.put(msg)
-        self.bsd.use("gtw_"+tube)
-        self.bsd.put(msg)
+        self.comm.send_msg(tube, msg)
 
     def make_object(self, kimid):
         self.logger.debug("Building the source for %r", kimid)
         kimobj = modelslib.KIMObject(kimid)
         with kimobj.in_dir():
             try:
-                subprocess.check_call("make")
-            except subprocess.CalledProcessError as e:
+                check_call("make")
+            except CalledProcessError as e:
                 return 1
             return 0
 
     def make_all(self):
         self.logger.debug("Building everything...")
         try:
-            subprocess.check_call("makekim",shell=True)
-        except subprocess.CalledProcessError as e:
+            check_call("makekim",shell=True)
+        except CalledProcessError as e:
             self.logger.error("could not makekim")
 
             raise RuntimeError, "our makekim failed!"
@@ -445,30 +461,29 @@ class Director(object):
         self.disconnect_from_daemon()
 
 
-
+#==================================================================
+# worker class for the pipeline
+#==================================================================
 class Worker(object):
     """ Represents a worker, knows how to do jobs he is given, create results and rsync them back """
     def __init__(self, num=0):
-        self.remote_user = GLOBAL_USER
-        self.remote_addr = GLOBAL_HOST
-        self.ip          = GLOBAL_IP
-        self.timeout     = PIPELINE_TIMEOUT
-        self.port        = GLOBAL_PORT
+        self.ip   = GLOBAL_IP
+        self.port = GLOBAL_PORT
+        self.timeout = PIPELINE_TIMEOUT
         self.logger = logger.getChild("worker-%i"% num)
         self.boxinfo = runner.getboxinfo()
+        self.halt = False
+
+        self.comm = Communicator()
+        self.comm.start()
 
     def run(self):
-        """ Start to listen, launch the daemon if we timeout """
-        # if we can't already connect to the daemon on localhost,
-        # open an ssh tunnel to the daemon and start the beanstalk
+        """ Start to listen, tunnels should be open and ready """
         try:
             self.start_listen()
-        except:
-            self.ssh = Popen("screen -dm ssh -i /persistent/id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -L{}:{}:{} {}@{}".format(
-                self.port,self.ip,self.port,self.remote_user,self.remote_addr), shell=True)
-            self.logger.info("Waiting to connect to beanstalkd")
-            time.sleep(PIPELINE_WAIT)
-            self.start_listen()
+        except bean.SocketError:
+            # We failed to connect, this is really bad
+            self.logger.error("Failed to connect to beanstalk queue after launching ssh")
 
         self.logger.info("Connected to daemon")
         #attach the beanstalk logger
@@ -497,21 +512,20 @@ class Worker(object):
         msg = simplejson.dumps(dic)
         self.bsd.use(tube)
         self.bsd.put(msg)
-        self.bsd.use("gtw_"+tube)
-        self.bsd.put(msg)
+        print "*** sending"
+        self.comm.send_msg(tube, msg)
 
     def get_jobs(self):
         """ Endless loop that awaits jobs to run """
-        while not shutdown_event.is_set():
+        while not self.halt:
             self.logger.info("Waiting for jobs...")
             job = self.bsd.reserve()
             self.job = job
             # if appears that there is a 120sec re-birth of jobs that have been reserved
             # and I do not want to put an artificial time limit, so let's bury jobs
             # when we get them
-            job.bury()              
-            self.bsd.use("gtw_running")
-            self.bsd.put(job.body)
+            job.bury()
+            self.comm.send_msg("running", job.body)
 
             # got a job -----
             # update the repository, attempt to run the job
@@ -548,14 +562,14 @@ class Worker(object):
                     self.make_all()
 
                     verifier_kcode, subject_kcode = jobmsg.job
-                    verifier = models.Verifier(verifier_kcode)
-                    subject  = models.Subject(subject_kcode)
+                    verifier = modelslib.Verifier(verifier_kcode)
+                    subject  = modelslib.Subject(subject_kcode)
 
                     self.logger.info("Running (%r,%r)",verifier,subject)
-                    result = runner.run_verifier_on_subject(verifier,subject)
+                    result = runner.run_test_on_model(verifier,subject)
 
                     #create the verification result object (will be written)
-                    vr = models.VerificationResult(jobmsg.jobid, results = result, search=False)
+                    vr = modelslib.VerificationResult(jobmsg.jobid, results = result, search=False)
 
                     self.logger.info("rsyncing results %r", jobmsg.jobid)
                     rsync_tools.worker_verification_write(jobmsg.jobid)
@@ -586,14 +600,14 @@ class Worker(object):
                     self.make_all()
 
                     test_kcode, model_kcode = jobmsg.job
-                    test = models.Test(test_kcode)
-                    model = models.Model(model_kcode)
+                    test = modelslib.Test(test_kcode)
+                    model = modelslib.Model(model_kcode)
 
                     self.logger.info("Running (%r,%r)",test,model)
                     result = runner.run_test_on_model(test,model)
 
                     #create the test result object (will be written)
-                    tr = models.TestResult(jobmsg.jobid, results = result, search=False)
+                    tr = modelslib.TestResult(jobmsg.jobid, results = result, search=False)
 
                     self.logger.info("rsyncing results %r", jobmsg.jobid)
                     rsync_tools.worker_test_result_write(jobmsg.jobid)
@@ -630,8 +644,8 @@ class Worker(object):
     def make_all(self):
         self.logger.debug("Building everything...")
         try:
-            subprocess.check_call("makekim",shell=True)
-        except subprocess.CalledProcessError as e:
+            check_call("makekim",shell=True)
+        except CalledProcessError as e:
             self.logger.error("could not makekim")
             self.job_message(job, errors="could not makekim!", tube=TUBE_ERRORS)
 
@@ -647,8 +661,6 @@ class Site(object):
         self.port = GLOBAL_PORT
         self.timeout = PIPELINE_TIMEOUT
         self.msg_size = PIPELINE_MSGSIZE
-        self.remote_user = GLOBAL_USER
-        self.remote_addr = GLOBAL_HOST
         self.logger = logger.getChild("website")
 
     def run(self):
@@ -658,11 +670,9 @@ class Site(object):
         self.logger.info("Connecting to beanstalkd")
         try:
             self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
-        except:
-            self.ssh = Popen("screen -dm ssh -i /persistent/id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -L{}:{}:{} {}@{}".format(
-                self.port,self.ip,self.port,self.remote_user,self.remote_addr), shell=True)
-            time.sleep(1)
-            self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
+        except bean.SocketError:
+            # We failed to connect, this is really bad
+            self.logger.error("Failed to connect to beanstalk queue after launching ssh")
 
         self.logger.info("Website ready")
         self.logger.info("Pushing jobs")
@@ -672,29 +682,33 @@ class Site(object):
         self.bsd.put(simplejson.dumps({"kimid": kimid, "priority":"normal", "status":"approved"}))
 
 pipe = {}
-def signal_handler(signal, frame):
+procs = {}
+def signal_handler(): #signal, frame):
     print "Sending signal to flush, wait 1 sec..."
-    shutdown_event.set()
     for p in pipe.values():
+        p.halt = True
         p.exit_safe()
-    time.sleep(1)
+    for p in procs.values():
+        p.join(1)
     sys.exit(1)
-signal.signal(signal.SIGINT, signal_handler)
+#signal.signal(signal.SIGINT, signal_handler)
+
+open_ports(GLOBAL_PORT, PORT_RX, PORT_TX, GLOBAL_USER, GLOBAL_HOST, GLOBAL_IP)
 
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1:
         if sys.argv[1] != "site":
             thrds = cpu_count() 
-            procs = {}
             for i in range(thrds):
                 if sys.argv[1] == "director":
                     pipe[i] = Director(i)
-                    procs[i] = Process(target=Director.run, args=(pipe[i],), name='director-%i'%i)
+                    procs[i] = Thread(target=Director.run, args=(pipe[i],), name='director-%i'%i)
                 elif sys.argv[1] == "worker":
                     pipe[i] = Worker(i)
-                    procs[i] = Process(target=Worker.run, args=(pipe[i],), name='worker-%i'%i)
+                    procs[i] = Thread(target=Worker.run, args=(pipe[i],), name='worker-%i'%i)
             for i in range(thrds):
+                procs[i].daemon = True
                 procs[i].start()
 
             try:
@@ -702,7 +716,7 @@ if __name__ == "__main__":
                     for i in range(thrds):
                         procs[i].join(timeout=1.0)
             except (KeyboardInterrupt, SystemExit):
-                shutdown_event.set()
+                signal_handler()#signal.SIGINT, None)
             
         elif sys.argv[1] == "site":
             obj = Site()
