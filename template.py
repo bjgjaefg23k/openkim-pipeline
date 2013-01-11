@@ -247,7 +247,13 @@ def dependency_check(inp, model=True):
 def process(inp, modelname, testname, modelonly= False):
     """ takes in a file like object and retuns a processed file like object, writing a copy to TEMP_INPUT_FILE """
     logger.info("attempting to process %r for (%r,%r)",inp,modelname,testname)
-    test = models.Test(testname)
+    try:
+        test = models.Test(testname)
+    except AssertionError as e:
+        try:
+            test = models.Verifier(testname)
+        except AssertionError as e:
+            raise 
     with test.in_dir():
         with open(TEMP_INPUT_FILE,'w') as out:
             for line in inp:

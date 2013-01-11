@@ -44,10 +44,14 @@ KIMLOG_FILE = "kim.log"
 # Settings for remote access
 #============================
 if PIPELINE_DEBUG == True:
-    GLOBAL_PORT = 14176
+    GLOBAL_PORT = 14174
+    PORT_TX     = 14173
+    PORT_RX     = 14172
     RSYNC_DIR   = "/repository_dbg/"
 else:
     GLOBAL_PORT = 14177
+    PORT_TX     = 14176
+    PORT_RX     = 14175
     RSYNC_DIR   = "/repository/"
     
 GLOBAL_IP   = "127.0.0.1"

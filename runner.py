@@ -3,13 +3,15 @@ Some scripts that let us run tests and the like
 
 """
 import time, simplejson, signal, itertools, sys
-from subprocess import Popen, PIPE
 from config import *
 logger = logger.getChild("runner")
 import os
 import models
+import subprocess, threading
 
-
+#================================================================
+# helper functions
+#================================================================
 def timeout_handler(signum, frame):
     raise PipelineTimeout()
 
@@ -40,16 +42,50 @@ def last_output_lines(test, stdout, stderr):
     with test.in_dir():
         return tail(stdout), tail(stderr) 
 
+#================================================================
+# a class to be able to timeout on a command
+#================================================================
+class Command(object):
+    def __init__(self, cmd, stdin=None, stdout=None, stderr=None):
+        self.cmd = cmd
+        self.process = None
+        self.stdin = stdin
+        self.stdout = stdout
+        self.stderr = stderr
+
+    def run(self, timeout):
+        def target():
+            self.process = subprocess.Popen(self.cmd, stdin=self.stdin, stdout=self.stdout, stderr=self.stderr, shell=True)
+            self.process.communicate()
+
+        thread = threading.Thread(target=target)
+        thread.start()
+
+        thread.join(timeout)
+        if thread.is_alive():
+            self.process.terminate()
+            thread.join()
+            raise PipelineTimeout
+        return self.process.returncode
+
+    def poll(self):
+        return self.process.poll()
+
+    def terminate(self):
+        return self.process.terminate()
+
 def run_test_on_model(test,model):
     """ run a test with the corresponding model,
     with /usr/bin/time profilling,
-    capture the output as a dict, and return """
+    capture the output as a dict, and return 
+                 OR
+    run a V{T,M} with the corresponding {TE,MO}"""
     logger.info("running %r with %r",test,model)
 
     #grab the executable
-    executable = [test.executable]
+    executable = test.executable
     #profiling time thing
-    timeblock = ["/usr/bin/time","--format={\"_usertime\":%U,\"_memmax\":%M,\"_memavg\":%K}"]
+    timeblock = "/usr/bin/time --format={\\\"_usertime\\\":%U,\\\"_memmax\\\":%M,\\\"_memavg\\\":%K} "
 
     test_dir = test.path
     # run the test in its own directory
@@ -61,17 +97,10 @@ def run_test_on_model(test,model):
             #grab the input file
             output_info = test.out_dict
             start_time = time.time()
-            process = Popen(timeblock+ executable,stdin=kim_stdin_file,stdout=stdout_file,stderr=stderr_file)
+            process = Command(timeblock+ executable,stdin=kim_stdin_file,stdout=stdout_file,stderr=stderr_file)
             logger.info("launching run...")
             try:
-                old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-                signal.alarm(RUNNER_TIMEOUT)
-                try:
-                    # try to run the process to completion.
-                    A,B = process.communicate()
-                finally:
-                    signal.signal(signal.SIGALRM, old_handler)
-                signal.alarm(0)
+                process.run(timeout=RUNNER_TIMEOUT)
             except PipelineTimeout:
                 logger.error("test %r timed out",test)
                 raise PipelineTimeout, "your test timed out"
@@ -91,8 +120,7 @@ def run_test_on_model(test,model):
         data_string = next(itertools.ifilter(line_filter,reversed(stdout.splitlines())))
         logger.debug("we have a data_string: %r",data_string)
     except StopIteration:
-        #there was no output
-        #likely a kim error
+        #there was no output, likely a kim error
         logger.error("We probably had a KIM error")
         raise KIMRuntimeError, "No output was present after completion."
     try:
@@ -116,84 +144,6 @@ def run_test_on_model(test,model):
     # get the information from the timing script
     with test.in_dir(), open(STDERR_FILE) as stderr_file:
         stderr = stderr_file.read()
-    time_str = stderr.splitlines()[-1]
-    time_dat = simplejson.loads(time_str)
-    data.update(time_dat)
-
-    logger.debug("got data %r",data)
-    return data
-
-def run_verifier_on_subject(verifier,subject):
-    """ run a V{T,M} with the corresponding {TE,MO},
-    with /usr/bin/time profilling,
-    capture the output as a dict, and return """
-    logger.info("running %r with %r",verifier,subject)
-
-    #grab the executable
-    executable = [verifier.executable]
-    #profiling time thing
-    timeblock = ["/usr/bin/time","--format={\"_usertime\":%U,\"_memmax\":%M,\"_memavg\":%K}"]
-
-    # run the test in its own directory
-    with verifier.in_dir():
-        #grab the input file
-        output_info = verifier.out_dict
-        with verifier.processed_infile(subject) as kim_stdin_file:
-            kim_stdin = kim_stdin_file.read()
-            start_time = time.time()
-            process = Popen(timeblock+ executable,stdin=PIPE,stdout=PIPE,stderr=PIPE)
-            logger.info("launching run...")
-            try:
-                old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-                signal.alarm(RUNNER_TIMEOUT)
-                try:
-                    stdout, stderr = process.communicate(kim_stdin)
-                finally:
-                    signal.signal(signal.SIGALRM, old_handler)
-                signal.alarm(0)
-            except PipelineTimeout:
-                logger.error("test %r timed out",verifier)
-                raise PipelineTimeout, "your verification timed out"
-
-            end_time = time.time()
-            with open(STDOUT_FILE,"w") as stdout_file:
-                stdout_file.write(stdout)
-            with open(STDERR_FILE,"w") as stderr_file:
-                stderr_file.write(stderr)
-
-    # It seems the test didn't finish
-    # this probably doesn't end
-    if process.poll() is None:
-        process.kill()
-        raise KIMRuntimeError, "your test didn't terminate nicely"
-
-    #look backwards in the stdout for the first non whitespaced line
-    try:
-        data_string = next(itertools.ifilter(line_filter,reversed(stdout.splitlines())))
-        logger.debug("we have a data_string: %r",data_string)
-    except StopIteration:
-        #there was no output
-        #likely a kim error
-        logger.error("We probably had a KIM error")
-        raise KIMRuntimeError
-    try:
-        data = simplejson.loads(data_string)
-    except simplejson.JSONDecodeError:
-        logger.error("We didn't get JSON back!")
-        raise PipelineTemplateError, "verification didn't return JSON"
-
-    #GET METADATA
-    data = { output_info.get(key,key):val for key,val in data.iteritems() }
-    data["_kimlog"] = "@FILE[{}]".format(KIMLOG_FILE)
-    data["_stdout"] = "@FILE[{}]".format(STDOUT_FILE)
-    data["_verifiername"] = verifier.kim_code
-    data["_subjectname"] = subject.kim_code
-    data["_time"] = end_time-start_time
-    data["_created_at"] = time.time()
-    data["_vmversion"] = os.environ["VMVERSION"]
-    data.update(getboxinfo())
-
-    # get the information from the timing script
     time_str = stderr.splitlines()[-1]
     time_dat = simplejson.loads(time_str)
     data.update(time_dat)
