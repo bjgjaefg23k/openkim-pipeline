@@ -153,6 +153,9 @@ class Message(object):
         self.child = dic[KEY_CHILD]
         self.status = dic[KEY_STATUS]
 
+def ll(iterator):
+    return len(list(iterator))
+
 #==================================================================
 # director class for the pipeline
 #==================================================================
@@ -289,7 +292,7 @@ class Director(object):
             # for every test launch
             test = modelslib.VerificationTest(kimid)
             models = modelslib.Test.all()
-            tests = [test]
+            tests = [test]*ll(models)
         elif leader=="VM":
             # we have a new VM
 
@@ -300,7 +303,7 @@ class Director(object):
             #for all of the models, run a job
             test = modelslib.VerificationModel(kimid)
             models = modelslib.Model.all()
-            tests = [test]
+            tests = [test]*ll(models)
         else:
             if status == "approved":
                 if leader=="TE":
@@ -311,7 +314,7 @@ class Director(object):
                     # for all of the models, add a job
                     test = modelslib.Test(kimid)
                     models = test.models
-                    tests = [test]
+                    tests = [test]*ll(models)
                 elif leader=="MO":
                     # we have a model, first pull it and build it
                     rsync_tools.director_new_model_read(kimid)
@@ -319,8 +322,8 @@ class Director(object):
 
                     # for all of the tests, add a job
                     model = modelslib.Model(kimid)
-                    models = [model]
                     tests = model.tests
+                    models = [model]*ll(tests)
                 elif leader=="TD":
                     # we have a new test driver, first pull and build it
                     rsync_tools.director_new_test_driver_read(kimid)
@@ -337,7 +340,7 @@ class Director(object):
                         tmodels = list(t.models)
                         if len(tmodels) > 0:
                             models.extend(tmodels)
-                            tests.extend([t])
+                            tests.extend([t]*ll(tmodels))
 
                 elif leader=="MD":
                     # we have a new model driver, first build and push
@@ -354,7 +357,7 @@ class Director(object):
                         mtests = list(m.tests)
                         if len(mtests) > 0:
                             tests.extend(mtests)
-                            models.extend([m])
+                            models.extend([m]*ll(mtests))
                 else:
                     self.logger.error("Tried to update an invalid KIM ID!: %r",kimid)
             if status == "pending":
@@ -365,7 +368,7 @@ class Director(object):
 
                     # run against all test verifications
                     tests = modelslib.VertificationTest.all()
-                    models = [modelslib.Test(kimid)]
+                    models = [modelslib.Test(kimid)]*ll(tests)
                 elif leader=="MO":
                     # a pending model
                     rsync_tools.director_model_verification_read(kimid)
@@ -373,7 +376,7 @@ class Director(object):
 
                     # run against all model verifications
                     tests = modelslib.VertificationModel.all()
-                    models = [modelslib.Model(kimid)]
+                    models = [modelslib.Model(kimid)]*ll(tests)
 
                 elif leader=="TD":
                     # a pending test driver
@@ -386,11 +389,10 @@ class Director(object):
                 else:
                     self.logger.error("Tried to update an invalid KIM ID!: %r",kimid)
 
-        for test in tests:
-            for model in models:
-                if kimapi.valid_match(test,model):
-                    priority = int(priority_factor*database.test_model_to_priority(test,model) * 1000000)
-                    self.check_dependencies_and_push(test,model,priority,status)
+        for test, model in zip(tests,models):
+            if kimapi.valid_match(test,model):
+                priority = int(priority_factor*database.test_model_to_priority(test,model) * 1000000)
+                self.check_dependencies_and_push(test,model,priority,status)
 
 
     def check_dependencies_and_push(self, test, model, priority, status, child=None):
