@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 """
 Pipeline.py is the section of the pipeline that handles the network
 communication between directors, workers, and webiste through
@@ -694,6 +695,11 @@ def signal_handler(): #signal, frame):
 #signal.signal(signal.SIGINT, signal_handler)
 
 open_ports(GLOBAL_PORT, PORT_RX, PORT_TX, GLOBAL_USER, GLOBAL_HOST, GLOBAL_IP)
+
+
+#------------------------------------
+# MAIN
+#-----------------------------------
 
 if __name__ == "__main__":
     import sys
