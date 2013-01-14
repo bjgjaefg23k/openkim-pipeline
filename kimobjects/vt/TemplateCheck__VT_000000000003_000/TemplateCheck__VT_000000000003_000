@@ -28,7 +28,7 @@ def fail(reason):
 import models
 import template 
 test = models.Test(modelname)
-model = models.NULL_MODEL
+model = next(models.Model.all())
 try:
     test.processed_infile(model)
 except Exception as e:

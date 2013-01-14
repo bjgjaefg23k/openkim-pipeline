@@ -6,21 +6,21 @@ from config import *
 def run_verifiers(kimobj):
    
     if isinstance(kimobj, models.Test):
-        verifiers = models.VerificationTest.all()
+        verifiers = list(models.VerificationTest.all())
     elif isinstance(kimobj, models.Model):
-        verifiers = models.VerificationModel.all()
+        verifiers = list(models.VerificationModel.all())
     else:
         return
 
     passed = []
     for v in verifiers:
         try:
-            data = runner.run_test_on_model(models.Verifier(v), kimobj)
+            data = runner.run_test_on_model(v, kimobj)
         except Exception as e:
             data = {}
             data['pass'] = False
         passed.append(data['pass']) 
-    return verifiers,passed
+    return [v.kim_code for v in verifiers],passed
 
 if __name__ == "__main__":
     import sys
