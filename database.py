@@ -9,7 +9,7 @@ Currently these calls mostly glob on the database, could be replaced by somethin
 from config import *
 logger = logger.getChild("database")
 import re, os, glob, operator
-import models
+import kimobjects
 import random
 
 #-------------------------------------------------
@@ -47,7 +47,7 @@ def randint():
 
 def new_tr_kimid():
     """ Generate a new Test Result kimid """
-    existing = set( result.kim_code for result in models.TestResult.all() )
+    existing = set( result.kim_code for result in kimobjects.TestResult.all() )
     kim_code = format_kim_code(None,"TR","{:012d}".format(randint()),"000")
     while kim_code in existing:
         kim_code = format_kim_code(None,"TR","{:012d}".format(randint()),"000")
@@ -55,7 +55,7 @@ def new_tr_kimid():
 
 def new_vr_kimid():
     """ Generate a new Test Result kimid """
-    existing = set( result.kim_code for result in models.VerificationResult.all() )
+    existing = set( result.kim_code for result in kimobjects.VerificationResult.all() )
     kim_code = format_kim_code(None,"VR","{:012d}".format(randint()),"000")
     while kim_code in existing:
         kim_code = format_kim_code(None,"VR","{:012d}".format(randint()),"000")

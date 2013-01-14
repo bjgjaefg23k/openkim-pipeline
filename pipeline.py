@@ -23,7 +23,7 @@ from multiprocessing import cpu_count, Process
 from threading import Thread
 import time, simplejson, traceback, sys, zmq
 import rsync_tools, runner, kimapi, database 
-import models as modelslib
+import kimobjects
 logger = logger.getChild("pipeline")
 
 PIPELINE_WAIT    = 1
@@ -290,8 +290,8 @@ class Director(object):
             self.make_all()
 
             # for every test launch
-            test = modelslib.VerificationTest(kimid)
-            models = modelslib.Test.all()
+            test = kimobjects.VerificationTest(kimid)
+            models = kimobjects.Test.all()
             tests = [test]*ll(models)
         elif leader=="VM":
             # we have a new VM
@@ -301,8 +301,8 @@ class Director(object):
             self.make_all()
 
             #for all of the models, run a job
-            test = modelslib.VerificationModel(kimid)
-            models = modelslib.Model.all()
+            test = kimobjects.VerificationModel(kimid)
+            models = kimobjects.Model.all()
             tests = [test]*ll(models)
         else:
             if status == "approved":
@@ -312,7 +312,7 @@ class Director(object):
                     self.make_all()
 
                     # for all of the models, add a job
-                    test = modelslib.Test(kimid)
+                    test = kimobjects.Test(kimid)
                     models = test.models
                     tests = [test]*ll(models)
                 elif leader=="MO":
@@ -321,7 +321,7 @@ class Director(object):
                     self.make_all()
 
                     # for all of the tests, add a job
-                    model = modelslib.Model(kimid)
+                    model = kimobjects.Model(kimid)
                     tests = model.tests
                     models = [model]*ll(tests)
                 elif leader=="TD":
@@ -332,7 +332,7 @@ class Director(object):
                     # if it is a new version of an existing test driver, hunt
                     # down all of the tests that use it and launch their
                     # corresponding jobs
-                    driver = modelslib.TestDriver(kimid)
+                    driver = kimobjects.TestDriver(kimid)
                     temp_tests = list(driver.tests)
                     models = []
                     tests = []
@@ -349,7 +349,7 @@ class Director(object):
 
                     # if this is a new version, hunt down all of the models
                     # that rely on it and recompute their results
-                    driver = modelslib.ModelDriver(kimid)
+                    driver = kimobjects.ModelDriver(kimid)
                     temp_models = list(driver.models)
                     tests = []
                     models = []
@@ -367,16 +367,16 @@ class Director(object):
                     self.make_all()
 
                     # run against all test verifications
-                    tests = modelslib.VertificationTest.all()
-                    models = [modelslib.Test(kimid)]*ll(tests)
+                    tests = kimobjects.VertificationTest.all()
+                    models = [kimobjects.Test(kimid)]*ll(tests)
                 elif leader=="MO":
                     # a pending model
                     rsync_tools.director_model_verification_read(kimid)
                     self.make_all()
 
                     # run against all model verifications
-                    tests = modelslib.VertificationModel.all()
-                    models = [modelslib.Model(kimid)]*ll(tests)
+                    tests = kimobjects.VertificationModel.all()
+                    models = [kimobjects.Model(kimid)]*ll(tests)
 
                 elif leader=="TD":
                     # a pending test driver
@@ -441,7 +441,7 @@ class Director(object):
 
     def make_object(self, kimid):
         self.logger.debug("Building the source for %r", kimid)
-        kimobj = modelslib.KIMObject(kimid)
+        kimobj = kimobjects.KIMObject(kimid)
         with kimobj.in_dir():
             try:
                 check_call("make")
@@ -565,14 +565,14 @@ class Worker(object):
                     self.make_all()
 
                     verifier_kcode, subject_kcode = jobmsg.job
-                    verifier = modelslib.Verifier(verifier_kcode)
-                    subject  = modelslib.Subject(subject_kcode)
+                    verifier = kimobjects.Verifier(verifier_kcode)
+                    subject  = kimobjects.Subject(subject_kcode)
 
                     self.logger.info("Running (%r,%r)",verifier,subject)
                     result = runner.run_test_on_model(verifier,subject)
 
                     #create the verification result object (will be written)
-                    vr = modelslib.VerificationResult(jobmsg.jobid, results = result, search=False)
+                    vr = kimobjects.VerificationResult(jobmsg.jobid, results = result, search=False)
 
                     self.logger.info("rsyncing results %r", jobmsg.jobid)
                     rsync_tools.worker_verification_write(jobmsg.jobid)
@@ -603,14 +603,14 @@ class Worker(object):
                     self.make_all()
 
                     test_kcode, model_kcode = jobmsg.job
-                    test = modelslib.Test(test_kcode)
-                    model = modelslib.Model(model_kcode)
+                    test = kimobjects.Test(test_kcode)
+                    model = kimobjects.Model(model_kcode)
 
                     self.logger.info("Running (%r,%r)",test,model)
                     result = runner.run_test_on_model(test,model)
 
                     #create the test result object (will be written)
-                    tr = modelslib.TestResult(jobmsg.jobid, results = result, search=False)
+                    tr = kimobjects.TestResult(jobmsg.jobid, results = result, search=False)
 
                     self.logger.info("rsyncing results %r", jobmsg.jobid)
                     rsync_tools.worker_test_result_write(jobmsg.jobid)

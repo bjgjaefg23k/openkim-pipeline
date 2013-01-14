@@ -29,8 +29,8 @@ def test_builds():
     assert os.path.exists(API+"/KIM_API/libkim.so")
 
 def test_orm_testobj():
-    import models
-    test = models.Test("LatticeConstantCubicEnergy_Fe_fcc__TE_248695510051_000")    
+    import kimobjects
+    test = kimobjects.Test("LatticeConstantCubicEnergy_Fe_fcc__TE_248695510051_000")    
     assert len( list(test.models) ) == 3
     assert test.kim_code == "LatticeConstantCubicEnergy_Fe_fcc__TE_248695510051_000"
     assert test.kim_code_name == "LatticeConstantCubicEnergy_Fe_fcc"
@@ -39,8 +39,8 @@ def test_orm_testobj():
 
    
 def test_orm_testobj_driver():
-    import models
-    test = models.Test("LatticeConstantCubicEnergy_Fe_fcc__TE_248695510051_000")
+    import kimobjects
+    test = kimobjects.Test("LatticeConstantCubicEnergy_Fe_fcc__TE_248695510051_000")
     assert "LatticeConstantCubicEnergy__TD_373755852346_000"  == list(test.test_drivers)[0].kim_code
 
 def test_rsync_write():

@@ -6,7 +6,7 @@ import time, simplejson, signal, itertools, sys
 from config import *
 logger = logger.getChild("runner")
 import os
-import models
+import kimobjects
 import subprocess, threading
 
 #================================================================
@@ -172,14 +172,14 @@ def update_repo(force=False):
     meant to be used locally as a test.
     """
     logger.info("attempting to update repo...")
-    for test in models.Test.all():
+    for test in kimobjects.Test.all():
         #logger.info("attempting to update test %r",test)
         for model in test.models:
-            if force or not models.TestResult.test_result_exists(test,model):
+            if force or not kimobjects.TestResult.test_result_exists(test,model):
                 logger.info("Running %r vs %r",test,model)
                 try:
                     results = run_test_on_model(test,model)
-                    tr = models.TestResult(results=results)
+                    tr = kimobjects.TestResult(results=results)
                 except:
                     logger.error("WE HAD an error on (%r,%r) with:\n%r",test,model,sys.exc_info()[0])
             else:
@@ -192,14 +192,14 @@ def update_repo_all(force=False):
     meant to be used locally as a test
     """
     logger.info("attempting to update repo...")
-    for model in models.Model.all():
-        for test in models.Test.all():
+    for model in kimobjects.Model.all():
+        for test in kimobjects.Test.all():
             #logger.info("attempting to update test %r",test)
-            if force or not models.TestResult.test_result_exists(test,model):
+            if force or not kimobjects.TestResult.test_result_exists(test,model):
                 logger.info("Running %r vs %r",test,model)
                 try:
                     results = run_test_on_model(test,model)
-                    tr = models.TestResult(results=results)
+                    tr = kimobjects.TestResult(results=results)
                 except:
                     logger.error("WE HAD an error on (%r,%r) with:\n%r",test,model,sys.exc_info()[0])
             else:
