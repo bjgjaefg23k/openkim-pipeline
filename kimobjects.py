@@ -399,6 +399,85 @@ class Model(KIMObject):
         """ Return a generator of the valid matching tests that match this model """
         return ( test for test in Test.all() if kimapi.valid_match(test,self) )
 
+#------------------------------------------
+# Primitive
+#------------------------------------------
+
+from jsonschema import validate
+
+class Primitive(PersistentDict):
+    """ A KIM Primitive """
+
+    def __init__(self, name, *args, **kwargs):
+        """ Initialize the primitive by name """
+        self.name = name
+        self.path = os.path.join(KIM_SCHEMAS_DIR,name+'.json')
+        super(Primitive,self).__init__(self.path,flag='r',*args,**kwargs)
+
+    def __repr__(self):
+        return "{}({})".format(self.__class__.__name__, self.name)
+
+    def __str__(self):
+        return simplejson.dumps(self,indent=4)
+
+
+class Schema(PersistentDict):
+    """ A KIM Schema """
+    def __init__(self, name, *args, **kwargs):
+        """ Initialize the schema by name """
+        self.name = name
+        self.path = os.path.join(KIM_SCHEMAS_DIR,name+'.json')
+        super(Schema,self).__init__(self.path,flag='r',*args,**kwargs)
+
+    def __repr__(self):
+        return "{}({})".format(self.__class__.__name__,self.name)
+
+    def __str__(self):
+        return simplejson.dumps(self,indent=4)
+
+
+#------------------------------------------
+# Property
+#------------------------------------------
+
+class Property(KIMObject):
+    """ A kim property, a KIMObject with,
+
+        Settings:
+            required_leader = "PR"
+            makeable = False
+    """
+    required_leader = "PR"
+    makeable = False
+
+    def __init__(self,kim_code,*args,**kwargs):
+        """ Initialize the Property, with a kim_code """
+        super(Property,self).__init__(kim_code,*args,**kwargs)
+        self.data = PersistentDict(os.path.join(self.path,self.kim_code + '.json'))
+
+    def sync(self):
+        self.info.sync()
+        self.data.sync()
+
+    @property
+    def results(self):
+        """ Return a generator of results that compute this property """
+        return ( tr for tr in TestResult.all() if self in tr.properties )
+
+    @property
+    def references(self):
+        """ Return a generator of references that reference this property """
+        return ( rd for rd in ReferenceDatum.all() if self == rd.property )
+
+    @property
+    def tags(self):
+        """ Return a generator of all the tags used by the test writers to refer to this property """
+        return set( value for key,value in result.test._reversed_out_dict.iteritems() if Property(key)==self for result in self.results )
+
+    def validate(self):
+        """ Validate the Property against the property schema """
+        return validate(self.data, Schema(self.data['validation_schema']))
+
 
 #-------------------------------------
 # TestResult
@@ -641,72 +720,6 @@ class ModelDriver(KIMObject):
     def models(self):
         """ Return a generator of all of the models using this model driver """
         return ( model for model in Model.all() if self==model.model_driver )
-
-
-#------------------------------------------
-# Primitive
-#------------------------------------------
-
-class Primitive(PersistentDict):
-    """ A KIM Primitive """
-
-    def __init__(self, name, *args, **kwargs):
-        """ Initialize the primitive by name """
-        self.name = name
-        self.path = os.path.join(KIM_SCHEMAS_DIR,name+'.json')
-        super(Primitive,self).__init__(self.path,flag='r',*args,**kwargs)
-
-    def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, self.name)
-
-
-#------------------------------------------
-# Property
-#------------------------------------------
-
-from jsonschema import validate
-
-class Property(KIMObject):
-    """ A kim property, a KIMObject with,
-
-        Settings:
-            required_leader = "PR"
-            makeable = False
-    """
-    required_leader = "PR"
-    makeable = False
-
-    def __init__(self,kim_code,*args,**kwargs):
-        """ Initialize the Property, with a kim_code """
-        super(Property,self).__init__(kim_code,*args,**kwargs)
-        self.data = PersistentDict(os.path.join(self.path,self.kim_code + '.json'))
-
-    def sync(self):
-        self.info.sync()
-        self.data.sync()
-
-    @property
-    def results(self):
-        """ Return a generator of results that compute this property """
-        return ( tr for tr in TestResult.all() if self in tr.properties )
-
-    @property
-    def references(self):
-        """ Return a generator of references that reference this property """
-        return ( rd for rd in ReferenceDatum.all() if self == rd.property )
-
-    @property
-    def tags(self):
-        """ Return a generator of all the tags used by the test writers to refer to this property """
-        return set( value for key,value in result.test._reversed_out_dict.iteritems() if Property(key)==self for result in self.results )
-
-    def validate(self):
-        """ Validate the Property against the property schema """
-        return validate(self.data, Primitive('schema_pr'))
-
-    @property
-    def primitives(self):
-        return { key:Primitive(value) for key,value in self.data['primitives'].iteritems() }
 
 
 
@@ -1157,14 +1170,55 @@ class VirtualMachine(KIMObject):
         """ Initialize a VirtualMachine with a kim_code """
         super(VirtualMachine,self).__init__(kim_code,*args,**kwargs)
 
+#--------------------------------------------
+# Helper code
+#--------------------------------------------
 
 # two letter codes to the associated class
-code_to_model = {"TE": Test, "MO": Model, "TD": TestDriver, "TR": TestResult , "VT": VerificationTest, "VM": VerificationModel, "VR": VerificationResult, "RD": ReferenceDatum, "PR": Property , "VM": VirtualMachine, "MD": ModelDriver }
+code_to_model = {"TE": Test, "MO": Model, "TD": TestDriver, "TR": TestResult ,
+    "VT": VerificationTest, "VM": VerificationModel, "VR": VerificationResult,
+    "RD": ReferenceDatum, "PR": Property , "VM": VirtualMachine, "MD": ModelDriver }
 
 def kim_obj(kim_code):
     """ Just given a kim_code try to make the right object, i.e. try to make a TE code a Test, etc. """
     name,leader,num,version = database.parse_kim_code(kim_code)
     cls = code_to_model.get(leader, KIMObject)
     return cls(kim_code)
+
+class KIMData(object):
+    """ A simple wrapper to getting data """
+
+    def __getitem__(self,item):
+        if item.startswith("TE"):
+            return Test(item)
+        elif item.startswith("MO"):
+            return Model(item)
+        elif item.startswith("TD"):
+            return TestDriver(item)
+        elif item.startswith("TR"):
+            return TestResult(item)
+        elif item.startswith("VT"):
+            return VerificationTest(item)
+        elif item.startswith("VM"):
+            return VerificationModel(item)
+        elif item.startswith("VR"):
+            return VerificationResult(item)
+        elif item.startswith("VC"):
+            return VerificationCheck(item)
+        elif item.startswith("RD"):
+            return ReferenceDatum(item)
+        elif item.startswith("PR"):
+            return Property(item)
+        elif item.startswith("VM"):
+            return VirtualMachine(item)
+        elif item.startswith("MD"):
+            return ModelDriver(item)
+        elif item.startswith('prim'):
+            return Primitive(item)
+        elif item.startswith('schema'):
+            return Schema(item)
+
+data = KIMData()
+
 
 

@@ -79,6 +79,10 @@ class PersistentDict(dict):
                 pass
         raise ValueError('File not in a supported format')
 
+    def __str__(self):
+        return json.dumps(self,separators=(',',':'),indent=4)
+
+
 class PersistentDefaultDict(PersistentDict, defaultdict):
     """ Same as PersistentDict, but behaves as a defaultdict of dicts as well """
     def __init__(self,*args,**kwargs):

@@ -5,3 +5,5 @@ pm = kimobjects.Primitive('schema_pr')
 
 from jsonschema import validate
 import simplejson
+
+data = kimobjects.data
