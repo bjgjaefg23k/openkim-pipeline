@@ -93,8 +93,8 @@ class Communicator(Thread):
 #==================================================================
 class BeanstalkHandler(logging.Handler):
     """ A beanstalk logging handler """
-    def __init__(self,bsd):
-        self.bsd = bsd
+    def __init__(self,comm):
+        self.comm = comm 
         self.info = runner.getboxinfo()
         super(BeanstalkHandler,self).__init__()
 
@@ -103,8 +103,7 @@ class BeanstalkHandler(logging.Handler):
         err_message = self.format(record)
         message = self.info.copy()
         message['message'] = err_message
-        self.bsd.use(TUBE_LOG)
-        self.bsd.put(simplejson.dumps(message))
+        self.comm.send_msg(TUBE_LOG,simplejson.dumps(message))
 
 class Message(object):
     """Message format for the queue system:
@@ -196,7 +195,7 @@ class Director(object):
         self.bsd.ignore("default")
 
         #attach the beanstalk logger
-        beanstalk_handler = BeanstalkHandler(self.bsd)
+        beanstalk_handler = BeanstalkHandler(self.comm)
         beanstalk_handler.setLevel(BEANSTALK_LEVEL)
         beanstalk_handler.setFormatter(log_formatter)
         self.logger.addHandler(beanstalk_handler)
@@ -491,7 +490,7 @@ class Worker(object):
 
         self.logger.info("Connected to daemon")
         #attach the beanstalk logger
-        beanstalk_handler = BeanstalkHandler(self.bsd)
+        beanstalk_handler = BeanstalkHandler(self.comm)
         beanstalk_handler.setLevel(BEANSTALK_LEVEL)
         beanstalk_handler.setFormatter(log_formatter)
         self.logger.addHandler(beanstalk_handler)

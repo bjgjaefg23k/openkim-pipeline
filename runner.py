@@ -166,7 +166,10 @@ def run_test_on_model(test,model):
     for data_string in itertools.ifilter(line_filter, reversed(stdout.splitlines())):
         try:
             data = simplejson.loads(data_string)
-            break
+            if isinstance(a, dict):
+                break
+            else:
+                data = None
         except simplejson.JSONDecodeError:
             continue
 
