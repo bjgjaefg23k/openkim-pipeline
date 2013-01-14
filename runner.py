@@ -42,6 +42,33 @@ def last_output_lines(test, stdout, stderr):
     with test.in_dir():
         return tail(stdout), tail(stderr) 
 
+def run_critical_verifiers(kimobj):
+    vt = ["Build__VT_000000000000_000",
+          "FilenamesPath__VT_000000000001_000",
+          "PipelineAPI__VT_000000000002_000",
+          "TemplateCheck__VT_000000000003_000"]
+    vm = ["Build__VM_000000000000_000",
+          "FilenamesPath__VM_000000000001_000",
+          "PipelineAPI__VM_000000000002_000"]
+   
+    if isinstance(kimobj, models.Test):
+        verifiers = vt
+    elif isinstance(kimobj, models.Model):
+        verifiers = vm
+    else:
+        return
+
+    passed = []
+    for v in verifiers:
+        try:
+            data = run_test_on_model(models.Verifier(v), kimobj)
+        except Exception as e:
+            data = {}
+            data['pass'] = False
+        passed.append(data['pass']) 
+    return verifiers,passed
+
+
 #================================================================
 # a class to be able to timeout on a command
 #================================================================
@@ -74,6 +101,10 @@ class Command(object):
     def terminate(self):
         return self.process.terminate()
 
+
+#=============================================================
+# the real meat and cheese of this file
+#=============================================================
 def run_test_on_model(test,model):
     """ run a test with the corresponding model,
     with /usr/bin/time profilling,

@@ -1,0 +1,51 @@
+#!/usr/bin/env python
+import runner
+import models
+from config import *
+
+def run_verifiers(kimobj):
+   
+    if isinstance(kimobj, models.Test):
+        verifiers = models.VerificationTest.all()
+    elif isinstance(kimobj, models.Model):
+        verifiers = models.VerificationModel.all()
+    else:
+        return
+
+    passed = []
+    for v in verifiers:
+        try:
+            data = runner.run_test_on_model(models.Verifier(v), kimobj)
+        except Exception as e:
+            data = {}
+            data['pass'] = False
+        passed.append(data['pass']) 
+    return verifiers,passed
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 1:
+        name = sys.argv[1]
+
+    try:
+        t = models.Test(name)
+    except Exception as e:
+        try:
+            t = models.Model(name)
+        except Exception as e:
+            raise AssertionError("Could not make test or model")
+    v,p = run_verifiers(t)
+
+    logger.info("==================================================")
+    logger.info("Verification check report:")
+    logger.info("==================================================")
+    if len(list(v)) > 0:
+        maxlen = max([len(s) for s in v])
+        for tv, tp in zip(v,p):
+            if tp == True:
+                logger.info(tv+"  " + " "*(maxlen-len(tv))+ ":\t PASS")
+            else:
+                logger.info(tv+"  " + " "*(maxlen-len(tv))+ ":\t ERROR")
+    else:
+        logger.info("ERROR: No verification checks found")
+

@@ -359,6 +359,7 @@ class Director(object):
                             models.extend([m]*ll(mtests))
                 else:
                     self.logger.error("Tried to update an invalid KIM ID!: %r",kimid)
+                checkmatch = True
             if status == "pending":
                 if leader=="TE":
                     # a pending test
@@ -367,7 +368,7 @@ class Director(object):
 
                     # run against all test verifications
                     tests = modelslib.VertificationTest.all()
-                    models = [modelslib.Test(kimid)]*ll(tests)
+                    models = [modelslib.Test(kimid, search=False)]*ll(tests)
                 elif leader=="MO":
                     # a pending model
                     rsync_tools.director_model_verification_read(kimid)
@@ -375,7 +376,7 @@ class Director(object):
 
                     # run against all model verifications
                     tests = modelslib.VertificationModel.all()
-                    models = [modelslib.Model(kimid)]*ll(tests)
+                    models = [modelslib.Model(kimid, search=False)]*ll(tests)
 
                 elif leader=="TD":
                     # a pending test driver
@@ -387,9 +388,10 @@ class Director(object):
                     # no verifications really... ? FIXME
                 else:
                     self.logger.error("Tried to update an invalid KIM ID!: %r",kimid)
+                checkmatch = False 
 
         for test, model in zip(tests,models):
-            if kimapi.valid_match(test,model):
+            if checkmatch and kimapi.valid_match(test,model):
                 priority = int(priority_factor*database.test_model_to_priority(test,model) * 1000000)
                 self.check_dependencies_and_push(test,model,priority,status)
 
@@ -514,7 +516,6 @@ class Worker(object):
         msg = simplejson.dumps(dic)
         self.bsd.use(tube)
         self.bsd.put(msg)
-        print "*** sending"
         self.comm.send_msg(tube, msg)
 
     def get_jobs(self):

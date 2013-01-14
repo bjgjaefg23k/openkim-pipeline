@@ -1,0 +1,38 @@
+#!/usr/bin/env python
+import os, re
+import simplejson
+
+# get some information about the test
+modelname = raw_input("modelname=")
+path = raw_input("path=")
+directory = os.path.dirname(path)
+
+# from here on out, we will be in the test's directory
+os.chdir(directory)
+
+#=========================================================
+# now, we check that the
+# 1. the pipeline api is able to create the test object
+#==========================================================
+title = "Templating on .{in,out} works correctly"
+critical = True
+passed = True
+msg = ""
+warn = ""
+
+def fail(reason):
+    global msg, passed
+    passed = False
+    msg += reason+"\n"
+
+import models
+import template 
+test = models.Test(modelname)
+model = models.NULL_MODEL
+try:
+    test.processed_infile(model)
+except Exception as e:
+    fail("pipeline.in could not be templated by Pipeline API: %r"% e)
+
+results = {"pass": passed, "message": msg, "warn": warn, "critical": critical, "title": title}
+print "\n"+simplejson.dumps(results)

@@ -3,6 +3,7 @@ import database
 import models
 import runner
 import sys
+from config import *
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:
@@ -12,19 +13,19 @@ if __name__ == "__main__":
             test = models.Test(testname)
             if len(list(test.models)) > 0:
                 for model in test.models:
-                    print "Running combination <%r, %r" % (test, model)
+                    logger.info("Running combination <%r, %r" % (test, model))
                     runner.run_test_on_model(test, model)
             else:
-                print "No matches found for your test"
+                logger.info("No matches found for your test")
         else:
             test = models.TestDriver(testname)
             if len(list(test.tests)) > 0:
                 for t in test.tests:
                     for m in t.models:
-                        print "Running combination <%r, %r" % (t, m)
+                        logger.info("Running combination <%r, %r" % (t, m))
                         runner.run_test_on_model(t, m)
             else:
-                print "No matches found for your test"
+                logger.info("No matches found for your test")
     
     else:
-        print "Usage: debugtest.py <testname>"
+        logger.info("Usage: debugtest.py <testname>")
