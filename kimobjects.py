@@ -558,6 +558,7 @@ class TestResult(KIMObject):
 
             This magic allows the result object to behave like its result dictionary magically
         """
+        self.info = PersistentDict(os.path.join(self.path,METADATA_INFO_FILE))
         return self.results.__getattribute__(attr)
 
     @classmethod
@@ -643,8 +644,27 @@ class ModelDriver(KIMObject):
 
 
 #------------------------------------------
+# Primitive
+#------------------------------------------
+
+class Primitive(PersistentDict):
+    """ A KIM Primitive """
+
+    def __init__(self, name, *args, **kwargs):
+        """ Initialize the primitive by name """
+        self.name = name
+        self.path = os.path.join(KIM_SCHEMAS_DIR,name+'.json')
+        super(Primitive,self).__init__(self.path,flag='r',*args,**kwargs)
+
+    def __repr__(self):
+        return "{}({})".format(self.__class__.__name__, self.name)
+
+
+#------------------------------------------
 # Property
 #------------------------------------------
+
+from jsonschema import validate
 
 class Property(KIMObject):
     """ A kim property, a KIMObject with,
@@ -659,20 +679,16 @@ class Property(KIMObject):
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Property, with a kim_code """
         super(Property,self).__init__(kim_code,*args,**kwargs)
+        self.data = PersistentDict(os.path.join(self.path,self.kim_code + '.json'))
+
+    def sync(self):
+        self.info.sync()
+        self.data.sync()
 
     @property
     def results(self):
         """ Return a generator of results that compute this property """
         return ( tr for tr in TestResult.all() if self in tr.properties )
-
-    @property
-    def data(self):
-        """ Return the data in this thing
-
-            .. todo::
-                Empty Property data!!
-        """
-        return None
 
     @property
     def references(self):
@@ -683,6 +699,14 @@ class Property(KIMObject):
     def tags(self):
         """ Return a generator of all the tags used by the test writers to refer to this property """
         return set( value for key,value in result.test._reversed_out_dict.iteritems() if Property(key)==self for result in self.results )
+
+    def validate(self):
+        """ Validate the Property against the property schema """
+        return validate(self.data, Primitive('schema_pr'))
+
+    @property
+    def primitives(self):
+        return { key:Primitive(value) for key,value in self.data['primitives'].iteritems() }
 
 
 
