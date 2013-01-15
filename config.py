@@ -36,6 +36,8 @@ METADATA_INFO_FILE = "metadata.json"
 PIPELINE_INFO_FILE = "pipelineinfo.json"
 INPUT_FILE = "pipeline.in"
 OUTPUT_FILE = "pipeline.out"
+TEMPLATE_FILE = 'pipeline.json'
+TEMPLATE_OUT = "pipeline.json.out"
 STDOUT_FILE = "pipeline.stdout"
 STDERR_FILE = "pipeline.stderr"
 TEMP_INPUT_FILE = "pipeline.in.tmp"
@@ -103,6 +105,9 @@ class PygmentHandler(logging.StreamHandler):
 #create a console logger
 console_handler = PygmentHandler()
 console_handler.setLevel(logging.INFO)
+if PIPELINE_DEBUG:
+    console_handler.setLevel(logging.DEBUG)
+
 console_handler.setFormatter(log_formatter)
 logger.addHandler(console_handler)
 

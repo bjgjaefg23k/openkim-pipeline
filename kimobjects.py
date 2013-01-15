@@ -1,5 +1,5 @@
 """
-.. module:: models
+@@.. module:: models
     :synopsis: Holds the python object models for kim objects
 
 .. moduleauthor:: Alex Alemi <alexalemi@gmail.com>
@@ -36,6 +36,8 @@ import re
 import dircache
 import simplejson
 import kimapi
+from jsonschema import validate
+from template import template_environment
 
 #------------------------------------------------
 # Base KIMObject
@@ -272,9 +274,9 @@ class Test(KIMObject):
         """ Initialize the Test, with a kim_code """
         super(Test,self).__init__(kim_code,*args,**kwargs)
         self.executable = os.path.join(self.path,self.kim_code)
-        self.outfile_path = os.path.join(self.path,OUTPUT_FILE)
+        # self.outfile_path = os.path.join(self.path,OUTPUT_FILE)
         self.infile_path = os.path.join(self.path,INPUT_FILE)
-        self.out_dict = self._outfile_to_dict()
+        # self.out_dict = self._outfile_to_dict()
 
     def __call__(self,*args,**kwargs):
         """ Calling a test object executes its executable in its own directory
@@ -292,10 +294,10 @@ class Test(KIMObject):
         """ return a file object for the INPUT_FILE """
         return open(self.infile_path)
 
-    @property
-    def outfile(self):
-        """ return a file object for the OUTPUT_FILE """
-        return open(self.outfile_path)
+    # @property
+    # def outfile(self):
+    #     """ return a file object for the OUTPUT_FILE """
+    #     return open(self.outfile_path)
 
     def dependency_check(self, model=None):
         """ Ask template.py to do a dependency check
@@ -336,20 +338,24 @@ class Test(KIMObject):
         except StopIteration:
             raise PipelineDataMissing, "Could not find a TestResult for ({}, {})".format(self,model)
 
-    def _outfile_to_dict(self):
-        """ Convert the output file to a dict """
-        outdata = open(self.outfile_path).read()
-        lines = outdata.splitlines()
-        data = {}
-        for line in lines:
-            front,back = line.split(":")
-            data.update({ front.strip() : back.strip() })
-        return data
+    # def _outfile_to_dict(self):
+    #     """ Convert the output file to a dict """
+    #     outdata = open(self.outfile_path).read()
+    #     lines = outdata.splitlines()
+    #     data = {}
+    #     for line in lines:
+    #         front,back = line.split(":")
+    #         data.update({ front.strip() : back.strip() })
+    #     return data
 
     def processed_infile(self,model):
         """ Process the input file, with template, and return a file object to the result """
         template.process(self.infile,model.kim_code,self.kim_code)
         return open(os.path.join(self.path,TEMP_INPUT_FILE))
+
+    @property
+    def template(self):
+        return template_environment.get_template(os.path.join(self.path, TEMPLATE_FILE))
 
     def modelname_processed_infile(self, model):
         template.process(self.infile, model.kim_code, self.kim_code, modelonly=True)
@@ -403,7 +409,6 @@ class Model(KIMObject):
 # Primitive
 #------------------------------------------
 
-from jsonschema import validate
 
 class Primitive(PersistentDict):
     """ A KIM Primitive """
@@ -755,9 +760,9 @@ class VerificationTest(KIMObject):
         """ Initialize the Test, with a kim_code """
         super(VerificationTest,self).__init__(kim_code,*args,**kwargs)
         self.executable = os.path.join(self.path,self.kim_code)
-        self.outfile_path = os.path.join(self.path,OUTPUT_FILE)
+        # self.outfile_path = os.path.join(self.path,OUTPUT_FILE)
         self.infile_path = os.path.join(self.path,INPUT_FILE)
-        self.out_dict = self._outfile_to_dict()
+        # self.out_dict = self._outfile_to_dict()
 
     def __call__(self,*args,**kwargs):
         """ Calling a test object executes its executable in its own directory
@@ -775,10 +780,10 @@ class VerificationTest(KIMObject):
         """ return a file object for the INPUT_FILE """
         return open(self.infile_path)
 
-    @property
-    def outfile(self):
-        """ return a file object for the OUTPUT_FILE """
-        return open(self.outfile_path)
+    # @property
+    # def outfile(self):
+    #     """ return a file object for the OUTPUT_FILE """
+    #     return open(self.outfile_path)
 
     def dependency_check(self):
         """ Ask template.py to do a dependency check
@@ -812,15 +817,15 @@ class VerificationTest(KIMObject):
         except StopIteration:
             raise PipelineDataMissing, "Could not find a VerificationResult for ({}, {})".format(self,subject)
 
-    def _outfile_to_dict(self):
-        """ Convert the output file to a dict """
-        outdata = open(self.outfile_path).read()
-        lines = outdata.splitlines()
-        data = {}
-        for line in lines:
-            front,back = line.split(":")
-            data.update({ front.strip() : back.strip() })
-        return data
+    # def _outfile_to_dict(self):
+    #     """ Convert the output file to a dict """
+    #     outdata = open(self.outfile_path).read()
+    #     lines = outdata.splitlines()
+    #     data = {}
+    #     for line in lines:
+    #         front,back = line.split(":")
+    #         data.update({ front.strip() : back.strip() })
+    #     return data
 
     def processed_infile(self,test):
         """ Process the input file, with template, and return a file object to the result """
@@ -862,9 +867,9 @@ class VerificationModel(KIMObject):
         """ Initialize the Test, with a kim_code """
         super(VerificationModel,self).__init__(kim_code,*args,**kwargs)
         self.executable = os.path.join(self.path,self.kim_code)
-        self.outfile_path = os.path.join(self.path,OUTPUT_FILE)
+        # self.outfile_path = os.path.join(self.path,OUTPUT_FILE)
         self.infile_path = os.path.join(self.path,INPUT_FILE)
-        self.out_dict = self._outfile_to_dict()
+        # self.out_dict = self._outfile_to_dict()
 
     def __call__(self,*args,**kwargs):
         """ Calling a test object executes its executable in its own directory
@@ -882,10 +887,10 @@ class VerificationModel(KIMObject):
         """ return a file object for the INPUT_FILE """
         return open(self.infile_path)
 
-    @property
-    def outfile(self):
-        """ return a file object for the OUTPUT_FILE """
-        return open(self.outfile_path)
+    # @property
+    # def outfile(self):
+    #     """ return a file object for the OUTPUT_FILE """
+    #     return open(self.outfile_path)
 
     def dependency_check(self):
         """ Ask template.py to do a dependency check
@@ -919,15 +924,15 @@ class VerificationModel(KIMObject):
         except StopIteration:
             raise PipelineDataMissing, "Could not find a VerificationResult for ({}, {})".format(self,subject)
 
-    def _outfile_to_dict(self):
-        """ Convert the output file to a dict """
-        outdata = open(self.outfile_path).read()
-        lines = outdata.splitlines()
-        data = {}
-        for line in lines:
-            front,back = line.split(":")
-            data.update({ front.strip() : back.strip() })
-        return data
+    # def _outfile_to_dict(self):
+    #     """ Convert the output file to a dict """
+    #     outdata = open(self.outfile_path).read()
+    #     lines = outdata.splitlines()
+    #     data = {}
+    #     for line in lines:
+    #         front,back = line.split(":")
+    #         data.update({ front.strip() : back.strip() })
+    #     return data
 
     def processed_infile(self,model):
         """ Process the input file, with template, and return a file object to the result """
