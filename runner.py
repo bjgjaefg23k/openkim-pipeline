@@ -22,7 +22,7 @@ def getboxinfo():
     things = ['sitename','username','boxtype','ipaddr','vmversion','setuphash']
 
     for thing in things:
-        info["_"+thing] = open(os.path.join('/persistent',thing)).read().strip()
+        info[thing] = open(os.path.join('/persistent',thing)).read().strip()
     return info
 
 def line_filter(line):
@@ -84,7 +84,7 @@ def execute_test_on_model(test,model):
     #grab the executable
     executable = test.executable
     #profiling time thing
-    timeblock = "/usr/bin/time --format={\\\"_usertime\\\":%U,\\\"_memmax\\\":%M,\\\"_memavg\\\":%K} "
+    timeblock = "/usr/bin/time --format={\\\"usertime\\\":%U,\\\"memmax\\\":%M,\\\"memavg\\\":%K} "
 
     test_dir = test.path
     # run the test in its own directory
@@ -123,6 +123,8 @@ def run_test_on_model(test,model):
                  OR
     run a V{T,M} with the corresponding {TE,MO}
     """
+
+    # execute test
     run_time = execute_test_on_model(test,model)
 
     with test.in_dir(), open(STDOUT_FILE) as stdout_file:
@@ -197,10 +199,26 @@ def run_test_on_model(test,model):
 
     trdict = simplejson.loads(trform)
     logger.debug("Formed dict:\n{}".format(simplejson.dumps(trdict,indent=4)))
-    data.update(trdict)
+    tr_out.update(trdict)
 
     logger.debug("got data %r",data)
-    return data
+    with test.in_dir(), open(TR_OUTPUT,'w') as f:
+        f.write(simplejson.dumps(tr_out, indent=4))
+
+    #Add kim_id_test, kim_id_model, validation_schema
+    if isinstance(test, kimobjects.Test):
+        schema_type = 'schema_tr'
+    else:
+        schema_type = 'schema_vr'
+
+    tr_out.update({
+        'kim_id_test': test.kim_code,
+        'kim_id_model': model.kim_code,
+        'validation_schema': schema_type}
+        )
+
+    # TODO: We need to inject 'kim_id' before writing
+    return tr_out
 
 
 #run all the tests on all the models
