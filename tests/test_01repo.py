@@ -15,19 +15,16 @@ def test_orm_testobj():
     assert test.kim_code_leader == "TE"
     assert test.kim_code_version == "000"
 
-   
+def test_testobj2():
+    import models
+    test = models.Test("LatticeConstantCubicEnergy_Al_fcc__TE_000000000000_000")    
+    test.infile.readlines()
+    test.outfile.readlines()
+    
 def test_orm_testobj_driver():
     import models
     test = models.Test("LatticeConstantCubicEnergy_Ar_fcc__TE_000000000001_000")
-    assert "LatticeConstantCubicEnergy__TD_000000000000_000"  == list(test.test_drivers)[0].kim_code
+    assert "LatticeConstantCubicEnergy__TD_000000000000_000"  == next(test.test_drivers).kim_code
 
-def test_rsync_write():
-    pass
 
-def test_rsync_read():
-    pass
 
-def test_cleanup():
-    os.chdir(API)
-    os.system("(. /tmp/env; make clean >> /dev/null 2>&1)")
-    assert not os.path.exists(API+"/KIM_API/libkim.so")
