@@ -161,12 +161,13 @@ def run_test_on_model(test,model):
     #    logger.error("We didn't get JSON back!")
     #    last_out, last_err = last_output_lines(test, STDOUT_FILE, STDERR_FILE)
     #    raise PipelineTemplateError, "Test didn't return JSON! \n<<STDOUT: \n%s>> \n<<STDERR: \n%s>>" % (last_out, last_err)
+    logger.info("Run completed, searching for output...")
 
     data = None
     for data_string in itertools.ifilter(line_filter, reversed(stdout.splitlines())):
         try:
             data = simplejson.loads(data_string)
-            if isinstance(a, dict):
+            if isinstance(data, dict):
                 break
             else:
                 data = None
