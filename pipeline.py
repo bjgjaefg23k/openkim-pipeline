@@ -203,7 +203,6 @@ class Director(object):
     def disconnect_from_daemon(self):
         """ close and kill """
         self.bsd.close()
-        self.daemon.kill()
 
     def get_tr_id(self):
         """ Generate a TR id """
@@ -465,7 +464,7 @@ class Director(object):
             return 1
         return 0
 
-    def halt(self):
+    def disconnect(self):
         self.disconnect_from_daemon()
 
 
