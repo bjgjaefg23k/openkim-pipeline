@@ -7,7 +7,7 @@ Unit_temperature :=K
 Unit_time :=ps
 
 SUPPORTED_AOM/PARTICLES_TYPES: 
-Fe spec 26
+Al spec 26
 
 CONVENTIONS:
 ZeroBasedLists  flag

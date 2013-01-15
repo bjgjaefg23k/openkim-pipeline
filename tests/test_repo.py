@@ -1,13 +1,11 @@
 import os
 import sys
 import shutil
+from subprocess import check_call
 
 API = "/home/vagrant/openkim-api"
 CODE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 REPO2 = CODE_DIR + "/tests/repo"
-os.chdir(CODE_DIR)
-sys.path.append(CODE_DIR)
-
 
 def test_paths():
     assert os.environ['KIM_TESTS_DIR'] == REPO2+"/te/"
@@ -24,7 +22,7 @@ def test_hasfiles():
 
 def test_builds():
     os.chdir(API)
-    os.system("/usr/bin/env `cat /tmp/env` make clean && make >> /dev/null 2>&1")
+    check_call(". /tmp/env; makekim", shell=True)
     os.chdir(CODE_DIR)
     assert os.path.exists(API+"/KIM_API/libkim.so")
 
@@ -51,5 +49,5 @@ def test_rsync_read():
 
 def test_cleanup():
     os.chdir(API)
-    os.system("/usr/bin/env `cat /tmp/env` make clean >> /dev/null 2>&1")
+    os.system("(. /tmp/env; make clean >> /dev/null 2>&1)")
     assert not os.path.exists(API+"/KIM_API/libkim.so")

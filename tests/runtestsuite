@@ -1,11 +1,9 @@
 #!/bin/bash 
 REPO=/home/vagrant/openkim-pipeline/tests/repo 
-echo "
-KIM_DIR=/home/vagrant/openkim-api/
+echo "KIM_DIR=/home/vagrant/openkim-api/
 KIM_REPOSITORY_DIR=$REPO/
 KIM_TESTS_DIR=$REPO/te/
 KIM_TEST_DRIVERS_DIR=$REPO/td/
 KIM_MODELS_DIR=$REPO/mo/ 
-KIM_MODEL_DRIVERS_DIR=$REPO/md/ 
-" > /tmp/env
-/usr/bin/env `cat /tmp/env` py.test
+KIM_MODEL_DRIVERS_DIR=$REPO/md/" > /tmp/env
+(. /tmp/env; py.test)
