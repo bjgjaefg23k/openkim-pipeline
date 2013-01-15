@@ -238,9 +238,9 @@ class KIMObject(object):
         logger.warning("REMOVING the kim object %r", self)
         shutil.rmtree(self.path)
 
-#---------------------------------------------
+#=============================================
 # Actual KIM Models
-#---------------------------------------------
+#=============================================
 
 
 #---------------------------------------------
@@ -420,6 +420,9 @@ class Primitive(PersistentDict):
     def __str__(self):
         return simplejson.dumps(self,indent=4)
 
+#---------------------------------------------
+# Schema
+#---------------------------------------------
 
 class Schema(PersistentDict):
     """ A KIM Schema """
