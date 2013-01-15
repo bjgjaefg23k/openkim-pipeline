@@ -311,7 +311,7 @@ class Director(object):
 
                     # for all of the models, add a job
                     test = modelslib.Test(kimid)
-                    models = test.models
+                    models = list(test.models)
                     tests = [test]*ll(models)
                 elif leader=="MO":
                     # we have a model, first pull it and build it
@@ -320,7 +320,7 @@ class Director(object):
 
                     # for all of the tests, add a job
                     model = modelslib.Model(kimid)
-                    tests = model.tests
+                    tests = list(model.tests)
                     models = [model]*ll(tests)
                 elif leader=="TD":
                     # we have a new test driver, first pull and build it
@@ -366,7 +366,7 @@ class Director(object):
                     self.make_all()
 
                     # run against all test verifications
-                    tests = modelslib.VertificationTest.all()
+                    tests = list(modelslib.VertificationTest.all())
                     models = [modelslib.Test(kimid, search=False)]*ll(tests)
                 elif leader=="MO":
                     # a pending model
@@ -374,7 +374,7 @@ class Director(object):
                     self.make_all()
 
                     # run against all model verifications
-                    tests = modelslib.VertificationModel.all()
+                    tests = list(modelslib.VertificationModel.all())
                     models = [modelslib.Model(kimid, search=False)]*ll(tests)
 
                 elif leader=="TD":
@@ -389,8 +389,13 @@ class Director(object):
                     self.logger.error("Tried to update an invalid KIM ID!: %r",kimid)
                 checkmatch = False 
 
-        for test, model in zip(tests,models):
-            if checkmatch and kimapi.valid_match(test,model):
+        if checkmatch == True:
+            for test, model in zip(tests,models):
+                if kimapi.valid_match(test,model):
+                    priority = int(priority_factor*database.test_model_to_priority(test,model) * 1000000)
+                    self.check_dependencies_and_push(test,model,priority,status)
+        else:
+            for test, model in zip(tests,models):
                 priority = int(priority_factor*database.test_model_to_priority(test,model) * 1000000)
                 self.check_dependencies_and_push(test,model,priority,status)
 
