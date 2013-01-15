@@ -29,7 +29,7 @@
 
 !****************************************************************************
 !**
-!**  MODULE ex_model_Al_PF_ErcolessiAdams
+!**  MODULE model_Al__MO_000000000001_000
 !**
 !**  Ercolessi-Adams pair functional model for Al
 !**
@@ -47,7 +47,7 @@
 #define THIS_FILE_NAME __FILE__
 #define TRUEFALSE(TRUTH) merge(1,0,(TRUTH))
 
-module ex_model_Al_PF_ErcolessiAdams
+module model_Al__MO_000000000001_000
 
 use KIM_API
 implicit none
@@ -1071,15 +1071,15 @@ return
 
 end function Destroy
 
-end module ex_model_Al_PF_ErcolessiAdams
+end module model_Al__MO_000000000001_000
 
 !-------------------------------------------------------------------------------
 !
 ! Model initialization routine (REQUIRED)
 !
 !-------------------------------------------------------------------------------
-integer function ex_model_Al_PF_ErcolessiAdams_init(pkim)
-use ex_model_Al_PF_ErcolessiAdams
+integer function model_Al__MO_000000000001_000_init(pkim)
+use model_Al__MO_000000000001_000
 use KIM_API
 implicit none
 
@@ -1153,8 +1153,8 @@ ielast = 1
 
 ier = KIM_STATUS_OK
 42 continue
-ex_model_Al_PF_ErcolessiAdams_init = ier
+model_Al__MO_000000000001_000_init = ier
 return
 
-end function ex_model_Al_PF_ErcolessiAdams_init
+end function model_Al__MO_000000000001_000_init
 

@@ -45,7 +45,7 @@
 #define THIS_FILE_NAME __FILE__
 #define TRUEFALSE(TRUTH) merge(1,0,(TRUTH))
 
-module ex_model_driver_p_lj
+module modeldriver_lj__md_000000000000_000
 
 use KIM_API
 implicit none
@@ -638,15 +638,15 @@ return
 
 end function destroy
 
-end module ex_model_driver_p_lj
+end module modeldriver_lj__md_000000000000_000
 
 !-------------------------------------------------------------------------------
 !
 ! Model driver initialization routine (REQUIRED)
 !
 !-------------------------------------------------------------------------------
-integer function ex_model_driver_p_lj_init(pkim, byte_paramfile, nmstrlen, numparamfiles)
-use ex_model_driver_p_lj
+integer function modeldriver_lj__md_000000000000_000_init(pkim, byte_paramfile, nmstrlen, numparamfiles)
+use modeldriver_lj__md_000000000000_000
 use KIM_API
 implicit none
 
@@ -915,7 +915,7 @@ endif
 
 ier = KIM_STATUS_OK
 42 continue
-ex_model_driver_p_lj_init = ier
+modeldriver_lj__md_000000000000_000_init = ier
 return
 
-end function ex_model_driver_p_lj_init
+end function modeldriver_lj__md_000000000000_000_init

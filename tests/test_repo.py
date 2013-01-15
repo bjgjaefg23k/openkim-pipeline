@@ -30,18 +30,18 @@ def test_builds():
 
 def test_orm_testobj():
     import models
-    test = models.Test("LatticeConstantCubicEnergy_Fe_fcc__TE_248695510051_000")    
-    assert len( list(test.models) ) == 3
-    assert test.kim_code == "LatticeConstantCubicEnergy_Fe_fcc__TE_248695510051_000"
-    assert test.kim_code_name == "LatticeConstantCubicEnergy_Fe_fcc"
+    test = models.Test("LatticeConstantCubicEnergy_Al_fcc__TE_000000000000_000")    
+    assert len( list(test.models) ) == 1
+    assert test.kim_code == "LatticeConstantCubicEnergy_Al_fcc__TE_000000000000_000"
+    assert test.kim_code_name == "LatticeConstantCubicEnergy_Al_fcc"
     assert test.kim_code_leader == "TE"
     assert test.kim_code_version == "000"
 
    
 def test_orm_testobj_driver():
     import models
-    test = models.Test("LatticeConstantCubicEnergy_Fe_fcc__TE_248695510051_000")
-    assert "LatticeConstantCubicEnergy__TD_373755852346_000"  == list(test.test_drivers)[0].kim_code
+    test = models.Test("LatticeConstantCubicEnergy_Ar_fcc__TE_000000000001_000")
+    assert "LatticeConstantCubicEnergy__TD_000000000000_000"  == list(test.test_drivers)[0].kim_code
 
 def test_rsync_write():
     pass
