@@ -1,4 +1,4 @@
-TEST_NAME :=LatticeConstantCubicEnergy_Fe_fcc__TE_248695510051_000
+TEST_NAME :=LatticeConstantCubicEnergy_Ar_fcc__TE_000000000001_000
 Unit_Handling := flexible
 Unit_length :=A
 Unit_energy :=eV
