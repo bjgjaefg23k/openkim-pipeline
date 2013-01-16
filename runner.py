@@ -22,7 +22,7 @@ def getboxinfo():
     things = ['sitename','username','boxtype','ipaddr','vmversion','setuphash']
 
     for thing in things:
-        info["_"+thing] = open(os.path.join('/persistent',thing)).read().strip()
+        info[thing] = open(os.path.join('/persistent',thing)).read().strip()
     return info
 
 def line_filter(line):
@@ -32,7 +32,7 @@ def tail(f, n=5):
     try:
         stdin,stdout = os.popen2("tail -n "+str(n)+" "+f)
         stdin.close()
-        lines = stdout.readlines(); 
+        lines = stdout.readlines();
         stdout.close()
     except:
         lines = ["<NONE>"]
@@ -40,7 +40,7 @@ def tail(f, n=5):
 
 def last_output_lines(test, stdout, stderr):
     with test.in_dir():
-        return tail(stdout), tail(stderr) 
+        return tail(stdout), tail(stderr)
 
 def run_critical_verifiers(kimobj):
     vt = ["Build__VT_000000000000_000",
@@ -105,18 +105,16 @@ class Command(object):
 #=============================================================
 # the real meat and cheese of this file
 #=============================================================
-def run_test_on_model(test,model):
-    """ run a test with the corresponding model,
-    with /usr/bin/time profilling,
-    capture the output as a dict, and return 
-                 OR
-    run a V{T,M} with the corresponding {TE,MO}"""
+def execute_test_on_model(test,model):
+    """ Execute a test with a corresponding model
+    with /usr/bin/time profilling
+    """
     logger.info("running %r with %r",test,model)
 
     #grab the executable
     executable = test.executable
     #profiling time thing
-    timeblock = "/usr/bin/time --format={\\\"_usertime\\\":%U,\\\"_memmax\\\":%M,\\\"_memavg\\\":%K} "
+    timeblock = "/usr/bin/time --format={\\\"usertime\\\":%U,\\\"memmax\\\":%M,\\\"memavg\\\":%K} "
 
     test_dir = test.path
     # run the test in its own directory
@@ -126,7 +124,7 @@ def run_test_on_model(test,model):
         # clearing when a test with a lot of output is run.
         with test.processed_infile(model) as kim_stdin_file, open(STDOUT_FILE,'w') as stdout_file, open(STDERR_FILE,'w') as stderr_file:
             #grab the input file
-            output_info = test.out_dict
+            # output_info = test.out_dict
             start_time = time.time()
             process = Command(timeblock+ executable,stdin=kim_stdin_file,stdout=stdout_file,stderr=stderr_file)
             logger.info("launching run...")
@@ -143,6 +141,21 @@ def run_test_on_model(test,model):
     if process.poll() is None:
         process.kill()
         raise KIMRuntimeError, "your test didn't terminate nicely"
+
+    return (end_time - start_time)
+
+
+def run_test_on_model(test,model):
+    """
+    run a test with the corresponding model,
+    with /usr/bin/time profilling,
+    capture the output as a dict, and return
+                 OR
+    run a V{T,M} with the corresponding {TE,MO}
+    """
+
+    # execute test
+    run_time = execute_test_on_model(test,model)
 
     with test.in_dir(), open(STDOUT_FILE) as stdout_file:
         stdout = stdout_file.read()
@@ -163,6 +176,8 @@ def run_test_on_model(test,model):
     #    raise PipelineTemplateError, "Test didn't return JSON! \n<<STDOUT: \n%s>> \n<<STDERR: \n%s>>" % (last_out, last_err)
     logger.info("Run completed, searching for output...")
 
+    # Try to find the first valid bit of json looking backwards in the output.
+    logger.debug('Finding JSON output...')
     data = None
     for data_string in itertools.ifilter(line_filter, reversed(stdout.splitlines())):
         try:
@@ -175,30 +190,69 @@ def run_test_on_model(test,model):
             continue
 
     if data is None:
+        # We couldn't find any valid JSON
         logger.error("We didn't get JSON back!")
         last_out, last_err = last_output_lines(test, STDOUT_FILE, STDERR_FILE)
         raise PipelineTemplateError, "Test didn't return JSON! \n<<STDOUT: \n%s>> \n<<STDERR: \n%s>>" % (last_out, last_err)
 
-    #GET METADATA
-    data = { output_info.get(key,key):val for key,val in data.iteritems() }
-    data["_kimlog"] = "@FILE[{}]".format(KIMLOG_FILE)
-    data["_stdout"] = "@FILE[{}]".format(STDOUT_FILE)
-    data["_testname"] = test.kim_code
-    data["_modelname"] = model.kim_code
-    data["_time"] = end_time-start_time
-    data["_created_at"] = time.time()
-    data["_vmversion"] = os.environ["VMVERSION"]
-    data.update(getboxinfo())
+    logger.debug('Found JSON:\n{}'.format(simplejson.dumps(data,indent=4)))
+
+    #Add output
+    tr_out = {}
+    tr_out['output'] = data
+
+    # Add metadata
+    tr_out['info'] = {}
+    info_dict = tr_out['info']
+    info_dict["kimlog"] = "@FILE[{}]".format(KIMLOG_FILE)
+    info_dict["stdout"] = "@FILE[{}]".format(STDOUT_FILE)
+    info_dict["testname"] = test.kim_code
+    info_dict["modelname"] = model.kim_code
+    info_dict["time"] = run_time
+    info_dict["created_at"] = time.time()
+    info_dict["vmversion"] = os.environ["VMVERSION"]
+    info_dict.update(getboxinfo())
 
     # get the information from the timing script
     with test.in_dir(), open(STDERR_FILE) as stderr_file:
         stderr = stderr_file.read()
     time_str = stderr.splitlines()[-1]
     time_dat = simplejson.loads(time_str)
-    data.update(time_dat)
+    info_dict.update(time_dat)
+
+    logger.debug("Added metadata:\n{}".format(simplejson.dumps(info_dict,indent=4)))
+
+    #populate proper TR
+    template = test.template
+    vals = {'MODELNAME':model.kim_code, 'TESTNAME': test.kim_code , 'TRCODE':'@@TRCODE@@' }
+    vals.update(data)
+    trform = template.render(**vals)
+    logger.debug("Manipulated template:\n{}".format(trform))
+    with test.in_dir(), open(TEMPLATE_OUT,'w') as f:
+        f.write(trform)
+
+    trdict = simplejson.loads(trform)
+    logger.debug("Formed dict:\n{}".format(simplejson.dumps(trdict,indent=4)))
+    tr_out.update(trdict)
 
     logger.debug("got data %r",data)
-    return data
+    with test.in_dir(), open(TR_OUTPUT,'w') as f:
+        f.write(simplejson.dumps(tr_out, indent=4))
+
+    #Add kim_id_test, kim_id_model, validation_schema
+    if isinstance(test, kimobjects.Test):
+        schema_type = 'schema_tr'
+    else:
+        schema_type = 'schema_vr'
+
+    tr_out.update({
+        'kim_id_test': test.kim_code,
+        'kim_id_model': model.kim_code,
+        'validation_schema': schema_type}
+        )
+
+    # TODO: We need to inject 'kim_id' before writing
+    return tr_out
 
 
 #run all the tests on all the models

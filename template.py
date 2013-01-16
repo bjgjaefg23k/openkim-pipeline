@@ -22,6 +22,10 @@ logger = logger.getChild("template")
 import kimobjects
 import database
 
+import jinja2, simplejson
+from functools import partial
+
+
 #==========================
 # Keywords
 #==========================
@@ -37,6 +41,23 @@ RE_DATA     = re.compile(r"(@DATA(?:\[" + RE_KIMID + r"\])(?:\[" +  RE_KIMID +  
 #RE_CLEANER  = re.compile("(@[A-Z]*\[)(.*)(\])") # to remove the @FILE[] and @DATA[]
 RE_PATH     = re.compile("(@PATH\[(.*?)\])")
 RE_TEST     = re.compile("(@TESTNAME)")
+
+
+#-----------------------------------------
+# Jinja Stuff
+#-----------------------------------------
+
+template_environment = jinja2.Environment(
+        loader=jinja2.FileSystemLoader('/'),
+        block_start_string='@[',
+        block_end_string=']@',
+        variable_start_string='@@',
+        variable_end_string='@@',
+        comment_start_string='@#',
+        comment_end_string='#@',
+        )
+
+template_environment.filters['json'] = partial(simplejson.dumps,indent=4)
 
 
 #-------------------------------------------
@@ -253,7 +274,7 @@ def process(inp, modelname, testname, modelonly= False):
         try:
             test = kimobjects.Verifier(testname)
         except AssertionError as e:
-            raise 
+            raise
     with test.in_dir():
         with open(TEMP_INPUT_FILE,'w') as out:
             for line in inp:

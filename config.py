@@ -30,11 +30,15 @@ if os.environ.has_key("PIPELINE_DEBUG"):
 #get the repository dir from the symlink
 KIM_REPOSITORY_DIR = os.environ["KIM_REPOSITORY_DIR"]
 KIM_PIPELINE_DIR = os.path.abspath(os.path.dirname(__file__))
+KIM_SCHEMAS_DIR = os.path.join(KIM_REPOSITORY_DIR,'schemas')
 
 METADATA_INFO_FILE = "metadata.json"
 PIPELINE_INFO_FILE = "pipelineinfo.json"
 INPUT_FILE = "pipeline.in"
 OUTPUT_FILE = "pipeline.out"
+TEMPLATE_FILE = 'pipeline.json'
+TEMPLATE_OUT = "pipeline.json.processed"
+TR_OUTPUT = "pipeline.tr.processed"
 STDOUT_FILE = "pipeline.stdout"
 STDERR_FILE = "pipeline.stderr"
 TEMP_INPUT_FILE = "pipeline.in.tmp"
@@ -53,7 +57,7 @@ else:
     PORT_TX     = 14176
     PORT_RX     = 14175
     RSYNC_DIR   = "/repository/"
-    
+
 GLOBAL_IP   = "127.0.0.1"
 GLOBAL_USER = "pipeline"
 GLOBAL_HOST = "pipeline.openkim.org"
@@ -102,6 +106,9 @@ class PygmentHandler(logging.StreamHandler):
 #create a console logger
 console_handler = PygmentHandler()
 console_handler.setLevel(logging.INFO)
+if PIPELINE_DEBUG:
+    console_handler.setLevel(logging.DEBUG)
+
 console_handler.setFormatter(log_formatter)
 logger.addHandler(console_handler)
 
