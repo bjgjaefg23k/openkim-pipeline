@@ -34,7 +34,7 @@ class LogStyle(Style):
         Keyword:                   "#cdcd00",
         Keyword.Declaration:       "#00cd00",
         Keyword.Namespace:         "#cd00cd",
-        Keyword.Pseudo:            "",
+        Keyword.Pseudo:            "bold #00cd00",
         Keyword.Type:              "#00cd00",
 
         Operator:                  "#3399cc",
@@ -76,12 +76,13 @@ class LogLexer(RegexLexer):
     mimetypes = ['text/x-log']
 
     flags = re.VERBOSE 
-    _logger = r'-\s(pipeline)(\.([a-z._\-0-9]+))+\s-'
+    _logger = r'-\s(pipeline)(\.([a-z._\-0-9]+))*\s-'
     _kimid  = r"((?:[_a-zA-Z][_a-zA-Z0-9]*?_?_)?[A-Z]{2}_[0-9]{12}(?:_[0-9]{3})?)"
     _path   = r'(?:[a-zA-Z0-9_-]{0,}/{1,2}[a-zA-Z0-9_\.-]+)+'
     _debug  = r'DEBUG'
     _info   = r'INFO'
     _error  = r'ERROR'
+    _pass   = r'PASS'
     _date   = r'\d{4}-\d{2}-\d{2}'
     _time   = r'\d{2}:\d{2}:\d{2},\d{3}'
     _ws     = r'(?:\s|//.*?\n|/[*].*?[*]/)+'
@@ -106,6 +107,7 @@ class LogLexer(RegexLexer):
             (_debug, Generic.Strong),
             (_info, Generic.Traceback),
             (_error, Generic.Error),
+            (_pass, Keyword.Pseudo),
             (r'[0-9]+', Generic.Heading),
             ('[a-zA-Z_][a-zA-Z0-9_]*', Generic.Heading),
             (r'[{}`()\"\[\]@.,:-\\]', Punctuation),

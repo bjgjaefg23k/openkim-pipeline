@@ -94,8 +94,8 @@ class Communicator(Thread):
 #==================================================================
 class BeanstalkHandler(logging.Handler):
     """ A beanstalk logging handler """
-    def __init__(self,bsd):
-        self.bsd = bsd
+    def __init__(self,comm):
+        self.comm = comm 
         self.info = runner.getboxinfo()
         super(BeanstalkHandler,self).__init__()
 
@@ -104,8 +104,7 @@ class BeanstalkHandler(logging.Handler):
         err_message = self.format(record)
         message = self.info.copy()
         message['message'] = err_message
-        self.bsd.use(TUBE_LOG)
-        self.bsd.put(simplejson.dumps(message))
+        self.comm.send_msg(TUBE_LOG,simplejson.dumps(message))
 
 class Message(object):
     """Message format for the queue system:
@@ -197,7 +196,7 @@ class Director(object):
         self.bsd.ignore("default")
 
         #attach the beanstalk logger
-        beanstalk_handler = BeanstalkHandler(self.bsd)
+        beanstalk_handler = BeanstalkHandler(self.comm)
         beanstalk_handler.setLevel(BEANSTALK_LEVEL)
         beanstalk_handler.setFormatter(log_formatter)
         self.logger.addHandler(beanstalk_handler)
@@ -205,7 +204,6 @@ class Director(object):
     def disconnect_from_daemon(self):
         """ close and kill """
         self.bsd.close()
-        self.daemon.kill()
 
     def get_tr_id(self):
         """ Generate a TR id """
@@ -313,7 +311,7 @@ class Director(object):
 
                     # for all of the models, add a job
                     test = modelslib.Test(kimid)
-                    models = test.models
+                    models = list(test.models)
                     tests = [test]*ll(models)
                 elif leader=="MO":
                     # we have a model, first pull it and build it
@@ -322,7 +320,7 @@ class Director(object):
 
                     # for all of the tests, add a job
                     model = modelslib.Model(kimid)
-                    tests = model.tests
+                    tests = list(model.tests)
                     models = [model]*ll(tests)
                 elif leader=="TD":
                     # we have a new test driver, first pull and build it
@@ -360,6 +358,7 @@ class Director(object):
                             models.extend([m]*ll(mtests))
                 else:
                     self.logger.error("Tried to update an invalid KIM ID!: %r",kimid)
+                checkmatch = True
             if status == "pending":
                 if leader=="TE":
                     # a pending test
@@ -367,16 +366,16 @@ class Director(object):
                     self.make_all()
 
                     # run against all test verifications
-                    tests = modelslib.VertificationTest.all()
-                    models = [modelslib.Test(kimid)]*ll(tests)
+                    tests = list(modelslib.VertificationTest.all())
+                    models = [modelslib.Test(kimid, search=False)]*ll(tests)
                 elif leader=="MO":
                     # a pending model
                     rsync_tools.director_model_verification_read(kimid)
                     self.make_all()
 
                     # run against all model verifications
-                    tests = modelslib.VertificationModel.all()
-                    models = [modelslib.Model(kimid)]*ll(tests)
+                    tests = list(modelslib.VertificationModel.all())
+                    models = [modelslib.Model(kimid, search=False)]*ll(tests)
 
                 elif leader=="TD":
                     # a pending test driver
@@ -388,9 +387,15 @@ class Director(object):
                     # no verifications really... ? FIXME
                 else:
                     self.logger.error("Tried to update an invalid KIM ID!: %r",kimid)
+                checkmatch = False 
 
-        for test, model in zip(tests,models):
-            if kimapi.valid_match(test,model):
+        if checkmatch == True:
+            for test, model in zip(tests,models):
+                if kimapi.valid_match(test,model):
+                    priority = int(priority_factor*database.test_model_to_priority(test,model) * 1000000)
+                    self.check_dependencies_and_push(test,model,priority,status)
+        else:
+            for test, model in zip(tests,models):
                 priority = int(priority_factor*database.test_model_to_priority(test,model) * 1000000)
                 self.check_dependencies_and_push(test,model,priority,status)
 
@@ -460,7 +465,7 @@ class Director(object):
             return 1
         return 0
 
-    def halt(self):
+    def disconnect(self):
         self.disconnect_from_daemon()
 
 
@@ -490,7 +495,7 @@ class Worker(object):
 
         self.logger.info("Connected to daemon")
         #attach the beanstalk logger
-        beanstalk_handler = BeanstalkHandler(self.bsd)
+        beanstalk_handler = BeanstalkHandler(self.comm)
         beanstalk_handler.setLevel(BEANSTALK_LEVEL)
         beanstalk_handler.setFormatter(log_formatter)
         self.logger.addHandler(beanstalk_handler)
@@ -515,7 +520,6 @@ class Worker(object):
         msg = simplejson.dumps(dic)
         self.bsd.use(tube)
         self.bsd.put(msg)
-        print "*** sending"
         self.comm.send_msg(tube, msg)
 
     def get_jobs(self):

@@ -1,0 +1,37 @@
+#!/usr/bin/env python
+import os, re
+import simplejson
+
+# get some information about the test
+modelname = raw_input("modelname=")
+path = raw_input("path=")
+directory = os.path.dirname(path)
+
+# from here on out, we will be in the test's directory
+os.chdir(directory)
+
+#=========================================================
+# now, we check that the
+# 1. the pipeline api is able to create the test object
+#==========================================================
+title = "Initialized by the openkim-pipeline API"
+critical = True
+passed = True
+msg = ""
+warn = ""
+
+def fail(reason):
+    global msg, passed
+    passed = False
+    msg += reason+"\n"
+
+try:
+    import models
+    test = models.Test(modelname)
+    test.infile
+    test.outfile
+except Exception as e:
+    fail("Could not be initialized by the Pipeline API: %r"% e)
+
+results = {"pass": passed, "message": msg, "warn": warn, "critical": critical, "title": title}
+print "\n"+simplejson.dumps(results)

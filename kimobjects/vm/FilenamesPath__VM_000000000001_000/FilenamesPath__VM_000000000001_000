@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+import os, re
+import simplejson
+
+# get some information about the test
+modelname = raw_input("modelname=")
+path = raw_input("path=")
+directory = path
+
+# from here on out, we will be in the test's directory
+os.chdir(directory)
+
+#=========================================================
+# now, we check that the
+# 1. files exist that should - 
+#   a. executable with executable bit set
+#   b. .kim file of the same name
+#   c. pipeline.{in,out}
+#   d. Makefile 
+#
+# 2. all names match the KIM id, including those in
+#    the .kim file and really any other references
+#
+#==========================================================
+title = "Proper files exist and executable bit set"
+critical = True
+passed = True
+msg = ""
+warn = ""
+
+def fail(reason):
+    global msg, passed
+    passed = False
+    msg += reason+"\n"
+
+def file_contains(filename, pattern):
+    matcher = re.compile(pattern)
+    with open(filename) as f:
+        contents = f.readlines()
+        for c in contents:
+            m = matcher.match(c)
+            if m is not None:
+                return True
+    return False
+
+sharedobj = modelname+".so"
+if not os.path.isfile(sharedobj):
+    fail("Executable " + modelname + " does not exist.")
+if not os.access(sharedobj, os.X_OK):
+    fail("File " + modelname + " is not executable.")
+
+kimfile = modelname+".kim"
+if not os.path.isfile(kimfile):
+    fail("KIM file " + kimfile + " does not exist.")
+else:
+    if not file_contains(kimfile, r'MODEL_NAME\s*:=\s*'+modelname):
+        fail("KIM file contains inappropriate MODEL_NAME parameter.")
+
+if not os.path.isfile("Makefile"):
+    fail("No Makefile provided by test.")
+
+results = {"pass": passed, "message": msg, "warn": warn, "critical": critical, "title": title}
+print "\n"+simplejson.dumps(results)

@@ -1,0 +1,7 @@
+#!/bin/bash -e
+read -p "enter test driver: " TESTDRIVER
+read -p "enter species: " SPECIES
+read -p "enter lattice type: " LATTICE
+read -p "enter model name: " MODELNAME
+
+echo -e "$SPECIES\n$LATTICE\n$MODELNAME" | $TESTDRIVER
