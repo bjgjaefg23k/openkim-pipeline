@@ -37,15 +37,6 @@ TUBE_RESULTS = "results"
 TUBE_ERRORS  = "errors"
 TUBE_LOG     = "logs"
 
-KEY_JOBID    = "jobid"
-KEY_PRIORITY = "priority"
-KEY_JOB      = "job"
-KEY_RESULTS  = "results"
-KEY_ERRORS   = "errors"
-KEY_DEPENDS  = "depends"
-KEY_CHILD    = "child"
-KEY_STATUS   = "status"
-
 BEANSTALK_LEVEL = logging.INFO
 
 def open_ports(port, rx, tx, user, addr, ip):
@@ -68,8 +59,12 @@ class Communicator(Thread):
         # decide on the port order
         self.port_tx = PORT_TX
         self.port_rx = PORT_RX 
-        self.con = zmq.Context()
  
+        super(Communicator, self).__init__()
+        self.daemon = True
+
+    def connect(self):
+        self.con = zmq.Context()
         # open both the rx/tx lines, bound
         self.sock_tx = self.con.socket(zmq.PUB)
         self.sock_tx.connect("tcp://127.0.0.1:"+str(self.port_tx))
@@ -77,10 +72,10 @@ class Communicator(Thread):
         self.sock_rx = self.con.socket(zmq.SUB)
         self.sock_rx.setsockopt(zmq.SUBSCRIBE, "")
         self.sock_rx.connect("tcp://127.0.0.1:"+str(self.port_rx))
- 
-        super(Communicator, self).__init__()
-        self.daemon = True
- 
+
+    def disconnect(self):
+        pass
+
     def run(self):
         while 1:
             obj = self.sock_rx.recv_pyobj()
@@ -106,111 +101,140 @@ class BeanstalkHandler(logging.Handler):
         message['message'] = err_message
         self.comm.send_msg(TUBE_LOG,simplejson.dumps(message))
 
-class Message(object):
-    """Message format for the queue system:
-        "jobid":    id assigned from the director
-        "priority": a string priority
-        "job":      (testid, modelid, testresult id)
-        "results":  the json message produced by the run
-        "errors":   the exception caught and returned as a string
-        "depends":  a list of tuples of jobs
-    """
-    def __init__(self, string=None, jobid=None,
-            priority=None, job=None, results=None,
-            errors=None, depends=None, child=None,
-            status=None):
-        if string is not None:
-            self.msg_from_string(string)
-        else:
-            self.jobid = jobid
-            self.priority = priority
-            self.job = job
-            self.results = results
-            self.errors = errors
-            self.depends = depends
-            self.child = child
-            self.status = status
+class Message(dict):
+    def __init__(self, **kwargs):
+        super(Message, self).__init__()
+        dic = kwargs
+        if kwargs.has_key('string'):
+            dic = simplejson.loads(kwargs['string'])
+        for key in dic.keys():
+            self[key] = dic[key]
 
-    def todict(self):
-        return {KEY_JOBID: self.jobid, KEY_PRIORITY: self.priority,
-            KEY_JOB: self.job, KEY_RESULTS: self.results, KEY_ERRORS: self.errors,
-            KEY_DEPENDS: self.depends, KEY_CHILD: self.child, KEY_STATUS: self.status} 
+    def __getattr__(self, name):
+        if not self.has_key(name):
+            return None
+        return self[name]
+    
+    def __setattr__(self, name, value):
+        self[name] = value
 
     def __repr__(self):
-        """ The repr of the string is a ``simplejson.dumps`` """
-        return simplejson.dumps(self.todict())
-
-    def msg_from_string(self,string):
-        """ Generate a Message from a string """
-        dic = simplejson.loads(string)
-        self.jobid = dic[KEY_JOBID]
-        self.priority = dic[KEY_PRIORITY]
-        self.job = dic[KEY_JOB]
-        self.results = dic[KEY_RESULTS]
-        self.errors = dic[KEY_ERRORS]
-        self.depends = dic[KEY_DEPENDS]
-        self.child = dic[KEY_CHILD]
-        self.status = dic[KEY_STATUS]
+        return simplejson.dumps(self)
 
 def ll(iterator):
     return len(list(iterator))
 
+
 #==================================================================
-# director class for the pipeline
+# Agent is the base class for Director, Worker, Site
+# handles basic networking and message responding (so it is not duplicated)
 #==================================================================
-class Director(object):
-    """ The Director object, knows to listen to incoming jobs, computes dependencies
-    and passes them along to workers
-    """
-    def __init__(self, num=0):
-        self.ip   = GLOBAL_IP
-        self.port = GLOBAL_PORT
-        self.timeout = PIPELINE_TIMEOUT
+class Agent(object):
+    def __init__(self, name='worker', num=0, uuid=''):
+        self.ip       = GLOBAL_IP
+        self.port     = GLOBAL_PORT
+        self.timeout  = PIPELINE_TIMEOUT
         self.msg_size = PIPELINE_MSGSIZE
-        self.logger = logger.getChild("director-%i" % num)
-        self.boxinfo = runner.getboxinfo()
+        self.boxinfo  = runner.getboxinfo()
+
+        self.name = name
         self.num = num
         self.halt = False
+        if isinstance(uuid,str):
+            import uuid as UUID
+            uuid = UUID.uuid4()
+        self.uuid = uuid.hex+":"+str(self.num)
 
-        self.comm = Communicator()
+        self.comm   = Communicator()
+        self.logger = logger.getChild("%s-%i" % (self.name, num))
+
+    def connect(self):
+        # start up the 2-way comm too
+        self.comm.connect()
         self.comm.start()
 
-    def run(self):
-        """ connect and grab the job thread """
-        self.connect_to_daemon()
-        self.get_updates()
-
-    def connect_to_daemon(self):
-        """ try to connect to the daemon, or launch one if we timeout """
         self.logger.info("Connecting to beanstalkd")
         try:
             self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
         except bean.SocketError:
             # We failed to connect, this is really bad
             self.logger.error("Failed to connect to beanstalk queue after launching ssh")
-
-        self.logger.info("Director ready")
-
-        # we want to get updates from the webserver on the 'update' tube
-        self.bsd.watch(TUBE_UPDATE)
-        self.bsd.ignore("default")
+            raise bean.SocketError("Failed to connect to %s" % GLOBAL_HOST)
 
         #attach the beanstalk logger
         beanstalk_handler = BeanstalkHandler(self.comm)
         beanstalk_handler.setLevel(BEANSTALK_LEVEL)
         beanstalk_handler.setFormatter(log_formatter)
         self.logger.addHandler(beanstalk_handler)
+        self.logger.info("%s ready" % self.name.title())
 
-    def disconnect_from_daemon(self):
-        """ close and kill """
-        self.bsd.close()
+    def disconnect(self):
+        if self.bsd:
+            self.bsd.close()
+
+    def exit_safe(self): 
+        # we got the signal to shutdown, so release the job first
+        if hasattr(self, 'job') and self.job is not None:
+            self.job.delete()
+            if hasattr(self, 'jobmsg') and self.jobmsg is not None: 
+                self.job_message(self.jobmsg, errors="Caught SIGINT and killed", tube=TUBE_ERRORS)
+        self.disconnect()
+
+    def job_message(self, jobmsg, errors=None, results=None, tube=TUBE_RESULTS):
+        """ Send back a job message """
+        jobmsg.results = results
+        jobmsg.errors = errors
+        jobmsg.update(self.boxinfo)
+        msg = simplejson.dumps(jobmsg)
+        self.bsd.use(tube)
+        self.bsd.put(msg)
+        self.comm.send_msg(tube, msg)
+
+    def make_object(self, kimid):
+        self.logger.debug("Building the source for %r", kimid)
+        kimobj = modelslib.KIMObject(kimid)
+        with kimobj.in_dir():
+            try:
+                check_call("make")
+            except CalledProcessError as e:
+                return 1
+            return 0
+
+    def make_all(self):
+        self.logger.debug("Building everything...")
+        try:
+            check_call("makekim",shell=True)
+        except CalledProcessError as e:
+            self.logger.error("could not makekim")
+            self.job_message(job, errors="could not makekim!", tube=TUBE_ERRORS)
+
+            raise RuntimeError, "our makekim failed!"
+            return 1
+        return 0
+
+#==================================================================
+# director class for the pipeline
+#==================================================================
+class Director(Agent):
+    """ The Director object, knows to listen to incoming jobs, computes dependencies
+    and passes them along to workers
+    """
+    def __init__(self, num=0, uuid=''):
+        super(Director, self).__init__(name="director", num=num, uuid=uuid)
+
+    def run(self):
+        """ connect and grab the job thread """
+        self.connect()
+
+        self.bsd.watch(TUBE_UPDATE)
+        self.bsd.ignore("default")
+
+        self.get_updates()
 
     def get_tr_id(self):
-        """ Generate a TR id """
         return database.new_test_result_id()
 
     def get_vr_id(self):
-        """ Get VR id from database """
         return database.new_verification_result_id()
 
     def get_updates(self):
@@ -230,7 +254,7 @@ class Director(object):
         while not self.halt:
             self.logger.info("Director Waiting for message...")
             request = self.bsd.reserve()
-            self.request = request
+            self.job = request
 
             # make sure it doesn't come alive again soon
             request.bury()
@@ -251,12 +275,8 @@ class Director(object):
                     self.logger.error("Director had an error on update: {}\n {}".format(e, tb))
 
             request.delete()
-            self.request = None
+            self.job = None
         
-    def exit_safe(self):
-        if hasattr(self, 'request') and self.request is not None:
-            self.request.delete()
-
     def priority_to_number(self,priority):
         priorities = {"immediate": 0, "very high": 0.01, "high": 0.1,
                       "normal": 1, "low": 10, "very low": 100}
@@ -380,11 +400,9 @@ class Director(object):
                 elif leader=="TD":
                     # a pending test driver
                     pass
-                    # no verifications really... ? FIXME
                 elif leader=="MD":
                     # a pending model driver
                     pass
-                    # no verifications really... ? FIXME
                 else:
                     self.logger.error("Tried to update an invalid KIM ID!: %r",kimid)
                 checkmatch = False 
@@ -408,10 +426,7 @@ class Director(object):
             #grab the input file
             ready, TRs, PAIRs = test.dependency_check(model)
             self.logger.debug("Dependency check returned <%s, %s, %s>" % (ready, TRs, PAIRs))
-            if TRs:
-                TR_ids = tuple(map(str,TRs))
-            else:
-                TR_ids = ()
+            TR_ids = tuple(map(str,TRs)) if TRs else ()
 
             if hasattr(model, "model_driver"):
                 md = model.model_driver
@@ -428,99 +443,36 @@ class Director(object):
                 if PAIRs:
                     for (t,m) in PAIRs:
                         self.logger.info("Submitting dependency <%s, %s>" % (t, m))
-                        depids.append(self.check_dependencies_and_push(str(t),str(m),priority/10,status,child=(str(test),str(model),trid)))
+                        depids.append(self.check_dependencies_and_push(str(t),str(m),priority/10,
+                            status,child=(str(test),str(model),trid)))
 
-            msg = Message(job=(str(test),str(model)),jobid=trid, child=child, depends=TR_ids+tuple(depids), status=status) 
-            self.job_message(msg)
+            msg = Message(job=(str(test),str(model)),jobid=trid, 
+                    child=child, depends=TR_ids+tuple(depids), status=status) 
+            self.job_message(msg, tube=TUBE_JOBS)
 
         return depids
 
-    def job_message(self, jobmsg, tube=TUBE_JOBS):
-        """ Send back a job message """
-        dic = jobmsg.todict()
-        dic.update(self.boxinfo)
-        msg = simplejson.dumps(dic)
-        self.bsd.use(tube)
-        self.bsd.put(msg)
-        self.comm.send_msg(tube, msg)
 
-    def make_object(self, kimid):
-        self.logger.debug("Building the source for %r", kimid)
-        kimobj = modelslib.KIMObject(kimid)
-        with kimobj.in_dir():
-            try:
-                check_call("make")
-            except CalledProcessError as e:
-                return 1
-            return 0
-
-    def make_all(self):
-        self.logger.debug("Building everything...")
-        try:
-            check_call("makekim",shell=True)
-        except CalledProcessError as e:
-            self.logger.error("could not makekim")
-
-            raise RuntimeError, "our makekim failed!"
-            return 1
-        return 0
-
-    def disconnect(self):
-        self.disconnect_from_daemon()
 
 
 #==================================================================
 # worker class for the pipeline
 #==================================================================
-class Worker(object):
+class Worker(Agent):
     """ Represents a worker, knows how to do jobs he is given, create results and rsync them back """
-    def __init__(self, num=0):
-        self.ip   = GLOBAL_IP
-        self.port = GLOBAL_PORT
-        self.timeout = PIPELINE_TIMEOUT
-        self.logger = logger.getChild("worker-%i"% num)
-        self.boxinfo = runner.getboxinfo()
-        self.halt = False
-
-        self.comm = Communicator()
-        self.comm.start()
+    def __init__(self, num=0, uuid=''):
+        super(Worker, self).__init__(name='worker', num=num, uuid=uuid)
 
     def run(self):
         """ Start to listen, tunnels should be open and ready """
-        try:
-            self.start_listen()
-        except bean.SocketError:
-            # We failed to connect, this is really bad
-            self.logger.error("Failed to connect to beanstalk queue after launching ssh")
-
-        self.logger.info("Connected to daemon")
-        #attach the beanstalk logger
-        beanstalk_handler = BeanstalkHandler(self.comm)
-        beanstalk_handler.setLevel(BEANSTALK_LEVEL)
-        beanstalk_handler.setFormatter(log_formatter)
-        self.logger.addHandler(beanstalk_handler)
-
-        self.get_jobs()
-
-    def start_listen(self):
-        """ Start to listen and connect to the TUBE_JOBS """
-        # connect to the daemon we created
-        self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
+        self.connect()
 
         # we want to get jobs from the 'jobs' tube
         self.bsd.watch(TUBE_JOBS)
         self.bsd.ignore("default")
 
-    def job_message(self, jobmsg, errors=None, results=None, tube=TUBE_ERRORS):
-        """ Send back a job message """
-        resultsmsg = Message(jobid=jobmsg.jobid, priority=jobmsg.priority,
-                job=jobmsg.job, results=results, errors=repr(errors))
-        dic = resultsmsg.todict()
-        dic.update(self.boxinfo)
-        msg = simplejson.dumps(dic)
-        self.bsd.use(tube)
-        self.bsd.put(msg)
-        self.comm.send_msg(tube, msg)
+        self.get_jobs()
+
 
     def get_jobs(self):
         """ Endless loop that awaits jobs to run """
@@ -602,7 +554,7 @@ class Worker(object):
                     job.delete()
             else:
                 try:
-                    self.logger.info("rsyncing to repo %r", jobmsg.job+jobmsg.depends)
+                    self.logger.info("rsyncing to repo %r %r", jobmsg.job,jobmsg.depends)
                     rsync_tools.worker_test_result_read(*jobmsg.job, depends=jobmsg.depends)
                     self.make_all()
 
@@ -638,56 +590,33 @@ class Worker(object):
                     self.logger.error("Run failed, deleting... %r" % e)
                     self.job_message(jobmsg, errors=e, tube=TUBE_ERRORS)
                     job.delete()
+                    raise
             self.job = None
             self.jobsmsg = None
  
-    def exit_safe(self): 
-        # we got the signal to shutdown, so release the job first
-        if hasattr(self, 'job') and self.job is not None:
-            self.job.delete()
-            if hasattr(self, 'jobmsg') and self.jobmsg is not None: 
-                self.job_message(self.jobmsg, errors="Caught SIGINT and killed", tube=TUBE_ERRORS)
     
-    def make_all(self):
-        self.logger.debug("Building everything...")
-        try:
-            check_call("makekim",shell=True)
-        except CalledProcessError as e:
-            self.logger.error("could not makekim")
-            self.job_message(job, errors="could not makekim!", tube=TUBE_ERRORS)
-
-            raise RuntimeError, "our makekim failed!"
-            return 1
-        return 0
 
 
-class Site(object):
+#=========================================================
+# emulator for the website so we can do independent debug
+#=========================================================
+class Site(Agent):
     """ False stand in for the website, pushes TR ids for us and can update models or tests """
-    def __init__(self):
-        self.ip   = GLOBAL_IP
-        self.port = GLOBAL_PORT
-        self.timeout = PIPELINE_TIMEOUT
-        self.msg_size = PIPELINE_MSGSIZE
-        self.logger = logger.getChild("website")
+    def __init__(self, num=0, uuid=''):
+        super(Site, self).__init__(name='website', uuid=uuid)
 
     def run(self):
-        self.connect_to_daemon()
-
-    def connect_to_daemon(self):
-        self.logger.info("Connecting to beanstalkd")
-        try:
-            self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
-        except bean.SocketError:
-            # We failed to connect, this is really bad
-            self.logger.error("Failed to connect to beanstalk queue after launching ssh")
-
-        self.logger.info("Website ready")
-        self.logger.info("Pushing jobs")
+        self.connect()
 
     def send_update(self, kimid):
+        self.logger.info("Pushing jobs")
         self.bsd.use("web_updates")
         self.bsd.put(simplejson.dumps({"kimid": kimid, "priority":"normal", "status":"approved"}))
 
+
+#=======================================================
+# MAIN
+#=======================================================
 pipe = {}
 procs = {}
 def signal_handler(): #signal, frame):
@@ -696,26 +625,24 @@ def signal_handler(): #signal, frame):
         p.halt = True
         p.exit_safe()
     for p in procs.values():
-        p.join(1)
+        p.join(timeout=1)
     sys.exit(1)
-#signal.signal(signal.SIGINT, signal_handler)
 
 open_ports(GLOBAL_PORT, PORT_RX, PORT_TX, GLOBAL_USER, GLOBAL_HOST, GLOBAL_IP)
 
-#------------------------------------
-# MAIN
-#-----------------------------------
 if __name__ == "__main__":
-    import sys
+    import sys, uuid
+    UUID = uuid.uuid4()
+
     if len(sys.argv) > 1:
         if sys.argv[1] != "site":
             thrds = cpu_count() 
             for i in range(thrds):
                 if sys.argv[1] == "director":
-                    pipe[i] = Director(i)
+                    pipe[i] = Director(num=i, uuid=UUID)
                     procs[i] = Thread(target=Director.run, args=(pipe[i],), name='director-%i'%i)
                 elif sys.argv[1] == "worker":
-                    pipe[i] = Worker(i)
+                    pipe[i] = Worker(num=i, uuid=UUID)
                     procs[i] = Thread(target=Worker.run, args=(pipe[i],), name='worker-%i'%i)
             for i in range(thrds):
                 procs[i].daemon = True

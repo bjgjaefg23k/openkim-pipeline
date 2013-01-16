@@ -7,11 +7,11 @@ from pipeline import Director
 import beanstalkc as bean
 
 d = Director()
-d.connect_to_daemon()
+d.connect()
 bsd = d.bsd
 
 usual_channels = ["errors","results","logs"]
-full_channels = ["web_updates", "jobs","results","updates","errors","logs","gtw_results","gtw_jobs", "gtw_errors", "gtw_running", "gtw_logs"]
+full_channels = ["web_updates", "jobs","results","updates","errors","logs"]
 
 def dump_channel(channel):
     print "dumping channel:", channel

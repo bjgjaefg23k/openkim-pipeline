@@ -11,13 +11,14 @@ from functools import partial
 
 RSYNC_ADDRESS     = RSYNC_USER+"@"+RSYNC_HOST
 RSYNC_REMOTE_ROOT = RSYNC_DIR
-RSYNC_FLAGS = "-vrtLhptgo -uzREc --progress --stats -e 'ssh -i /persistent/id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' --exclude-from=/home/vagrant/openkim-pipeline/.rsync-exclude"
+RSYNC_FLAGS = "-vvrtLhptgo -uzREc --progress --stats -e 'ssh -i /persistent/id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' --exclude-from=/home/vagrant/openkim-pipeline/.rsync-exclude"
 # --delete ensures that we delete files that aren't on remote
 
 #RSYNC_PATH = '--rsync-path="cd {} && rsync"'.format(RSYNC_REMOTE_ROOT)
 RSYNC_PATH = RSYNC_ADDRESS + ":" + RSYNC_REMOTE_ROOT
 
 RSYNC_LOG_FILE_FLAG = "--log-file={}/rsync.log".format(LOG_DIR)
+RSYNC_LOG_PIPE_FLAG = " >> {} 2>&1".format(LOG_DIR+"/rsync_stdout.log")
 
 READ_APPROVED = os.path.join(RSYNC_PATH,"/read/approved/./")
 READ_PENDING =  os.path.join(RSYNC_PATH,"/read/pending/./")
@@ -56,13 +57,13 @@ def rsync_command(files,read=True,path=None):
             logger.info("running rsync for files: %r",files)
             if read:    
                 flags = "-f \"- */tr\" " + flags
-                cmd = " ".join(["rsync",flags,full_path,RSYNC_LOG_FILE_FLAG,"--files-from={}".format(tmp.name),LOCAL_REPO_ROOT])
+                cmd = " ".join(["rsync", flags, full_path, RSYNC_LOG_FILE_FLAG,
+                    "--files-from={}".format(tmp.name), LOCAL_REPO_ROOT, RSYNC_LOG_PIPE_FLAG])
             else:
-                cmd = " ".join(["rsync",flags,RSYNC_LOG_FILE_FLAG,"--files-from={}".format(tmp.name),LOCAL_REPO_ROOT,full_path])
-            #print cmd
-            #print open(tmp.name).read()
+                cmd = " ".join(["rsync", flags, RSYNC_LOG_FILE_FLAG,
+                    "--files-from={}".format(tmp.name), LOCAL_REPO_ROOT, full_path, RSYNC_LOG_PIPE_FLAG])
             logger.debug("rsync command = %r",cmd)
-            subprocess.check_call(cmd, shell=True)
+            out = subprocess.check_call(cmd, shell=True)
         except subprocess.CalledProcessError:
             logger.error("RSYNC FAILED!")
             raise
