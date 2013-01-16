@@ -21,10 +21,9 @@ import beanstalkc as bean
 from subprocess import check_call, Popen, PIPE, CalledProcessError
 from multiprocessing import cpu_count, Process
 from threading import Thread
-import time, simplejson, traceback, sys, zmq
+import time, simplejson, traceback, sys, zmq, uuid
 import rsync_tools, runner, kimapi, database 
 import models as modelslib
-logger = logger.getChild("pipeline")
 
 PIPELINE_WAIT    = 1
 PIPELINE_TIMEOUT = 60
@@ -56,6 +55,8 @@ def open_ports(port, rx, tx, user, addr, ip):
 #==================================================================
 class Communicator(Thread):
     def __init__(self):
+        self.data = {}
+
         # decide on the port order
         self.port_tx = PORT_TX
         self.port_rx = PORT_RX 
@@ -76,9 +77,18 @@ class Communicator(Thread):
     def disconnect(self):
         pass
 
+    def register(self, **kwargs):
+        for key in kwargs.keys():
+            self.data[key] = kwargs[key]
+
     def run(self):
         while 1:
-            obj = self.sock_rx.recv_pyobj()
+            try:
+                obj = self.sock_rx.recv_pyobj()
+                self.sock_tx.send_pyobj(["reply", self.data['uuid'], self.data])
+            except Exception as e:
+                # just let it go, you failed.
+                pass
 
     def send_msg(self, tube, msg):
         self.sock_tx.send_pyobj([tube, msg])
@@ -130,19 +140,17 @@ def ll(iterator):
 # handles basic networking and message responding (so it is not duplicated)
 #==================================================================
 class Agent(object):
-    def __init__(self, name='worker', num=0, uuid=''):
+    def __init__(self, name='worker', num=0, uuid=uuid.uuid4()):
         self.ip       = GLOBAL_IP
         self.port     = GLOBAL_PORT
         self.timeout  = PIPELINE_TIMEOUT
         self.msg_size = PIPELINE_MSGSIZE
         self.boxinfo  = runner.getboxinfo()
 
+        self.job = None
         self.name = name
         self.num = num
         self.halt = False
-        if isinstance(uuid,str):
-            import uuid as UUID
-            uuid = UUID.uuid4()
         self.uuid = uuid.hex+":"+str(self.num)
 
         self.comm   = Communicator()
@@ -151,6 +159,7 @@ class Agent(object):
     def connect(self):
         # start up the 2-way comm too
         self.comm.connect()
+        self.comm.register(uuid=self.uuid, job=self.job, boxinfo=self.boxinfo)
         self.comm.start()
 
         self.logger.info("Connecting to beanstalkd")
@@ -225,17 +234,9 @@ class Director(Agent):
     def run(self):
         """ connect and grab the job thread """
         self.connect()
-
         self.bsd.watch(TUBE_UPDATE)
         self.bsd.ignore("default")
-
         self.get_updates()
-
-    def get_tr_id(self):
-        return database.new_test_result_id()
-
-    def get_vr_id(self):
-        return database.new_verification_result_id()
 
     def get_updates(self):
         """
@@ -452,6 +453,12 @@ class Director(Agent):
 
         return depids
 
+    def get_tr_id(self):
+        return database.new_test_result_id()
+
+    def get_vr_id(self):
+        return database.new_verification_result_id()
+
 
 
 
@@ -466,13 +473,9 @@ class Worker(Agent):
     def run(self):
         """ Start to listen, tunnels should be open and ready """
         self.connect()
-
-        # we want to get jobs from the 'jobs' tube
         self.bsd.watch(TUBE_JOBS)
         self.bsd.ignore("default")
-
         self.get_jobs()
-
 
     def get_jobs(self):
         """ Endless loop that awaits jobs to run """
@@ -480,6 +483,7 @@ class Worker(Agent):
             self.logger.info("Waiting for jobs...")
             job = self.bsd.reserve()
             self.job = job
+            
             # if appears that there is a 120sec re-birth of jobs that have been reserved
             # and I do not want to put an artificial time limit, so let's bury jobs
             # when we get them
@@ -487,9 +491,7 @@ class Worker(Agent):
             self.comm.send_msg("running", job.body)
 
             # got a job -----
-            # update the repository, attempt to run the job
-            # and return the results to the director
-            #repo.rsync_update()
+            # update the repository, attempt to run the job and return the results to the director
             try:
                 jobmsg = Message(string=job.body)
             except simplejson.JSONDecodeError:
@@ -594,16 +596,13 @@ class Worker(Agent):
             self.job = None
             self.jobsmsg = None
  
-    
-
-
 #=========================================================
 # emulator for the website so we can do independent debug
 #=========================================================
 class Site(Agent):
     """ False stand in for the website, pushes TR ids for us and can update models or tests """
-    def __init__(self, num=0, uuid=''):
-        super(Site, self).__init__(name='website', uuid=uuid)
+    def __init__(self, num=0):
+        super(Site, self).__init__(name='website')
 
     def run(self):
         self.connect()
@@ -631,7 +630,7 @@ def signal_handler(): #signal, frame):
 open_ports(GLOBAL_PORT, PORT_RX, PORT_TX, GLOBAL_USER, GLOBAL_HOST, GLOBAL_IP)
 
 if __name__ == "__main__":
-    import sys, uuid
+    import sys 
     UUID = uuid.uuid4()
 
     if len(sys.argv) > 1:
