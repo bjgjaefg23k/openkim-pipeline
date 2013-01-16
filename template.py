@@ -23,6 +23,7 @@ import kimobjects
 import database
 
 import jinja2
+from functools import partial
 
 
 #==========================
@@ -55,6 +56,8 @@ template_environment = jinja2.Environment(
         comment_start_string='@#',
         comment_end_string='#@',
         )
+
+template_environment.filters['json'] = partial(simplejson.dumps,indent=4)
 
 
 #-------------------------------------------
