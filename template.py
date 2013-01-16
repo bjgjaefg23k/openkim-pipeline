@@ -19,7 +19,7 @@ The simple markup language as the following directives:
 import re, shutil, os
 from config import *
 logger = logger.getChild("template")
-import models
+import kimobjects
 import database
 
 #==========================
@@ -49,7 +49,7 @@ def files_from_results(results):
     return the filenames for any files contained in the results, from the @FILE directive """
     logger.debug("parsing results for file directives")
     testname = results["_testname"]
-    test = models.Test(testname)
+    test = kimobjects.Test(testname)
     #get only those files:that match the file directive, needs strings to process
     files = filter(None,(get_file(str(val),test.path) for key,val in results.iteritems()))
     return files
@@ -78,19 +78,19 @@ def data_path_from_match(match):
     if len(groups) == 2:
         # a 2 call is an rd
         part, rd_kcode = groups
-        rd = models.ReferenceDatum(rd_kcode)
+        rd = kimobjects.ReferenceDatum(rd_kcode)
         return (True, rd)
     if len(groups) == 3:
         # a 3 call is TR, PR
         part, tr_kcode, pr_kcode = groups
-        tr = models.TestResult(tr_kcode)
+        tr = kimobjects.TestResult(tr_kcode)
         return (True, tr)
     if len(groups) == 4:
         # a 4 call is part,te,mo,pr
         part, te_kcode, mo_kcode, pr_kcode = groups
-        te = models.Test(te_kcode)
-        mo = models.Model(mo_kcode)
-        pr = models.Property(pr_kcode)
+        te = kimobjects.Test(te_kcode)
+        mo = kimobjects.Model(mo_kcode)
+        pr = kimobjects.Property(pr_kcode)
         try:
             tr = te.result_with_model(mo)
         except PipelineDataMissing:
@@ -108,23 +108,23 @@ def data_from_match(match):
         if len(groups) == 2:
             #a 2 call is an rd
             part, rd_kcode = groups
-            rd = models.ReferenceDatum(rd_kcode)
+            rd = kimobjects.ReferenceDatum(rd_kcode)
             data = rd.data
             return data
 
         if len(groups) == 3:
             # a 3 call is TR, PR
             part, tr_kcode, pr_kcode = groups
-            tr = models.TestResult(tr_kcode)
-            pr = models.Property(pr_kcode)
+            tr = kimobjects.TestResult(tr_kcode)
+            pr = kimobjects.Property(pr_kcode)
             data = tr[pr]
             return str(data)
         if len(groups) == 4:
             # a 4 call is part,te,mo,pr
             part, te_kcode, mo_kcode, pr_kcode = groups
-            te = models.Test(te_kcode)
-            mo = models.Model(mo_kcode)
-            pr = models.Property(pr_kcode)
+            te = kimobjects.Test(te_kcode)
+            mo = kimobjects.Model(mo_kcode)
+            pr = kimobjects.Property(pr_kcode)
 
             tr = te.result_with_model(mo)
             data = tr[pr.kim_code]
@@ -142,7 +142,7 @@ def path_kim_obj_from_match(match):
     """ return the kim object of the path directive """
     part,cand = match.groups()
     logger.debug("looking at cand: %r", cand)
-    obj = models.kim_obj(cand)
+    obj = kimobjects.kim_obj(cand)
     return obj
 
 def path_from_match(match):
@@ -248,10 +248,10 @@ def process(inp, modelname, testname, modelonly= False):
     """ takes in a file like object and retuns a processed file like object, writing a copy to TEMP_INPUT_FILE """
     logger.info("attempting to process %r for (%r,%r)",inp,modelname,testname)
     try:
-        test = models.Test(testname)
+        test = kimobjects.Test(testname)
     except AssertionError as e:
         try:
-            test = models.Verifier(testname)
+            test = kimobjects.Verifier(testname)
         except AssertionError as e:
             raise 
     with test.in_dir():
