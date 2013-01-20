@@ -8,33 +8,29 @@ import kimservice
 from config import *
 logger = logger.getChild("repository")
 
-#match_args   = re.compile(r"^(\(\?.*\)?([a-zA-Z0-9_\-:]*)?(\/*.*)")
+match_args   = re.compile(r"^(\(\?.*\)?([a-zA-Z0-9_\-:]*)?(\/*.*)")
 match_slash  = re.compile(r"^(\/)*(.*)")
-match_filter = re.compile(r"^\(\?(.*)\)(\/*.*)")
+match_filter = re.compile(r"^\(\?(.*?)\?\)(\/*.*)")
 match_object = re.compile(r"^([a-zA-Z0-9_\-:]*)(\/*.*)")
 
-match_comment = r"(@#.*#@)"
-match_replace = r"@@(.*)@@"
+match_comment = r"(@#.*?#@)"
+match_replace = r"@@(.*?)@@"
 
 class APIObject(object):
     def _special_calls(self, arg0):
         pass
 
     def _break_into_parts(self, query):
-        # strip off the leading /
         query = match_slash.match(query).groups()[1]
         
         grp_flt = match_filter.match(query)
         grp_obj = match_object.match(query)
 
+        obj = fltr = None
         if grp_flt:
-            fltr = grp_flt.groups()[0].replace(")/(?", " and ") 
-            args = grp_flt.groups()[1]
-            obj = None
+            fltr, args = grp_flt.groups()
         else:
-            obj  = grp_obj.groups()[0] 
-            args = grp_obj.groups()[1]
-            fltr = None
+            obj, args = grp_obj.groups()
         return (fltr, obj, args)
 
     def _filter(self, fltr):
@@ -89,6 +85,7 @@ class APICollection(APIObject,list):
     def _filter(self, fltr):
         fltr = re.sub(match_comment, r"", fltr)
         fltr = re.sub(match_replace, r"x.api('\1')", fltr)
+        print fltr
         newlist = []
         for x in self:
             if eval(fltr):
