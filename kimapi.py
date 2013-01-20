@@ -99,6 +99,10 @@ class APIDict(APIObject,dict):
     def __init__(self, data={}):
         super(APIDict, self).__init__(data)
 
+    def _special_calls(self, obj):
+        if obj == "keys":
+            return self.keys()
+
 class APIFile(APIObject):
     pass
 
