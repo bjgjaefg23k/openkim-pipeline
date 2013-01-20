@@ -79,7 +79,11 @@ class APICollection(APIObject,list):
     def _call(self, obj):
         newlist = []
         for x in self:
-            newlist.extend(x._call_single(obj)) 
+            res = x._call_single(obj)
+            if hasattr(res, "__iter__"):
+                newlist.extend(res)
+            else:
+                newlist.append(res)
         return APICollection( newlist )
 
     def _filter(self, fltr):
