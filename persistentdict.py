@@ -6,8 +6,9 @@ Persistant Dictionary recipe from:
 
 import pickle, json, csv, os, shutil
 from collections import defaultdict
+from kimapi import APIDict
 
-class PersistentDict(dict):
+class PersistentDict(APIDict):
     ''' Persistent dictionary with an API compatible with shelve and anydbm.
 
     The dict is kept in memory, so the dictionary operations run as fast as

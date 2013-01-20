@@ -106,8 +106,8 @@ class PygmentHandler(logging.StreamHandler):
 #create a console logger
 console_handler = PygmentHandler()
 console_handler.setLevel(logging.INFO)
-if PIPELINE_DEBUG:
-    console_handler.setLevel(logging.DEBUG)
+#if PIPELINE_DEBUG:
+#    console_handler.setLevel(logging.DEBUG)
 
 console_handler.setFormatter(log_formatter)
 logger.addHandler(console_handler)
