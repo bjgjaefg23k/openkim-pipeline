@@ -17,6 +17,9 @@ match_comment = r"(@#.*?#@)"
 match_replace = r"@@(.*?)@@"
 match_index   = r"@\[(\d)\]@"
 
+#=======================================================
+# the base APIObject which implements all standard calls
+#=======================================================
 class APIObject(object):
     def _special_calls(self, arg0):
         pass
@@ -66,7 +69,7 @@ class APIObject(object):
             result = self._filter(fltr)
         elif obj is not None:
             result = self._call(obj)
-        if hasattr(result, "api") and args:
+        if hasattr(result, "api") and args and args != "/":
             return result.api(args)
         return result
     
