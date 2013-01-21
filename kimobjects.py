@@ -44,7 +44,7 @@ from kimapi import APIObject, APICollection, APIDict, APIFile
 # Base KIMObject
 #------------------------------------------------
 
-class KIMObject(APIObject):
+class KIMObject(APIObject,simplejson.JSONEncoder):
     """ The base KIMObject that all things inherit from
 
     Attributes:
@@ -240,6 +240,10 @@ class KIMObject(APIObject):
         """
         logger.warning("REMOVING the kim object %r", self)
         shutil.rmtree(self.path)
+
+    def default(self, obj):
+        """ the simplejson encoder for all KIMObjects """
+        return self.kim_code
 
 #=============================================
 # Actual KIM Models

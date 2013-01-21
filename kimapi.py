@@ -10,7 +10,7 @@ logger = logger.getChild("repository")
 
 #match_args   = re.compile(r"^(\(\?.*\?\))?([a-zA-Z0-9_\-]*)?(\/*.*)")
 match_slash  = re.compile(r"^(\/)*(.*)")
-match_filter = re.compile(r"^\(\?(.*?)\?\)(\/*.*)")
+match_filter = re.compile(r"^\(\:(.*?)\:\)(\/*.*)")
 match_object = re.compile(r"^([a-zA-Z0-9_\-:]*)(\/*.*)")
 
 match_comment = r"(@#.*?#@)"

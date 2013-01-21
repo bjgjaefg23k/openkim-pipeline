@@ -103,6 +103,8 @@ class Communicator(Thread):
             except Exception as e:
                 # just let it go, you failed.
                 logger.error("comm had an error: %r" % e)
+                if header == "api":
+                    self.sock_tx.send_pyobj( ("api", simplejson.dumps((responseid, "ERROR: %r" % e))) )
                 pass
 
     def send_msg(self, tube, msg):
