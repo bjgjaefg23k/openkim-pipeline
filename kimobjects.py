@@ -649,6 +649,14 @@ class TestResult(KIMObject):
         self.info = PersistentDict(os.path.join(self.path,METADATA_INFO_FILE))
         return self.results.__getattribute__(attr)
 
+    @property
+    def keys(self):
+        return self.results.keys()
+
+    @property
+    def values(self):
+        return self.results.values()
+
     @classmethod
     def test_result_exists(cls,test,model):
         """ Check to see if the test result exists for a (test,model) pair """
