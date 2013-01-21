@@ -85,9 +85,24 @@ class Communicator(Thread):
         while 1:
             try:
                 obj = self.sock_rx.recv_pyobj()
-                self.sock_tx.send_pyobj(["reply", self.data['uuid'], self.data])
+                header, message = obj
+
+                # then it is a string, test which type it is
+                if header == "ping":
+                    self.sock_tx.send_pyobj(("ping", simplejson.dumps(["reply", self.data['uuid'], self.data])))
+
+                # we have a four part request, parse it
+                if header == "api":
+                    uuid, responseid, query = simplejson.loads(message)
+                    if uuid == self.data['uuid']:
+                        logger.info("Got api request: /%s ..." % query)
+                        ret = kimobjects.data.api("/"+query)
+                        logger.info("Object found for request /%s" % query)
+                        self.sock_tx.send_pyobj( ("api", simplejson.dumps((responseid, ret))) )
+
             except Exception as e:
                 # just let it go, you failed.
+                logger.error("comm had an error: %r" % e)
                 pass
 
     def send_msg(self, tube, msg):
@@ -632,7 +647,7 @@ if __name__ == "__main__":
     UUID = uuid.uuid4()
 
     if len(sys.argv) > 1:
-        if sys.argv[1] != "site":
+        if sys.argv[1] != "site" and sys.argv[1] != "agent":
             thrds = cpu_count() 
             for i in range(thrds):
                 if sys.argv[1] == "director":

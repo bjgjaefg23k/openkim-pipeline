@@ -1194,12 +1194,11 @@ def kim_obj(kim_code):
     cls = code_to_model.get(leader, KIMObject)
     return cls(kim_code)
 
-class KIMData(object):
+class KIMData(APIObject):
     """ A simple wrapper to getting data """
-
     def __getitem__(self,item):
         if len(item) == 2:
-            return code_to_model[item].all()
+            return code_to_model[item.upper()].all()
         else:
             return kim_obj(item)
 
