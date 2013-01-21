@@ -8,13 +8,14 @@ import kimservice
 from config import *
 logger = logger.getChild("repository")
 
-match_args   = re.compile(r"^(\(\?.*\)?([a-zA-Z0-9_\-:]*)?(\/*.*)")
+#match_args   = re.compile(r"^(\(\?.*\?\))?([a-zA-Z0-9_\-]*)?(\/*.*)")
 match_slash  = re.compile(r"^(\/)*(.*)")
 match_filter = re.compile(r"^\(\?(.*?)\?\)(\/*.*)")
 match_object = re.compile(r"^([a-zA-Z0-9_\-:]*)(\/*.*)")
 
 match_comment = r"(@#.*?#@)"
 match_replace = r"@@(.*?)@@"
+match_index   = r"@\[(\d)\]@"
 
 class APIObject(object):
     def _special_calls(self, arg0):
@@ -42,17 +43,21 @@ class APIObject(object):
         return self._call_single(obj)
 
     def _call_single(self, obj):
-        call = self._special_calls(obj)
+        objs = obj.split(":")
+        call = self._special_calls(obj) #map(self._special_calls, objs)
         if call is None:
             try:
-                call = self.__getattribute__(obj)
+                call = self.__getattribute__(obj) #map(self.__getattribute__, objs)
             except AttributeError as e:
                 call = None
         if call is None:
             try:
-                call = self[obj]
+                call = self.__getitem__(obj) #map(self.__getitem__, objs)
             except KeyError as e:
                 call = None
+        #if isinstance(call, tuple):
+        #    if len(call) == 1:
+        #        return call[0]
         return call
 
     def api(self, query, parent=None):
@@ -85,7 +90,6 @@ class APICollection(APIObject,list):
     def _filter(self, fltr):
         fltr = re.sub(match_comment, r"", fltr)
         fltr = re.sub(match_replace, r"x.api('\1')", fltr)
-        print fltr
         newlist = []
         for x in self:
             if eval(fltr):
