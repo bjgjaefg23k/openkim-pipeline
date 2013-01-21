@@ -22,7 +22,7 @@ class PersistentDict(APIDict):
 
     '''
 
-    def __init__(self, filename, flag='c', mode=None, format='json', *args, **kwds):
+    def __init__(self, filename, flag='c', mode=None, format='json', *args, **kwargs):
         self.flag = flag                    # r=readonly, c=create, or n=new
         self.mode = mode                    # None or an octal triple like 0644
         self.format = format                # 'csv', 'json', or 'pickle'
@@ -31,7 +31,8 @@ class PersistentDict(APIDict):
             fileobj = open(filename, 'rb' if format=='pickle' else 'r')
             with fileobj:
                 self.load(fileobj)
-        dict.__init__(self, *args, **kwds)
+        dict.__init__(self, *args, **kwargs)
+        # super(APIDict,self).__init__(*args,**kwargs)
 
     def sync(self):
         'Write dict to disk'
@@ -82,6 +83,12 @@ class PersistentDict(APIDict):
 
     def __str__(self):
         return json.dumps(self,separators=(',',':'),indent=4)
+
+    def __getitem__(self, item):
+        value = super(APIDict,self).__getitem__(item)
+        if isinstance(value,dict):
+            return APIDict(value)
+        return value
 
 
 class PersistentDefaultDict(PersistentDict, defaultdict):

@@ -6,47 +6,96 @@
 import os, sys, re
 import kimservice
 from config import *
-logger = logger.getChild("repository")
+from itertools import chain
 
-#match_args   = re.compile(r"^(\(\?.*\?\))?([a-zA-Z0-9_\-]*)?(\/*.*)")
+logger = logger.getChild("repository")
+#/(? stuff ?)/blah or /name_qualifier/blah
+# match_args   = re.compile(
+#     r"""
+#     (?:^\(\?.*?\?\))? #filter group
+#     (?:^[a-zA-Z0-9_\-]*?)? #object group
+#     (\/.*) #everything else
+#     """)
+
 match_slash  = re.compile(r"^(\/)*(.*)")
 match_filter = re.compile(r"^\(\:(.*?)\:\)(\/*.*)")
 match_object = re.compile(r"^([a-zA-Z0-9_\-:]*)(\/*.*)")
 
-match_comment = r"(@#.*?#@)"
-match_replace = r"@@(.*?)@@"
-match_index   = r"@\[(\d)\]@"
+#match_slash  = re.compile(
+#    r"""
+#    ^           #start of string
+#    (\/)*       #match any number of starting backslashes
+#    (.*)        # grab everything else
+#    """)
+## match_filter = re.compile(r"^\(\?(.*?)\?\)(\/*.*)")
+#match_filter = re.compile(
+#    r"""
+#    ^\(\?       # if the string starts with ?
+#    (.*?)       # grab the inards, non-greedy
+#    \?\)        # the  matching ?
+#    (\/*.*)     # rest of the expression
+#    """)
+#match_object = re.compile(
+#    r"""
+#    ^([a-zA-Z0-9_:]*)       # starts with a valid python name (or has :)
+#    (\/*.*)                 # grab the rest of the query
+#    """)
+
+match_import  = r"import"     # get rid of imports
+match_comment = r"(@#.*?#@)"  # used in re.sub to get rid of comments
+match_replace = r"@@(.*?)@@"  # used in re.sub to substitute @@/apicall@@ -> x.api("/apicall")
+match_index   = r"@\[(\d)\]@"  # FIXME - not implemented
 
 #=======================================================
 # the base APIObject which implements all standard calls
 #=======================================================
 class APIObject(object):
+    """ The main api object.  Every api call should return
+    one of these or a subclass of this
+    """
     def _special_calls(self, arg0):
+        """ The special api calls are caught here """
         pass
 
     def _break_into_parts(self, query):
+        """ Parse the query, finding the first logical set in /s """
+        # remove the leading slash
         query = match_slash.match(query).groups()[1]
-        
+
+        # find if there is a filter group or object group first
         grp_flt = match_filter.match(query)
         grp_obj = match_object.match(query)
 
         obj = fltr = None
         if grp_flt:
+            # if there was a filter
             fltr, args = grp_flt.groups()
         else:
+            # if there was an object
             obj, args = grp_obj.groups()
         return (fltr, obj, args)
 
     def _filter(self, fltr):
+        """ a base case of filtering for one object which
+        either returns the object or not
+            fltr looks like '@#checks if it took more than a second#@  @@/_time@@ > 1' when it comes in
+            removes the section from @# -> #@
+            then replaces @@/_time@@ with 'self.api("/_time")'
+            and evaluates the expression
+        """
+        fltr = re.sub(match_import, r"", fltr)
         fltr = re.sub(match_comment, r"", fltr)
         fltr = re.sub(match_replace, r"self.api('\1')", fltr)
-        return eval(fltr)
+        if eval(fltr):
+            return self
+        return None
 
     def _call(self, obj):
         return self._call_single(obj)
 
     def _call_single(self, obj):
         objs = obj.split(":")
+        # call = self._special_calls(obj) or self.__getattribute__(obj) or self.__getitem__(obj)
         call = self._special_calls(obj) #map(self._special_calls, objs)
         if call is None:
             try:
@@ -72,40 +121,54 @@ class APIObject(object):
         if hasattr(result, "api") and args and args != "/":
             return result.api(args)
         return result
-    
-class APICollection(APIObject,list):
-    def __init__(self, data=[]):
-        super(APICollection, self).__init__(data)
 
-    def _reduce(self):
-        return [item for sublist in self for item in sublist]
+class APICollection(APIObject):
+    """ A collection of api objects, meant to behave
+    like a generator, supporting filtering """
+    def __init__(self, iterable=None):
+        super(APICollection, self).__init__()
+        self.iterable = iter(iterable)
+
+    def __iter__(self):
+        return self.iterable
+
+    def next(self):
+        return next(self.iterable)
+
+    def __getitem__(self,item):
+        """ Pass item access onto to elements in collection """
+        return APICollection( x.__getitem__(item) for x in self.iterable )
+
+    def _wrap(self, iterable):
+        """ Ensure we return an iter """
+        if hasattr(iterable,'__iter__'):
+            return iterable
+        return [iterable]
 
     def _call(self, obj):
-        newlist = []
-        for x in self:
-            res = x._call_single(obj)
-            if hasattr(res, "__iter__"):
-                newlist.extend(res)
-            else:
-                newlist.append(res)
-        return APICollection( newlist )
+        """ Pass objects onto the elements in the collection,
+            Use chain.from_iterable to ensure the collection stays flat,
+            though this requires we wrap individual elements into iterable lists """
+        return APICollection(
+                chain.from_iterable(   #chain all results together
+                    self._wrap(x._call_single(obj)) for x in self.iterable # wrap individuals in lists
+                    )
+                )
 
     def _filter(self, fltr):
-        fltr = re.sub(match_comment, r"", fltr)
-        fltr = re.sub(match_replace, r"x.api('\1')", fltr)
-        newlist = []
-        for x in self:
-            if eval(fltr):
-                newlist.append(x) 
-        return APICollection(newlist)
+        """ Use objects to compute filters """
+        return APICollection( x for x in self.iterable if x._filter(fltr) )
 
 class APIDict(APIObject,dict):
-    def __init__(self, data={}):
-        super(APIDict, self).__init__(data)
+    """ A special dict instance meant to be an APIObject """
+    def __init__(self, *args, **kwargs):
+        super(APIDict, self).__init__(*args, **kwargs)
 
-    def _special_calls(self, obj):
-        if obj == "keys":
-            return self.keys()
+    # def _special_calls(self, obj):
+    #     pass
+    #     # if obj == "keys":
+    #     #     return self.keys()
+
 
 class APIFile(APIObject):
     pass
@@ -116,8 +179,8 @@ class APIFile(APIObject):
 
 def valid_match(test,model):
     """ Test to see if a test and model match using the kim API, returns bool
-        
-        Tests through ``kimservice.KIM_API_init``, running in its own forked process    
+
+        Tests through ``kimservice.KIM_API_init``, running in its own forked process
     """
     #logger.debug("attempting to match %r with %r",testname,modelname)
     logger.debug("invoking KIMAPI for (%r,%r)",test,model)
