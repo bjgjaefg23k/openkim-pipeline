@@ -98,7 +98,10 @@ class Communicator(Thread):
                         logger.info("Got api request: /%s ..." % query)
                         ret = kimobjects.data.api("/"+query)
                         logger.info("Object found for request /%s" % query)
-                        self.sock_tx.send_pyobj( ("api", simplejson.dumps((responseid, ret))) )
+                        try:
+                            self.sock_tx.send_pyobj( ("api", simplejson.dumps((responseid, ret))) )
+                        except TypeError as e:
+                            self.sock_tx.send_pyobj( ("api", simplejson.dumps((responseid, str(ret)))) )
 
             except Exception as e:
                 # just let it go, you failed.

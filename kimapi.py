@@ -53,6 +53,16 @@ class APIObject(object):
     """ The main api object.  Every api call should return
     one of these or a subclass of this
     """
+    def api(self, query, parent=None):
+        fltr, obj, args = self._break_into_parts(query)
+        if fltr is not None:
+            result = self._filter(fltr)
+        elif obj is not None:
+            result = self._call(obj)
+        if hasattr(result, "api") and args and args != "/":
+            return result.api(args)
+        return result
+
     def _special_calls(self, arg0):
         """ The special api calls are caught here """
         pass
@@ -107,20 +117,13 @@ class APIObject(object):
                 call = self.__getitem__(obj) #map(self.__getitem__, objs)
             except KeyError as e:
                 call = None
+            except AttributeError as e:
+                call = None
         #if isinstance(call, tuple):
         #    if len(call) == 1:
         #        return call[0]
         return call
 
-    def api(self, query, parent=None):
-        fltr, obj, args = self._break_into_parts(query)
-        if fltr is not None:
-            result = self._filter(fltr)
-        elif obj is not None:
-            result = self._call(obj)
-        if hasattr(result, "api") and args and args != "/":
-            return result.api(args)
-        return result
 
 class APICollection(APIObject):
     """ A collection of api objects, meant to behave
@@ -149,25 +152,32 @@ class APICollection(APIObject):
         """ Pass objects onto the elements in the collection,
             Use chain.from_iterable to ensure the collection stays flat,
             though this requires we wrap individual elements into iterable lists """
-        return APICollection(
-                chain.from_iterable(   #chain all results together
-                    self._wrap(x._call_single(obj)) for x in self.iterable # wrap individuals in lists
+        call = None #self._call_single(obj)
+        if call is None:
+            call = APICollection(
+                    chain.from_iterable(   #chain all results together
+                        self._wrap(x._call_single(obj)) for x in self.iterable # wrap individuals in lists
+                        )
                     )
-                )
+        return call
 
     def _filter(self, fltr):
         """ Use objects to compute filters """
         return APICollection( x for x in self.iterable if x._filter(fltr) )
 
+    def __str__(self):
+        return str([ str(x) for x in self.iterable])
+
+    #@property
+    #def unique(self):
+    #    return set(self.iterable)
+
+
+
 class APIDict(APIObject,dict):
     """ A special dict instance meant to be an APIObject """
     def __init__(self, *args, **kwargs):
         super(APIDict, self).__init__(*args, **kwargs)
-
-    # def _special_calls(self, obj):
-    #     pass
-    #     # if obj == "keys":
-    #     #     return self.keys()
 
 
 class APIFile(APIObject):
