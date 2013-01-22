@@ -124,6 +124,10 @@ class APIObject(object):
         #        return call[0]
         return call
 
+    @property
+    def help(self):
+        return "Not implemented"
+
 def unique_everseen(iterable):
     known = {}
     for item in iterable:
