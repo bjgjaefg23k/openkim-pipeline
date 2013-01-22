@@ -124,6 +124,12 @@ class APIObject(object):
         #        return call[0]
         return call
 
+def unique_everseen(iterable):
+    known = {}
+    for item in iterable:
+        if item not in known:
+            known.add(item)
+            yield item
 
 class APICollection(APIObject):
     """ A collection of api objects, meant to behave
@@ -171,6 +177,9 @@ class APICollection(APIObject):
     #@property
     #def unique(self):
     #    return set(self.iterable)
+    @property
+    def unique(self):
+        return APICollection(unique_everseen(self.iterable))
 
 
 

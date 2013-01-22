@@ -97,7 +97,7 @@ class Communicator(Thread):
                     if uuid == self.data['uuid']:
                         logger.info("Got api request: /%s ..." % query)
                         ret = kimobjects.data.api("/"+query)
-                        logger.info("Object found for request /%s" % query)
+                        logger.debug("Object found for request /%s" % query)
                         try:
                             self.sock_tx.send_pyobj( ("api", simplejson.dumps((responseid, ret))) )
                         except TypeError as e:
