@@ -96,7 +96,7 @@ class APIObject(object):
         fltr = re.sub(match_import, r"", fltr)
         fltr = re.sub(match_comment, r"", fltr)
         fltr = re.sub(match_replace, r"self.api('\1')", fltr)
-        if eval(fltr):
+        if eval(fltr, {}, {"self": self}):
             return self
         return None
 
