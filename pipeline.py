@@ -89,7 +89,7 @@ class Communicator(Thread):
 
                 # then it is a string, test which type it is
                 if header == "ping":
-                    self.sock_tx.send_pyobj(("ping", simplejson.dumps(["reply", self.data['uuid'], self.data])))
+                    self.sock_tx.send( simplejson.dumps(("ping", simplejson.dumps(["reply", self.data['uuid'], self.data]))))
 
                 # we have a four part request, parse it
                 if header == "api":
@@ -99,19 +99,19 @@ class Communicator(Thread):
                         ret = kimobjects.data.api("/"+query)
                         logger.debug("Object found for request /%s" % query)
                         try:
-                            self.sock_tx.send_pyobj( ("api", simplejson.dumps((responseid, ret))) )
+                            self.sock_tx.send( simplejson.dumps(("api", simplejson.dumps((responseid, ret))) ))
                         except TypeError as e:
-                            self.sock_tx.send_pyobj( ("api", simplejson.dumps((responseid, str(ret)))) )
+                            self.sock_tx.send( simplejson.dumps(("api", simplejson.dumps((responseid, str(ret)))) ))
 
             except Exception as e:
                 # just let it go, you failed.
                 logger.error("comm had an error: %r" % e)
                 if header == "api":
-                    self.sock_tx.send_pyobj( ("api", simplejson.dumps((responseid, "ERROR: %r" % e))) )
+                    self.sock_tx.send( simplejson.dumps(("api", simplejson.dumps((responseid, "ERROR: %r" % e))) ))
                 pass
 
     def send_msg(self, tube, msg):
-        self.sock_tx.send_pyobj([tube, msg])
+        self.sock_tx.send(simplejson.dumps(("ping", simplejson.dumps([tube, msg]))))
 
 
 #==================================================================
@@ -129,7 +129,7 @@ class BeanstalkHandler(logging.Handler):
         err_message = self.format(record)
         message = self.info.copy()
         message['message'] = err_message
-        self.comm.send_msg(TUBE_LOG,simplejson.dumps(message))
+        self.comm.send_msg(TUBE_LOG,message)
 
 class Message(dict):
     def __init__(self, **kwargs):
@@ -248,7 +248,7 @@ class Director(Agent):
     """ The Director object, knows to listen to incoming jobs, computes dependencies
     and passes them along to workers
     """
-    def __init__(self, num=0, uuid=''):
+    def __init__(self, num=0, uuid=uuid.uuid4()):
         super(Director, self).__init__(name="director", num=num, uuid=uuid)
 
     def run(self):
@@ -485,7 +485,7 @@ class Director(Agent):
 #==================================================================
 class Worker(Agent):
     """ Represents a worker, knows how to do jobs he is given, create results and rsync them back """
-    def __init__(self, num=0, uuid=''):
+    def __init__(self, num=0, uuid=uuid.uuid4()):
         super(Worker, self).__init__(name='worker', num=num, uuid=uuid)
 
     def run(self):
