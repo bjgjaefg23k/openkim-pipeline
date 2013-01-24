@@ -538,11 +538,13 @@ class Worker(Agent):
                 try:
                     self.logger.info("rsyncing to repo %r", jobmsg.job+jobmsg.depends)
                     rsync_tools.worker_verification_read(*jobmsg.job, depends=jobmsg.depends)
-                    self.make_all()
+                    #self.make_all()
 
                     verifier_kcode, subject_kcode = jobmsg.job
                     verifier = kimobjects.Verifier(verifier_kcode)
                     subject  = kimobjects.Subject(subject_kcode)
+                    verifier.make()
+                    subject.make()
 
                     self.logger.info("Running (%r,%r)",verifier,subject)
                     result = runner.run_test_on_model(verifier,subject)
@@ -576,11 +578,13 @@ class Worker(Agent):
                 try:
                     self.logger.info("rsyncing to repo %r %r", jobmsg.job,jobmsg.depends)
                     rsync_tools.worker_test_result_read(*jobmsg.job, depends=jobmsg.depends)
-                    self.make_all()
+                    #self.make_all()
 
                     test_kcode, model_kcode = jobmsg.job
                     test = kimobjects.Test(test_kcode)
                     model = kimobjects.Model(model_kcode)
+                    test.make()
+                    model.make()
 
                     self.logger.info("Running (%r,%r)",test,model)
                     result = runner.run_test_on_model(test,model)
@@ -652,16 +656,18 @@ if __name__ == "__main__":
     UUID = uuid.uuid4()
 
     if len(sys.argv) > 1:
-        if sys.argv[1] != "site" and sys.argv[1] != "agent":
+        # directors are not multithreaded for build safety
+        if sys.argv[1] == "director":
+            director = Director(num=0, uuid=UUID)
+            director.run()
+
+        # workers can be multi-threaded so launch the appropriate
+        # number of worker threads
+        elif sys.argv[1] == "worker":
             thrds = cpu_count() 
             for i in range(thrds):
-                if sys.argv[1] == "director":
-                    pipe[i] = Director(num=i, uuid=UUID)
-                    procs[i] = Thread(target=Director.run, args=(pipe[i],), name='director-%i'%i)
-                elif sys.argv[1] == "worker":
-                    pipe[i] = Worker(num=i, uuid=UUID)
-                    procs[i] = Thread(target=Worker.run, args=(pipe[i],), name='worker-%i'%i)
-            for i in range(thrds):
+                pipe[i] = Worker(num=i, uuid=UUID)
+                procs[i] = Thread(target=Worker.run, args=(pipe[i],), name='worker-%i'%i)
                 procs[i].daemon = True
                 procs[i].start()
 
@@ -670,8 +676,9 @@ if __name__ == "__main__":
                     for i in range(thrds):
                         procs[i].join(timeout=1.0)
             except (KeyboardInterrupt, SystemExit):
-                signal_handler()#signal.SIGINT, None)
-            
+                signal_handler()
+           
+        # site is a one off for testing
         elif sys.argv[1] == "site":
             obj = Site()
             obj.run()
