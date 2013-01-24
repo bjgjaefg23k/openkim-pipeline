@@ -64,12 +64,12 @@ template_environment.filters['json'] = partial(simplejson.dumps,indent=4)
 # FILE Directive handlers
 #------------------------------------------
 
-
+# FIXME - only one layer deep, won't catch @FILES
 def files_from_results(results):
     """ Given a dictionary of results,
     return the filenames for any files contained in the results, from the @FILE directive """
     logger.debug("parsing results for file directives")
-    testname = results["_testname"]
+    testname = results["info"]["testname"]
     test = kimobjects.Test(testname)
     #get only those files:that match the file directive, needs strings to process
     files = filter(None,(get_file(str(val),test.path) for key,val in results.iteritems()))
@@ -283,6 +283,8 @@ def process(inp, modelname, testname, modelonly= False):
                     newline = modelname_processor(line, modelname, testname)
                 else:
                     newline = process_line(line,modelname,testname)
+                if not newline.endswith('\n'):
+                    newline = newline + "\n"
                 logger.debug("new line is: %r",newline)
                 out.write(newline)
 

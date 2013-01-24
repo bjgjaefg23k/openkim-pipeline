@@ -608,9 +608,9 @@ class Worker(Agent):
                 # and send the error back along the error queue
                 except Exception as e:
                     self.logger.error("Run failed, deleting... %r" % e)
-                    self.job_message(jobmsg, errors=e, tube=TUBE_ERRORS)
+                    self.job_message(jobmsg, errors="%r"%e, tube=TUBE_ERRORS)
                     job.delete()
-                    raise
+                    
             self.job = None
             self.jobsmsg = None
  

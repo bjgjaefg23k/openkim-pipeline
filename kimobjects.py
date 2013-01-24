@@ -507,7 +507,7 @@ class TestResult(KIMObject):
             results
                 A persistent dict for the results file in the objects directory
             test
-                The test that generated the test result from self.results["_testname"] or None
+                The test that generated the test result from self.results["testname"] or None
             model
                 The model for the test results or None
 
@@ -518,7 +518,7 @@ class TestResult(KIMObject):
             try to access its elements directly, i.e.::
 
                 tr = TestResult("TR_000000000000_000")
-                tr["_testname"] == tr.results["_testname"]
+                tr["testname"] == tr.results["testname"]
     """
     required_leader = "TR"
     makeable = False
@@ -579,7 +579,7 @@ class TestResult(KIMObject):
                     raise PipelineResultsError, "Could not understand the format of the results: {}".format(results)
 
             #also move all of the files
-            testname = incoming_results["_testname"]
+            testname = incoming_results["info"]["testname"]
 
             files = template.files_from_results(incoming_results)
             if files:
@@ -594,11 +594,11 @@ class TestResult(KIMObject):
             logger.info("Results created in %r", self.kim_code)
 
         try:
-            self.test = Test(self.results["_testname"])
+            self.test = Test(self.results["info"]["testname"])
         except KeyError:
             self.test = None
         try:
-            self.model = Model(self.results["_modelname"])
+            self.model = Model(self.results["info"]["modelname"])
         except KeyError:
             self.model = None
 
@@ -989,7 +989,7 @@ class VerificationResult(KIMObject):
             results
                 A persistent dict for the results file in the objects directory
             verifier
-                The verification that generated the test result from self.results["_testname"] or None
+                The verification that generated the test result from self.results["testname"] or None
             subject
                 The subject of the verification results or None
 

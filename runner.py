@@ -116,7 +116,6 @@ def execute_test_on_model(test,model):
     #profiling time thing
     timeblock = "/usr/bin/time --format={\\\"usertime\\\":%U,\\\"memmax\\\":%M,\\\"memavg\\\":%K} "
 
-    test_dir = test.path
     # run the test in its own directory
     with test.in_dir():
         # So, I switched this to now use the file handlers in the popen command
