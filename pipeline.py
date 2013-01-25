@@ -20,7 +20,7 @@ from config import *
 import beanstalkc as bean
 from subprocess import check_call, Popen, PIPE, CalledProcessError
 from multiprocessing import cpu_count, Process
-from threading import Thread
+from threading import Thread, Lock
 import time, simplejson, traceback, sys, zmq, uuid
 import rsync_tools, runner, kimapi, database 
 import kimobjects
@@ -36,6 +36,8 @@ TUBE_RESULTS = "results"
 TUBE_ERRORS  = "errors"
 TUBE_LOG     = "logs"
 
+runlock = {}
+buildlock = Lock()
 BEANSTALK_LEVEL = logging.INFO
 
 def open_ports(port, rx, tx, user, addr, ip):
@@ -536,18 +538,20 @@ class Worker(Agent):
 
             if leader == "VT" or leader == "VM":
                 try:
-                    self.logger.info("rsyncing to repo %r", jobmsg.job+jobmsg.depends)
-                    rsync_tools.worker_verification_read(*jobmsg.job, depends=jobmsg.depends)
-                    #self.make_all()
+                    with buildlock:
+                        self.logger.info("rsyncing to repo %r", jobmsg.job+jobmsg.depends)
+                        rsync_tools.worker_verification_read(*jobmsg.job, depends=jobmsg.depends)
+                        self.make_all()
 
                     verifier_kcode, subject_kcode = jobmsg.job
                     verifier = kimobjects.Verifier(verifier_kcode)
                     subject  = kimobjects.Subject(subject_kcode)
-                    verifier.make()
-                    subject.make()
 
-                    self.logger.info("Running (%r,%r)",verifier,subject)
-                    result = runner.run_test_on_model(verifier,subject)
+                    if not runlock.has_key(verifier_kcode):
+                        runlock[verifier_kcode] = Lock()
+                    with runlock[test_kcode]:
+                        self.logger.info("Running (%r,%r)",verifier,subject)
+                        result = runner.run_test_on_model(verifier,subject)
 
                     #create the verification result object (will be written)
                     vr = kimobjects.VerificationResult(jobmsg.jobid, results = result, search=False)
@@ -576,18 +580,20 @@ class Worker(Agent):
                     job.delete()
             else:
                 try:
-                    self.logger.info("rsyncing to repo %r %r", jobmsg.job,jobmsg.depends)
-                    rsync_tools.worker_test_result_read(*jobmsg.job, depends=jobmsg.depends)
-                    #self.make_all()
+                    with buildlock:
+                        self.logger.info("rsyncing to repo %r %r", jobmsg.job,jobmsg.depends)
+                        rsync_tools.worker_test_result_read(*jobmsg.job, depends=jobmsg.depends)
+                        self.make_all()
 
                     test_kcode, model_kcode = jobmsg.job
                     test = kimobjects.Test(test_kcode)
                     model = kimobjects.Model(model_kcode)
-                    test.make()
-                    model.make()
 
-                    self.logger.info("Running (%r,%r)",test,model)
-                    result = runner.run_test_on_model(test,model)
+                    if not runlock.has_key(test_kcode):
+                        runlock[test_kcode] = Lock()
+                    with runlock[test_kcode]:
+                        self.logger.info("Running (%r,%r)",test,model)
+                        result = runner.run_test_on_model(test,model)
 
                     #create the test result object (will be written)
                     tr = kimobjects.TestResult(jobmsg.jobid, results = result, search=False)
