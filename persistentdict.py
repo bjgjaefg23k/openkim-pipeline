@@ -85,7 +85,7 @@ class PersistentDict(APIDict):
         return json.dumps(self,separators=(',',':'),indent=4)
 
     def __getitem__(self, item):
-        value = super(APIDict,self).__getitem__(item)
+        value = super(PersistentDict,self).__getitem__(item)
         if isinstance(value,dict):
             return APIDict(value)
         return value

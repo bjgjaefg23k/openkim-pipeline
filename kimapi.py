@@ -154,6 +154,8 @@ class APICollection(APIObject):
 
     def _wrap(self, iterable):
         """ Ensure we return an iter """
+        if isinstance(iterable, dict):
+            return [iterable]
         if hasattr(iterable,'__iter__'):
             return iterable
         return [iterable]
@@ -192,6 +194,11 @@ class APIDict(APIObject,dict):
     def __init__(self, *args, **kwargs):
         super(APIDict, self).__init__(*args, **kwargs)
 
+    def __getitem__(self, item):
+        value = super(APIDict,self).__getitem__(item)
+        if isinstance(value,dict):
+            return APIDict(value)
+        return value
 
 class APIFile(APIObject):
     pass
