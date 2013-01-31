@@ -155,6 +155,21 @@ class APIBundle(APIObject, list):
     def __init__(self, data=[]):
         super(APIBundle, self).__init__(data)
 
+    def _call(self, obj):
+        call = self._special_calls(obj)
+        if call is None:
+            call = APIBundle([ x._call_single(obj) for x in self ])
+        return call
+
+    def _filter(self, fltr):
+        filters = fltr.split(":")
+        return self if all([ x._filter(afilter) for x,afilter in zip(self,filters) ]) else None
+
+    def _bundle(self, bndl):
+        return APIBundle([ x._bundle(bndl) for x in self ])
+
+    def __str__(self):
+        return str([ str(x) for x in self])
 
 class APICollection(APIObject):
     """ A collection of api objects, meant to behave
