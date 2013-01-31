@@ -126,10 +126,20 @@ class APIObject(object):
 
     @property
     def help(self):
-        return "Not implemented"
+        #docs = {}
+        #for name in dir(self):
+        #    if not name.startswith("_") and not name.find("help") >=0:
+        #        meth = getattr(self, name)
+        #        if hasattr(meth, '__doc__'):
+        #            print meth.__doc__
+        #            docs.update({name: getattr(meth,'__doc__')})
+        #        else:
+        #            docs.update({name: ''})
+        #print docs
+        return [name for name in dir(self) if not name.startswith("_")]
 
 def unique_everseen(iterable):
-    known = {}
+    known = set()
     for item in iterable:
         if item not in known:
             known.add(item)
@@ -164,7 +174,7 @@ class APICollection(APIObject):
         """ Pass objects onto the elements in the collection,
             Use chain.from_iterable to ensure the collection stays flat,
             though this requires we wrap individual elements into iterable lists """
-        call = None #self._call_single(obj)
+        call = self._special_calls(obj)
         if call is None:
             call = APICollection(
                     chain.from_iterable(   #chain all results together
@@ -180,13 +190,19 @@ class APICollection(APIObject):
     def __str__(self):
         return str([ str(x) for x in self.iterable])
 
-    #@property
-    #def unique(self):
-    #    return set(self.iterable)
-    @property
-    def unique(self):
-        return APICollection(unique_everseen(self.iterable))
-
+    def _special_calls(self, obj):
+        if obj == "unique":
+            return APICollection(unique_everseen(self.iterable))
+        if obj == "help":
+            sample = self.next()
+            ret = sample._call_single("help") if isinstance(sample, APIObject) else []
+            ret.extend(["unique", "help", "length", "sort"])
+            return ret
+        if obj == "length":
+            return len(list(self.iterable))
+        if obj == "sort":
+            return APICollection(sorted(self.iterable))
+        return None
 
 
 class APIDict(APIObject,dict):
@@ -199,6 +215,10 @@ class APIDict(APIObject,dict):
         if isinstance(value,dict):
             return APIDict(value)
         return value
+
+    @property
+    def help(self):
+        return self.keys()
 
 class APIFile(APIObject):
     pass

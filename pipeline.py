@@ -641,6 +641,15 @@ class Site(Agent):
         self.bsd.put(simplejson.dumps({"kimid": kimid, "priority":"normal", "status":"approved"}))
 
 
+class APIAgent(Agent):
+    def __init__(self, num=0):
+        super(APIAgent, self).__init__(name='api')
+
+    def run(self):
+        self.connect()
+        while True:
+            time.sleep(1)
+
 #=======================================================
 # MAIN
 #=======================================================
@@ -689,5 +698,10 @@ if __name__ == "__main__":
             obj = Site()
             obj.run()
             obj.send_update(sys.argv[2])
+
+        elif sys.argv[1] == "agent":
+            obj = APIAgent()
+            obj.run()
+
     else:
         print "Specify {worker|director|site}"
