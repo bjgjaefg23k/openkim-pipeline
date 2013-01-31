@@ -19,6 +19,7 @@ logger = logger.getChild("repository")
 
 match_slash  = re.compile(r"^(\/)*(.*)")
 match_filter = re.compile(r"^\(\:(.*?)\:\)(\/*.*)")
+match_bundle = re.compile(r"^\(\[(.*?)\]\)(\/*.*)")
 match_object = re.compile(r"^([a-zA-Z0-9_\-:]*)(\/*.*)")
 
 #match_slash  = re.compile(
@@ -54,9 +55,11 @@ class APIObject(object):
     one of these or a subclass of this
     """
     def api(self, query, parent=None):
-        fltr, obj, args = self._break_into_parts(query)
+        fltr, bndl, obj, args = self._break_into_parts(query)
         if fltr is not None:
             result = self._filter(fltr)
+        elif bndl is not None:
+            result = self._bundle(bndl)
         elif obj is not None:
             result = self._call(obj)
         if hasattr(result, "api") and args and args != "/":
@@ -74,16 +77,20 @@ class APIObject(object):
 
         # find if there is a filter group or object group first
         grp_flt = match_filter.match(query)
+        grp_bdl = match_bundle.match(query)
         grp_obj = match_object.match(query)
 
-        obj = fltr = None
+        obj = fltr = bndl = None
         if grp_flt:
             # if there was a filter
             fltr, args = grp_flt.groups()
+        elif grp_bdl:
+            # we have a bundle object
+            bndl, args = grp_bdl.groups()
         else:
             # if there was an object
             obj, args = grp_obj.groups()
-        return (fltr, obj, args)
+        return (fltr, bndl, obj, args)
 
     def _filter(self, fltr):
         """ a base case of filtering for one object which
@@ -104,25 +111,24 @@ class APIObject(object):
         return self._call_single(obj)
 
     def _call_single(self, obj):
-        objs = obj.split(":")
-        # call = self._special_calls(obj) or self.__getattribute__(obj) or self.__getitem__(obj)
         call = self._special_calls(obj) #map(self._special_calls, objs)
         if call is None:
             try:
-                call = self.__getattribute__(obj) #map(self.__getattribute__, objs)
+                call = self.__getattribute__(obj) 
             except AttributeError as e:
                 call = None
         if call is None:
             try:
-                call = self.__getitem__(obj) #map(self.__getitem__, objs)
+                call = self.__getitem__(obj) 
             except KeyError as e:
                 call = None
             except AttributeError as e:
                 call = None
-        #if isinstance(call, tuple):
-        #    if len(call) == 1:
-        #        return call[0]
         return call
+
+    def _bundle(self, bndl):
+        objs = [s.replace(" ", "") for s in bndl.split(":")]
+        return APIBundle(map(self.api, objs))
 
     @property
     def help(self):
@@ -145,6 +151,11 @@ def unique_everseen(iterable):
             known.add(item)
             yield item
 
+class APIBundle(APIObject, list):
+    def __init__(self, data=[]):
+        super(APIBundle, self).__init__(data)
+
+
 class APICollection(APIObject):
     """ A collection of api objects, meant to behave
     like a generator, supporting filtering """
@@ -166,6 +177,8 @@ class APICollection(APIObject):
         """ Ensure we return an iter """
         if isinstance(iterable, dict):
             return [iterable]
+        if isinstance(iterable, APIBundle):
+            return [iterable]
         if hasattr(iterable,'__iter__'):
             return iterable
         return [iterable]
@@ -182,6 +195,9 @@ class APICollection(APIObject):
                         )
                     )
         return call
+
+    def _bundle(self, bndl):
+        return APICollection( x._bundle(bndl) for x in self.iterable)
 
     def _filter(self, fltr):
         """ Use objects to compute filters """

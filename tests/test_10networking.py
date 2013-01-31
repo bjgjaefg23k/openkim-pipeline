@@ -15,13 +15,13 @@ def test_daemonconnect():
     import pipeline
     from config import *
     d = pipeline.Director()
-    d.connect_to_daemon()
+    d.connect()
     d.disconnect()
 
 def test_rxtx():
     import pipeline
     from config import *
     d = pipeline.Director()
-    d.connect_to_daemon()
+    d.connect()
     d.disconnect()
 
