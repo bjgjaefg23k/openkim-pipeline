@@ -9,43 +9,16 @@ from config import *
 from itertools import chain
 
 logger = logger.getChild("repository")
-#/(? stuff ?)/blah or /name_qualifier/blah
-# match_args   = re.compile(
-#     r"""
-#     (?:^\(\?.*?\?\))? #filter group
-#     (?:^[a-zA-Z0-9_\-]*?)? #object group
-#     (\/.*) #everything else
-#     """)
 
-match_slash  = re.compile(r"^(\/)*(.*)")
-match_filter = re.compile(r"^\(\:(.*?)\:\)(\/*.*)")
-match_bundle = re.compile(r"^\(\[(.*?)\]\)(\/*.*)")
-match_object = re.compile(r"^([a-zA-Z0-9_\-:]*)(\/*.*)")
+match_slash  = re.compile(r"^(\/)*(.*)")                    # matches (/)(other/things)
+match_filter = re.compile(r"^\(\:(.*?)\:\)(\/*.*)")         # matches (: stuff :)/other/things
+match_bundle = re.compile(r"^\(\[(.*?)\]\)(\/*.*)")         # matches ([ list stuff ])/other/things
+match_object = re.compile(r"^([a-zA-Z0-9_\-:]*)(\/*.*)")    # matches any_c_type_NAME/other/things
 
-#match_slash  = re.compile(
-#    r"""
-#    ^           #start of string
-#    (\/)*       #match any number of starting backslashes
-#    (.*)        # grab everything else
-#    """)
-## match_filter = re.compile(r"^\(\?(.*?)\?\)(\/*.*)")
-#match_filter = re.compile(
-#    r"""
-#    ^\(\?       # if the string starts with ?
-#    (.*?)       # grab the inards, non-greedy
-#    \?\)        # the  matching ?
-#    (\/*.*)     # rest of the expression
-#    """)
-#match_object = re.compile(
-#    r"""
-#    ^([a-zA-Z0-9_:]*)       # starts with a valid python name (or has :)
-#    (\/*.*)                 # grab the rest of the query
-#    """)
-
-match_import  = r"import"     # get rid of imports
-match_comment = r"(@#.*?#@)"  # used in re.sub to get rid of comments
-match_replace = r"@@(.*?)@@"  # used in re.sub to substitute @@/apicall@@ -> x.api("/apicall")
-match_index   = r"@\[(\d)\]@"  # FIXME - not implemented
+match_import  = r"import"       # get rid of imports
+match_comment = r"(@#.*?#@)"    # used in re.sub to get rid of comments
+match_replace = r"@@(.*?)@@"    # used in re.sub to substitute @@/apicall@@ -> x.api("/apicall")
+match_index   = r"@\[(\d)\]@"   # FIXME - not implemented
 
 #=======================================================
 # the base APIObject which implements all standard calls
@@ -170,6 +143,9 @@ class APIBundle(APIObject, list):
 
     def __str__(self):
         return str([ str(x) for x in self])
+
+    def __hash__(self):
+        return str([ x.__hash__() for x in self ])
 
 class APICollection(APIObject):
     """ A collection of api objects, meant to behave

@@ -101,9 +101,9 @@ class Communicator(Thread):
                         ret = kimobjects.data.api("/"+query)
                         logger.debug("Object found for request /%s" % query)
                         try:
-                            self.sock_tx.send( simplejson.dumps(("api", simplejson.dumps((responseid, ret))) ))
+                            self.sock_tx.send(simplejson.dumps( ("api", trim_quotes(simplejson.dumps((responseid, ret))) ) ))
                         except TypeError as e:
-                            self.sock_tx.send( simplejson.dumps(("api", simplejson.dumps((responseid, str(ret)))) ))
+                            self.sock_tx.send(simplejson.dumps( ("api", trim_quotes(simplejson.dumps((responseid, str(ret)))) ) ))
 
             except Exception as e:
                 # just let it go, you failed.
@@ -115,6 +115,15 @@ class Communicator(Thread):
     def send_msg(self, tube, msg):
         self.sock_tx.send(simplejson.dumps(("ping", simplejson.dumps([tube, msg]))))
 
+def trim_quotes(string):
+    return string
+    import re
+    match_slashtick = r"\\*[\'\"]*"
+    match_tickbrack = r"[\'\"]*([\[\]\{\}]*)[\'\"]*"
+    string = re.sub(match_slashtick, r"", string)
+    string = re.sub(match_tickbrack, r"", string)
+    print string
+    return string
 
 #==================================================================
 # the logging handler for beanstalkd queues

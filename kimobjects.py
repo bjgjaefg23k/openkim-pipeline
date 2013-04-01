@@ -1214,5 +1214,21 @@ class KIMData(APIObject):
         else:
             return kim_obj(item)
 
+    @property
+    def help(self):
+        from collections import OrderedDict
+        funcs = [{"te": "all tests"},{ "td" : "all test drivers"},{ "mo" : "all models"},{ "md" : "all model drivers"},{ 
+                "rd" : "all reference data"},{ "pr" : "all primitives"},{ "tr": "all test results"},{ "vt": "all verification checks for tests"},{ 
+                "vm": "all verification checks for models"},{ "vr": "all verification results"},{ "VALID_KIMCODE": "returns only that particular kim object"},{ 
+                "(: <some python code> :)": "FILTER - filters the current with valid python code"},{ 
+                "@@/apicall@@": "APICALL - applies this API call to the previous object while in a filter"},{
+                "@# some text #@": "COMMENT - removes this section of the filter for commenting"},{
+                "([ /apicall : /secondcall <: /othercalls> ])": "BUNDLE - create a tuple of API objects"}]
+        
+        dic = OrderedDict()
+        for d in funcs:
+            dic.update(d)
+        return dic
+
 data = KIMData()
 
