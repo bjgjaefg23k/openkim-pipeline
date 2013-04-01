@@ -36,6 +36,7 @@ import re
 import dircache
 import simplejson
 import kimapi
+import uuid
 from jsonschema import validate
 from template import template_environment
 from kimapi import APIObject, APICollection, APIDict, APIFile
@@ -355,7 +356,7 @@ class Test(KIMObject):
 
     def processed_infile(self,model):
         """ Process the input file, with template, and return a file object to the result """
-        template.process(self.infile,model.kim_code,self.kim_code)
+        template.process(self.infile,model,self)
         return open(os.path.join(self.path,TEMP_INPUT_FILE))
 
     @property
@@ -363,7 +364,7 @@ class Test(KIMObject):
         return template_environment.get_template(os.path.join(self.path, TEMPLATE_FILE))
 
     def modelname_processed_infile(self, model):
-        template.process(self.infile, model.kim_code, self.kim_code, modelonly=True)
+        template.process(self.infile, model, self, modelonly=True)
         return open(os.path.join(self.path, TEMP_INPUT_FILE))
 
     @property
@@ -371,6 +372,28 @@ class Test(KIMObject):
         """ Returns a generator of valid matched models """
         return APICollection((model for model in Model.all() if kimapi.valid_match(self,model) ))
 
+    @contextmanager
+    def move_to_tmp_dir(self, tmpid=None, *args, **kwargs):
+        storage = [self.path, self.info, self.executable, self.infile_path]
+
+        tmpid = tmpid or unicode(uuid.uuid4())
+        tmpath = self.path+"_"+tmpid
+
+        if not os.path.isdir(tmpath):
+            shutil.copytree(self.path, tmpath, *args, **kwargs)
+        else:
+            raise IOError("Temporary file already exists %r" % tmpath)
+
+        # FIXME - should be a better way of creating the object we want
+        self.path = tmpath    
+        self.info = PersistentDict(os.path.join(self.path,METADATA_INFO_FILE))
+        self.executable = os.path.join(self.path,self.kim_code)
+        self.infile_path = os.path.join(self.path,INPUT_FILE)
+
+        yield
+
+        shutil.rmtree(tmpath)
+        self.path, self.info, self.executable, self.infile_path = storage   
 
 #--------------------------------------
 # Model
@@ -842,7 +865,7 @@ class VerificationTest(KIMObject):
 
     def processed_infile(self,test):
         """ Process the input file, with template, and return a file object to the result """
-        template.process(self.infile,test.kim_code,self.kim_code)
+        template.process(self.infile,test,self)
         return open(os.path.join(self.path,TEMP_INPUT_FILE))
 
     @property
@@ -949,7 +972,7 @@ class VerificationModel(KIMObject):
 
     def processed_infile(self,model):
         """ Process the input file, with template, and return a file object to the result """
-        template.process(self.infile,model.kim_code,self.kim_code)
+        template.process(self.infile,model,self)
         return open(os.path.join(self.path,TEMP_INPUT_FILE))
 
     @property

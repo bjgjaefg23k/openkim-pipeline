@@ -36,7 +36,6 @@ TUBE_RESULTS = "results"
 TUBE_ERRORS  = "errors"
 TUBE_LOG     = "logs"
 
-runlock = {}
 buildlock = Lock()
 BEANSTALK_LEVEL = logging.INFO
 
@@ -556,14 +555,12 @@ class Worker(Agent):
                     verifier = kimobjects.Verifier(verifier_kcode)
                     subject  = kimobjects.Subject(subject_kcode)
 
-                    if not runlock.has_key(verifier_kcode):
-                        runlock[verifier_kcode] = Lock()
-                    with runlock[test_kcode]:
+                    with verifier.move_to_tmp_dir(jobmsg.jobid):
                         self.logger.info("Running (%r,%r)",verifier,subject)
                         result = runner.run_test_on_model(verifier,subject)
 
-                    #create the verification result object (will be written)
-                    vr = kimobjects.VerificationResult(jobmsg.jobid, results = result, search=False)
+                        #create the verification result object (will be written)
+                        vr = kimobjects.VerificationResult(jobmsg.jobid, results = result, search=False)
 
                     self.logger.info("rsyncing results %r", jobmsg.jobid)
                     rsync_tools.worker_verification_write(jobmsg.jobid)
@@ -598,14 +595,12 @@ class Worker(Agent):
                     test = kimobjects.Test(test_kcode)
                     model = kimobjects.Model(model_kcode)
 
-                    if not runlock.has_key(test_kcode):
-                        runlock[test_kcode] = Lock()
-                    with runlock[test_kcode]:
+                    with test.move_to_tmp_dir(jobmsg.jobid):
                         self.logger.info("Running (%r,%r)",test,model)
                         result = runner.run_test_on_model(test,model)
 
-                    #create the test result object (will be written)
-                    tr = kimobjects.TestResult(jobmsg.jobid, results = result, search=False)
+                        #create the test result object (will be written)
+                        tr = kimobjects.TestResult(jobmsg.jobid, results = result, search=False)
 
                     self.logger.info("rsyncing results %r", jobmsg.jobid)
                     rsync_tools.worker_test_result_write(jobmsg.jobid)

@@ -22,6 +22,7 @@ import os
 # KIM FLAGS
 #===============================
 PIPELINE_DEBUG = False
+PIPELINE_DEBUG_ALL = False
 if os.environ.has_key("PIPELINE_DEBUG"):
     if os.environ["PIPELINE_DEBUG"] == "1":
         PIPELINE_DEBUG = True
@@ -81,6 +82,8 @@ logger.setLevel(logging.DEBUG)
 
 #formatter
 log_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
+if PIPELINE_DEBUG_ALL:
+    log_formatter = logging.Formatter('%(filename)s:%(lineno)d _ %(asctime)s - %(levelname)s - %(name)s - %(message)s')
 
 LOG_DIR = os.path.join(KIM_PIPELINE_DIR,"logs")
 
@@ -106,8 +109,8 @@ class PygmentHandler(logging.StreamHandler):
 #create a console logger
 console_handler = PygmentHandler()
 console_handler.setLevel(logging.INFO)
-#if PIPELINE_DEBUG:
-#    console_handler.setLevel(logging.DEBUG)
+if PIPELINE_DEBUG_ALL:
+    console_handler.setLevel(logging.DEBUG)
 
 console_handler.setFormatter(log_formatter)
 logger.addHandler(console_handler)
