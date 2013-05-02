@@ -8,6 +8,7 @@ logger = logger.getChild("runner")
 import os
 import kimobjects
 import subprocess, threading
+import yaml
 
 #================================================================
 # helper functions
@@ -197,18 +198,18 @@ def run_test_on_model(test,model):
     logger.debug('Found JSON:\n{}'.format(simplejson.dumps(data,indent=4)))
 
     #Add output
-    tr_out = {}
-    tr_out['output'] = data
+    pipelineinfo = {"kim-template-tags": ["pipeline-info"]}
+    pipelineinfo['test-extended-id']  = test.kim_code
+    pipelineinfo['model-extended-id']  = model.kim_code
+    pipelineinfo['output'] = simplejson.dumps(data)
 
     # Add metadata
-    tr_out['info'] = {}
-    info_dict = tr_out['info']
+    pipelineinfo['info'] = {}
+    info_dict = pipelineinfo['info']
     info_dict["kimlog"] = "@FILE[{}]".format(KIMLOG_FILE)
     info_dict["stdout"] = "@FILE[{}]".format(STDOUT_FILE)
-    info_dict["testname"] = test.kim_code
-    info_dict["modelname"] = model.kim_code
     info_dict["time"] = run_time
-    info_dict["created_at"] = time.time()
+    info_dict["created-at"] = time.time()
     info_dict["vmversion"] = os.environ["VMVERSION"]
     info_dict.update(getboxinfo())
 
@@ -222,36 +223,28 @@ def run_test_on_model(test,model):
     logger.debug("Added metadata:\n{}".format(simplejson.dumps(info_dict,indent=4)))
 
     #populate proper TR
-    template = test.template
-    vals = {'MODELNAME':model.kim_code, 'TESTNAME': test.kim_code , 'TRCODE':'@@TRCODE@@' }
-    vals.update(data)
-    trform = template.render(**vals)
-    logger.debug("Manipulated template:\n{}".format(trform))
-    with test.in_dir(), open(TEMPLATE_OUT,'w') as f:
-        f.write(trform)
+    #template = test.template
+    #vals = {'MODELNAME':model.kim_code, 'TESTNAME': test.kim_code , 'TRCODE':'@@TRCODE@@' }
+    #vals.update(data)
+    #trform = template.render(**vals)
 
-    trdict = simplejson.loads(trform)
-    logger.debug("Formed dict:\n{}".format(simplejson.dumps(trdict,indent=4)))
-    tr_out.update(trdict)
+    renderedyaml = test.template.render(**data)
+    logger.debug("Manipulated template:\n{}".format(renderedyaml))
+    with test.in_dir(), open(TEMPLATE_OUT,'w') as f:
+        f.write(renderedyaml)
+
+    tryaml = list(yaml.load_all(renderedyaml))
+    logger.debug("Formed dict:\n{}".format("\n".join([simplejson.dumps(temp,indent=4) for temp in tryaml])))
+    #tr_out.update(trdict)
+
+    documents = [pipelineinfo]
+    documents.extend(tryaml)
 
     logger.debug("got data %r",data)
     with test.in_dir(), open(TR_OUTPUT,'w') as f:
-        f.write(simplejson.dumps(tr_out, indent=4))
+        f.write(yaml.dump_all(documents, default_flow_style=False, explicit_start=True))
 
-    #Add kim_id_test, kim_id_model, validation_schema
-    if isinstance(test, kimobjects.Test):
-        schema_type = 'schema_tr'
-    else:
-        schema_type = 'schema_vr'
-
-    tr_out.update({
-        'kim_id_test': test.kim_code,
-        'kim_id_model': model.kim_code,
-        'validation_schema': schema_type}
-        )
-
-    # TODO: We need to inject 'kim_id' before writing
-    return tr_out
+    return {'dict': documents}
 
 
 #run all the tests on all the models

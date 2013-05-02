@@ -34,7 +34,7 @@ import shutil
 import subprocess
 import re
 import dircache
-import simplejson
+import simplejson, yaml
 import kimapi
 import uuid
 from jsonschema import validate
@@ -530,7 +530,7 @@ class TestResult(KIMObject):
             results
                 A persistent dict for the results file in the objects directory
             test
-                The test that generated the test result from self.results["testname"] or None
+                The test that generated the test result from self.results["test-extended-id"] or None
             model
                 The model for the test results or None
 
@@ -541,7 +541,7 @@ class TestResult(KIMObject):
             try to access its elements directly, i.e.::
 
                 tr = TestResult("TR_000000000000_000")
-                tr["testname"] == tr.results["testname"]
+                tr["test-extended-id"] == tr.results["test-extended-id"]
     """
     required_leader = "TR"
     makeable = False
@@ -585,7 +585,7 @@ class TestResult(KIMObject):
             #If this TR doesn't exist and we have search off, create it
             self.create_dir()
 
-        self.results = PersistentDict(os.path.join(self.path,self.kim_code),format='json')
+        self.results = PersistentDict(os.path.join(self.path,self.kim_code),format='yaml')
         #if we recieved a json string, write it out
         if results:
             logger.debug("Recieved results, writing out to %r", self.kim_code)
@@ -602,7 +602,11 @@ class TestResult(KIMObject):
                     raise PipelineResultsError, "Could not understand the format of the results: {}".format(results)
 
             #also move all of the files
-            testname = incoming_results["info"]["testname"]
+            ### FIXME FIXME added these two lines, they're dumb
+            self.results.update(incoming_results)
+            incoming_results = self.results
+
+            testname = incoming_results["test-extended-id"]
 
             files = template.files_from_results(incoming_results)
             if files:
@@ -617,11 +621,11 @@ class TestResult(KIMObject):
             logger.info("Results created in %r", self.kim_code)
 
         try:
-            self.test = Test(self.results["info"]["testname"])
+            self.test = Test(self.results["test-extended-id"])
         except KeyError:
             self.test = None
         try:
-            self.model = Model(self.results["info"]["modelname"])
+            self.model = Model(self.results["model-extended-id"])
         except KeyError:
             self.model = None
 

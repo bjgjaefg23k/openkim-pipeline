@@ -51,8 +51,8 @@ template_environment = jinja2.Environment(
         loader=jinja2.FileSystemLoader('/'),
         block_start_string='@[',
         block_end_string=']@',
-        variable_start_string='@@',
-        variable_end_string='@@',
+        variable_start_string='@<',
+        variable_end_string='>@',
         comment_start_string='@#',
         comment_end_string='#@',
         )
@@ -69,7 +69,7 @@ def files_from_results(results):
     """ Given a dictionary of results,
     return the filenames for any files contained in the results, from the @FILE directive """
     logger.debug("parsing results for file directives")
-    testname = results["info"]["testname"]
+    testname = results["test-extended-id"]
     test = kimobjects.Test(testname)
     #get only those files:that match the file directive, needs strings to process
     files = filter(None,(get_file(str(val),test.path) for key,val in results.iteritems()))

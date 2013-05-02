@@ -21,7 +21,7 @@ import os
 #==============================
 # KIM FLAGS
 #===============================
-PIPELINE_DEBUG = False
+PIPELINE_DEBUG = True
 PIPELINE_DEBUG_ALL = False
 if os.environ.has_key("PIPELINE_DEBUG"):
     if os.environ["PIPELINE_DEBUG"] == "1":
@@ -37,8 +37,8 @@ METADATA_INFO_FILE = "metadata.json"
 PIPELINE_INFO_FILE = "pipelineinfo.json"
 INPUT_FILE = "pipeline.in"
 OUTPUT_FILE = "pipeline.out"
-TEMPLATE_FILE = 'pipeline.json'
-TEMPLATE_OUT = "pipeline.json.processed"
+TEMPLATE_FILE = 'pipeline.yaml'
+TEMPLATE_OUT = "pipeline.yaml.processed"
 TR_OUTPUT = "pipeline.tr.processed"
 STDOUT_FILE = "pipeline.stdout"
 STDERR_FILE = "pipeline.stderr"
