@@ -26,7 +26,7 @@ classes, all of which inherit from ``KIMObject`` and aim to know how to handle t
 from config import *
 logger = logger.getChild("models")
 
-from persistentdict import PersistentDict
+from persistent import PersistentDict
 from contextlib import contextmanager
 import template
 import database
@@ -39,13 +39,12 @@ import kimapi
 import uuid
 from jsonschema import validate
 from template import template_environment
-from kimapi import APIObject, APICollection, APIDict, APIFile
 
 #------------------------------------------------
 # Base KIMObject
 #------------------------------------------------
 
-class KIMObject(APIObject,simplejson.JSONEncoder):
+class KIMObject(simplejson.JSONEncoder):
     """ The base KIMObject that all things inherit from
 
     Attributes:
@@ -230,7 +229,7 @@ class KIMObject(APIObject,simplejson.JSONEncoder):
         logger.debug("Attempting to find all %r...", cls.__name__)
         type_dir = os.path.join(KIM_REPOSITORY_DIR, cls.required_leader.lower() )
         kim_codes =  ( subpath for subpath in dircache.listdir(type_dir) if os.path.isdir( os.path.join( type_dir, subpath) ) )
-        return APICollection(( cls(x) for x in kim_codes ))
+        return ( cls(x) for x in kim_codes )
 
     def delete(self):
         """ Delete the folder for this object
@@ -330,12 +329,12 @@ class Test(KIMObject):
     @property
     def test_drivers(self):
         """ Return a generator of test drivers this guy relies on """
-        return APICollection(( depend for depend in self.dependencies if depend.required_leader == "TD"))
+        return ( depend for depend in self.dependencies if depend.required_leader == "TD")
 
     @property
     def results(self):
         """ Return a generator of all of the results of this test """
-        return APICollection(( result for result in TestResult.all() if result.test == self ))
+        return ( result for result in TestResult.all() if result.test == self )
 
     def result_with_model(self, model):
         """ Get the first result with the model: model, or None """
@@ -370,7 +369,7 @@ class Test(KIMObject):
     @property
     def models(self):
         """ Returns a generator of valid matched models """
-        return APICollection((model for model in Model.all() if kimapi.valid_match(self,model) ))
+        return (model for model in Model.all() if database.valid_match(self,model) )
 
     @contextmanager
     def move_to_tmp_dir(self, tmpid=None, *args, **kwargs):
@@ -426,12 +425,12 @@ class Model(KIMObject):
     @property
     def results(self):
         """ Get a generator of all of the results for this model """
-        return APICollection(( result for result in TestResult.all() if result.model == self ))
+        return ( result for result in TestResult.all() if result.model == self )
 
     @property
     def tests(self):
         """ Return a generator of the valid matching tests that match this model """
-        return APICollection(( test for test in Test.all() if kimapi.valid_match(test,self) ))
+        return ( test for test in Test.all() if database.valid_match(test,self) )
 
 #------------------------------------------
 # Primitive
@@ -498,17 +497,17 @@ class Property(KIMObject):
     @property
     def results(self):
         """ Return a generator of results that compute this property """
-        return APICollection(( tr for tr in TestResult.all() if self in tr.properties ))
+        return ( tr for tr in TestResult.all() if self in tr.properties )
 
     @property
     def references(self):
         """ Return a generator of references that reference this property """
-        return APICollection(( rd for rd in ReferenceDatum.all() if self == rd.property ))
+        return ( rd for rd in ReferenceDatum.all() if self == rd.property )
 
     @property
     def tags(self):
         """ Return a generator of all the tags used by the test writers to refer to this property """
-        return APICollection(set( value for key,value in result.test._reversed_out_dict.iteritems() if Property(key)==self for result in self.results ))
+        return set( value for key,value in result.test._reversed_out_dict.iteritems() if Property(key)==self for result in self.results )
 
     def validate(self):
         """ Validate the Property against the property schema """
@@ -743,7 +742,7 @@ class TestDriver(KIMObject):
     @property
     def tests(self):
         """ Return a generator of all tests using this TestDriver """
-        return APICollection(( test for test in Test.all() if self in test.test_drivers ))
+        return ( test for test in Test.all() if self in test.test_drivers )
 
 
 #------------------------------------------
@@ -767,7 +766,7 @@ class ModelDriver(KIMObject):
     @property
     def models(self):
         """ Return a generator of all of the models using this model driver """
-        return APICollection(( model for model in Model.all() if self==model.model_driver ))
+        return ( model for model in Model.all() if self==model.model_driver )
 
 
 
@@ -848,7 +847,7 @@ class VerificationTest(KIMObject):
     @property
     def results(self):
         """ Return a generator of all of the results of this test """
-        return APICollection(( result for result in VerificationResult.all() if result.verifier == self ))
+        return ( result for result in VerificationResult.all() if result.verifier == self )
 
     def result_with_subject(self, subject):
         """ Get the first result with the subject: subject, or None """
@@ -875,7 +874,7 @@ class VerificationTest(KIMObject):
     @property
     def subjects(self):
         """ Returns a generator of valid matched models """
-        return APICollection((test for test in Test.all() ))
+        return (test for test in Test.all() )
 
 
 #------------------------------------------
@@ -955,7 +954,7 @@ class VerificationModel(KIMObject):
     @property
     def results(self):
         """ Return a generator of all of the results of this test """
-        return APICollection(( result for result in VerificationResult.all() if result.verifier == self ))
+        return ( result for result in VerificationResult.all() if result.verifier == self )
 
     def result_with_subject(self, subject):
         """ Get the first result with the subject: subject, or None """
@@ -982,7 +981,7 @@ class VerificationModel(KIMObject):
     @property
     def subjects(self):
         """ Returns a generator of valid matched models """
-        return APICollection((model for model in Model.all() ))
+        return (model for model in Model.all() )
 
 
 def Verifier(kimid):
@@ -1233,7 +1232,7 @@ def kim_obj(kim_code):
     cls = code_to_model.get(leader, KIMObject)
     return cls(kim_code)
 
-class KIMData(APIObject):
+class KIMData(object):
     """ A simple wrapper to getting data """
     def __getitem__(self,item):
         if len(item) == 2:

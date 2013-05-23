@@ -440,7 +440,7 @@ class Director(Agent):
 
         if checkmatch == True:
             for test, model in zip(tests,models):
-                if kimapi.valid_match(test,model):
+                if database.valid_match(test,model):
                     priority = int(priority_factor*database.test_model_to_priority(test,model) * 1000000)
                     self.check_dependencies_and_push(test,model,priority,status)
         else:

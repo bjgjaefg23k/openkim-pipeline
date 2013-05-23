@@ -1,0 +1,14 @@
+#!/bin/sh
+
+cd /home/vagrant
+wget http://pipeline.openkim.org/packages/repository -O ./repository.tar.gz
+tar zxvf repository.tar.gz
+
+mv ~/openkim-repository ~/openkim-repository.bk
+
+if [ -d ./repository ] 
+then
+    mv ./repository/read/approved ~/openkim-repository
+else
+    mv ./repository_dbg/read/approved ~/openkim-repository
+fi

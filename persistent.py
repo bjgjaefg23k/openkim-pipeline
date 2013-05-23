@@ -6,9 +6,8 @@ Persistant Dictionary recipe from:
 
 import pickle, json, csv, os, shutil, yaml
 from collections import defaultdict
-from kimapi import APIDict
 
-class PersistentDict(APIDict):
+class PersistentDict(dict):
     ''' Persistent dictionary with an API compatible with shelve and anydbm.
 
     The dict is kept in memory, so the dictionary operations run as fast as
@@ -31,8 +30,7 @@ class PersistentDict(APIDict):
             fileobj = open(filename, 'rb' if format=='pickle' else 'r')
             with fileobj:
                 self.load(fileobj)
-        dict.__init__(self, *args, **kwargs)
-        # super(APIDict,self).__init__(*args,**kwargs)
+        super(PersistentDict,self).__init__(self, *args, **kwargs)
 
     def sync(self):
         'Write dict to disk'
@@ -103,7 +101,7 @@ class PersistentDict(APIDict):
 
         value = super(PersistentDict,self).__getitem__(item)
         if isinstance(value,dict):
-            return APIDict(value)
+            return dict(value)
         return value
 
 

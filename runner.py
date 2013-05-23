@@ -222,12 +222,6 @@ def run_test_on_model(test,model):
 
     logger.debug("Added metadata:\n{}".format(simplejson.dumps(info_dict,indent=4)))
 
-    #populate proper TR
-    #template = test.template
-    #vals = {'MODELNAME':model.kim_code, 'TESTNAME': test.kim_code , 'TRCODE':'@@TRCODE@@' }
-    #vals.update(data)
-    #trform = template.render(**vals)
-
     renderedyaml = test.template.render(**data)
     logger.debug("Manipulated template:\n{}".format(renderedyaml))
     with test.in_dir(), open(TEMPLATE_OUT,'w') as f:
@@ -235,7 +229,6 @@ def run_test_on_model(test,model):
 
     tryaml = list(yaml.load_all(renderedyaml))
     logger.debug("Formed dict:\n{}".format("\n".join([simplejson.dumps(temp,indent=4) for temp in tryaml])))
-    #tr_out.update(trdict)
 
     documents = [pipelineinfo]
     documents.extend(tryaml)
