@@ -22,7 +22,7 @@ from subprocess import check_call, Popen, PIPE, CalledProcessError
 from multiprocessing import cpu_count, Process
 from threading import Thread, Lock
 import time, simplejson, traceback, sys, zmq, uuid
-import rsync_tools, runner, kimapi, database 
+import rsync_tools, runner, database 
 import kimobjects
 
 PIPELINE_WAIT    = 1

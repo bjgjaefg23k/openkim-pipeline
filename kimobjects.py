@@ -35,7 +35,6 @@ import subprocess
 import re
 import dircache
 import simplejson, yaml
-import kimapi
 import uuid
 from jsonschema import validate
 from template import template_environment
