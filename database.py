@@ -11,7 +11,7 @@ logger = logger.getChild("database")
 import re, os, glob, operator
 import kimobjects
 import random
-
+import kimservice
 #-------------------------------------------------
 # Helper routines (probably move)
 #-------------------------------------------------

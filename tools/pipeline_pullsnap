@@ -1,7 +1,7 @@
 #!/bin/sh
 
 cd /home/vagrant
-wget http://pipeline.openkim.org/packages/repository -O ./repository.tar.gz
+wget --timeout=30 http://pipeline.openkim.org/packages/repository -O ./repository.tar.gz
 tar zxvf repository.tar.gz
 
 mv ~/openkim-repository ~/openkim-repository.bk
@@ -9,6 +9,11 @@ mv ~/openkim-repository ~/openkim-repository.bk
 if [ -d ./repository ] 
 then
     mv ./repository/read/approved ~/openkim-repository
+    rm -rf ./repository
 else
     mv ./repository_dbg/read/approved ~/openkim-repository
+    rm -rf ./repository_dbg
 fi
+
+rm repository.tar.gz
+makekim
