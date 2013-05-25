@@ -23,7 +23,10 @@ def getboxinfo():
     things = ['sitename','username','boxtype','ipaddr','vmversion','setuphash']
 
     for thing in things:
-        info[thing] = open(os.path.join('/persistent',thing)).read().strip()
+        try:
+            info[thing] = open(os.path.join('/persistent',thing)).read().strip()
+        except Exception as e:
+            info[thing] = "not secure"
     return info
 
 def line_filter(line):
