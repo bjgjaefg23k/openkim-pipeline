@@ -17,9 +17,7 @@ import kimservice
 #-------------------------------------------------
 
 #KIMID matcher  ( optional name             __) (prefix  ) ( number  )( opt version )
-RE_KIMID    = r"(?:([_a-zA-Z][_a-zA-Z0-9]*?)__)?([A-Z]{2})_([0-9]{10,12})(?:_([0-9]{3}))?"
-#FIXME : right now I let the numbers be between 10 and 12 because we have some that are screwed up
-
+RE_KIMID    = r"(?:([_a-zA-Z][_a-zA-Z0-9]*?)__)?([A-Z]{2})_([0-9]{12})(?:_([0-9]{3}))?"
 
 def new_test_result_id(number=None):
     """ Generate or get a new test result id, currently make them up, eventually request them from the website """

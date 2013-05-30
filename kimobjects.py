@@ -75,7 +75,7 @@ class KIMObject(simplejson.JSONEncoder):
     #whether or not objects of this type are makeable
     makeable = False
 
-    def __init__(self,kim_code,search=True):
+    def __init__(self,kim_code,search=True,subdir=None):
         """ Initialize a KIMObject given the kim_code, where partial kim codes are promoted if possible,
             if search is False, then don't look for existing ones
 
@@ -89,6 +89,11 @@ class KIMObject(simplejson.JSONEncoder):
                 search (bool)
                     Whether or not to search the directory structure for the fullest match,
                     false is useful when creating new KIMObjects to avoid hitting a PipelineSearchError
+                dirpath (str)
+                    In order to point to a directory that does not follow that pattern
+                    /home/vagrant/openkim-repository/{mo,md,te...}/KIM_CODE/KIM_CODE 
+                    can provide the folder of 
+                    /home/vagrant/openkim-repository/{mo,md,te...}/SUBDIR/KIM_CODE 
         """
         logger.debug("Initializing a new KIMObject: %r", kim_code)
         name, leader, num, version = database.parse_kim_code(kim_code)
@@ -102,6 +107,7 @@ class KIMObject(simplejson.JSONEncoder):
         self.kim_code_leader = leader
         self.kim_code_number = num
         self.kim_code_version = version
+        self.kim_code_id = leader+"_"+num+"_"+version
 
         if not search:
             self.kim_code = kim_code
@@ -129,8 +135,11 @@ class KIMObject(simplejson.JSONEncoder):
             self.kim_code = database.format_kim_code(name,leader,num,version)
 
         self.parent_dir = os.path.join(KIM_REPOSITORY_DIR, self.kim_code_leader.lower())
-        self.path = os.path.join( self.parent_dir ,self.kim_code)
-        self.info = PersistentDict(os.path.join(self.path,METADATA_INFO_FILE))
+        if subdir is not None:
+            self.path = os.path.join(self.parent_dir, subdir)
+        else:
+            self.path = os.path.join(self.parent_dir, self.kim_code)
+        self.info = PersistentDict(os.path.join(self.path, METADATA_INFO_FILE))
 
     def __str__(self):
         """ the string representation is the full kim_code """
@@ -1225,15 +1234,15 @@ code_to_model = {"TE": Test, "MO": Model, "TD": TestDriver, "TR": TestResult ,
     "VT": VerificationTest, "VM": VerificationModel, "VR": VerificationResult,
     "RD": ReferenceDatum, "PR": Property , "VM": VirtualMachine, "MD": ModelDriver }
 
-def kim_obj(kim_code):
+def kim_obj(kim_code, *args, **kwargs):
     """ Just given a kim_code try to make the right object, i.e. try to make a TE code a Test, etc. """
     name,leader,num,version = database.parse_kim_code(kim_code)
     cls = code_to_model.get(leader, KIMObject)
-    return cls(kim_code)
+    return cls(kim_code, *args, **kwargs)
 
 class KIMData(object):
     """ A simple wrapper to getting data """
-    def __getitem__(self,item):
+    def __getitem__(self, item):
         if len(item) == 2:
             return code_to_model[item.upper()].all()
         else:

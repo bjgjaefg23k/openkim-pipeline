@@ -51,6 +51,45 @@ def open_ports(port, rx, tx, user, addr, ip):
         logger.info("Waiting to open ports via ssh tunnels")
         time.sleep(PIPELINE_WAIT)
 
+def getboxinfo():
+    os.system("cd /home/vagrant/openkim-pipeline; git log -n 1 | grep commit | sed s/commit\ // > /persistent/setuphash")
+
+    info = {}
+    things = ['sitename','username','boxtype','ipaddr','vmversion','setuphash']
+
+    for thing in things:
+        try:
+            info[thing] = open(os.path.join('/persistent',thing)).read().strip()
+        except Exception as e:
+            info[thing] = "not secure"
+    return info
+
+def run_critical_verifiers(kimobj):
+    vt = ["Build__VT_000000000000_000",
+          "FilenamesPath__VT_000000000001_000",
+          "PipelineAPI__VT_000000000002_000",
+          "TemplateCheck__VT_000000000003_000"]
+    vm = ["Build__VM_000000000000_000",
+          "FilenamesPath__VM_000000000001_000",
+          "PipelineAPI__VM_000000000002_000"]
+   
+    if isinstance(kimobj, models.Test):
+        verifiers = vt
+    elif isinstance(kimobj, models.Model):
+        verifiers = vm
+    else:
+        return
+
+    passed = []
+    for v in verifiers:
+        try:
+            data = run_test_on_model(models.Verifier(v), kimobj)
+        except Exception as e:
+            data = {}
+            data['pass'] = False
+        passed.append(data['pass']) 
+    return verifiers,passed
+
 #==================================================================
 # communicator which gathers the information and sends out requests
 #==================================================================
@@ -92,37 +131,14 @@ class Communicator(Thread):
                 if header == "ping":
                     self.sock_tx.send( simplejson.dumps(("ping", simplejson.dumps(["reply", self.data['uuid'], self.data]))))
 
-                # we have a four part request, parse it
-                if header == "api":
-                    uuid, responseid, query = simplejson.loads(message)
-                    if uuid == self.data['uuid']:
-                        logger.info("Got api request: /%s ..." % query)
-                        ret = kimobjects.data.api("/"+query)
-                        logger.debug("Object found for request /%s" % query)
-                        try:
-                            self.sock_tx.send(simplejson.dumps( ("api", trim_quotes(simplejson.dumps((responseid, ret))) ) ))
-                        except TypeError as e:
-                            self.sock_tx.send(simplejson.dumps( ("api", trim_quotes(simplejson.dumps((responseid, str(ret)))) ) ))
-
             except Exception as e:
                 # just let it go, you failed.
                 logger.error("comm had an error: %r" % e)
-                if header == "api":
-                    self.sock_tx.send( simplejson.dumps(("api", simplejson.dumps((responseid, "ERROR: %r" % e))) ))
                 pass
 
     def send_msg(self, tube, msg):
         self.sock_tx.send(simplejson.dumps(("ping", simplejson.dumps([tube, msg]))))
 
-def trim_quotes(string):
-    return string
-    import re
-    match_slashtick = r"\\*[\'\"]*"
-    match_tickbrack = r"[\'\"]*([\[\]\{\}]*)[\'\"]*"
-    string = re.sub(match_slashtick, r"", string)
-    string = re.sub(match_tickbrack, r"", string)
-    print string
-    return string
 
 #==================================================================
 # the logging handler for beanstalkd queues
