@@ -18,7 +18,8 @@ The simple markup language as the following directives:
 """
 import re, shutil, os
 from config import *
-logger = logger.getChild("template")
+from logger import logging
+logger = logging.getLogger("pipeline").getChild("template")
 import kimobjects
 import database
 

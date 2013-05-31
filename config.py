@@ -8,112 +8,90 @@ By convention the constants are all in UPPER_CASE_WITH_UNDERSCORES,
 and this module is imported in star from at the top of all of the scripts::
 
     from config import *
-
-doing so, we'll have access to all of the constants as well as the logger which ought to be
-made a child of eary::
-
-    logger = logger.getChild("<child name>")
-
 """
-
 import os
 
-#==============================
+# Setting up global truths - provide these with environment variables!
+PIPELINE_REMOTE    = False  # are we even connected remotely
+PIPELINE_GATEWAY   = False  # are we running as the gateway
+PIPELINE_DEBUG     = False  # which pipeline to use - production or debug
+PIPELINE_DEBUG_VBS = False  # do we want all information to print
+
+if os.environ.has_key("PIPELINE_REMOTE"):
+    PIPELINE_REMOTE = True
+    print "REMOTE MODE: ON"
+
+if os.environ.has_key("PIPELINE_DEBUG"):
+    PIPELINE_DEBUG = True
+    print "DEBUG MODE: ON"
+
+if os.environ.has_key("PIPELINE_GATEWAY"):
+    PIPELINE_GATEWAY = True
+    print "GATEWAY MODE: ON"
+
+#===============================
 # KIM FLAGS
 #===============================
-PIPELINE_DEBUG = True
-PIPELINE_DEBUG_ALL = False
-if os.environ.has_key("PIPELINE_DEBUG"):
-    if os.environ["PIPELINE_DEBUG"] == "1":
-        PIPELINE_DEBUG = True
-        print "DEBUG MODE: ON"
+KIM_REPOSITORY_DIR = "/home/vagrant/openkim-repository"
+KIM_PIPELINE_DIR   = os.path.abspath(os.path.dirname(__file__))
+KIM_LOG_DIR        = os.path.join(KIM_PIPELINE_DIR, "logs")
 
-#get the repository dir from the symlink
-KIM_REPOSITORY_DIR = os.environ["KIM_REPOSITORY_DIR"]
-KIM_PIPELINE_DIR = os.path.abspath(os.path.dirname(__file__))
-KIM_SCHEMAS_DIR = os.path.join(KIM_REPOSITORY_DIR,'schemas')
-
-METADATA_INFO_FILE = "metadata.json"
-PIPELINE_INFO_FILE = "pipelineinfo.json"
-INPUT_FILE = "pipeline.in"
-OUTPUT_FILE = "pipeline.out"
-TEMPLATE_FILE = 'pipeline.yaml'
-TEMPLATE_OUT = "pipeline.yaml.processed"
-TR_OUTPUT = "pipeline.tr.processed"
-STDOUT_FILE = "pipeline.stdout"
-STDERR_FILE = "pipeline.stderr"
+INPUT_FILE      = "pipeline.in"
 TEMP_INPUT_FILE = "pipeline.in.tmp"
-KIMLOG_FILE = "kim.log"
+TEMPLATE_FILE   = 'pipeline.yaml'
+TEMPLATE_OUT    = "pipeline.yaml.processed"
+TR_OUTPUT       = "pipeline.tr.processed"
+STDOUT_FILE     = "pipeline.stdout"
+STDERR_FILE     = "pipeline.stderr"
+KIMLOG_FILE     = "kim.log"
 
-#============================
+
+#==============================
 # Settings for remote access
-#============================
-if PIPELINE_DEBUG == True:
-    GLOBAL_PORT = 14174
-    PORT_TX     = 14173
-    PORT_RX     = 14172
-    RSYNC_DIR   = "/repository_dbg/"
-else:
-    GLOBAL_PORT = 14177
-    PORT_TX     = 14176
-    PORT_RX     = 14175
-    RSYNC_DIR   = "/repository/"
-
+#==============================
 GLOBAL_IP   = "127.0.0.1"
+GLOBAL_TOUT = 1
 GLOBAL_USER = "pipeline"
 GLOBAL_HOST = "pipeline.openkim.org"
 
+WEBSITE_ROOT    = "/"
+if PIPELINE_DEBUG:
+    GATEWAY_ROOT = "/repository_dbg/"
+else:
+    GATEWAY_ROOT = "/repository/"
+
 RSYNC_USER  = "pipeline"
 RSYNC_HOST  = "pipeline.openkim.org"
-RSYNC_TEST_MODE = False
+RSYNC_ADDRESS     = RSYNC_USER+"@"+RSYNC_HOST
+RSYNC_LOCAL_ROOT  = KIM_REPOSITORY_DIR
+RSYNC_REMOTE_ROOT = GATEWAY_ROOT
+
+if PIPELINE_DEBUG:
+    BEAN_PORT = 14174
+    PORT_TX   = 14173
+    PORT_RX   = 14172
+else:
+    BEAN_PORT = 14177
+    PORT_TX   = 14176
+    PORT_RX   = 14175
+
+if PIPELINE_GATEWAY:
+    PORT_TX, PORT_RX = PORT_RX, PORT_TX  # swap RX, TX
+    RSYNC_LOCAL_ROOT  = GATEWAY_ROOT
+    RSYNC_REMOTE_ROOT = WEBSITE_ROOT
+
+TUBE_WEB_UPDATES = "web_updates"
+TUBE_WEB_RESULTS = "web_results"
+TUBE_UPDATES     = "updates"
+TUBE_RESULTS     = "results"
+TUBE_JOBS        = "jobs"
+TUBE_ERRORS      = "errors"
+TUBE_LOGS        = "logs"
 
 #============================
 # Runner Internals
 #============================
 RUNNER_TIMEOUT = 60*60*24*5 # sec-min-hr-days
-
-#=============================
-# Logging stuff
-#=============================
-import logging, logging.handlers
-
-logger = logging.getLogger("pipeline")
-logger.setLevel(logging.DEBUG)
-
-#formatter
-log_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-if PIPELINE_DEBUG_ALL:
-    log_formatter = logging.Formatter('%(filename)s:%(lineno)d _ %(asctime)s - %(levelname)s - %(name)s - %(message)s')
-
-LOG_DIR = os.path.join(KIM_PIPELINE_DIR,"logs")
-
-#create a rotating file handler
-rotfile_handler = logging.handlers.RotatingFileHandler(os.path.join(LOG_DIR,
-        "pipeline.log"),mode='a',
-        backupCount=5,maxBytes=10*1024*1024)
-rotfile_handler.setLevel(logging.DEBUG)
-rotfile_handler.setFormatter(log_formatter)
-logger.addHandler(rotfile_handler)
-
-import pygmentlog
-class PygmentHandler(logging.StreamHandler):
-    """ A beanstalk logging handler """
-    def __init__(self):
-        super(PygmentHandler,self).__init__()
-
-    def emit(self,record):
-        """ Send the message """
-        err_message = self.format(record)
-        pygmentlog.pygmentize(err_message)
-
-#create a console logger
-console_handler = PygmentHandler()
-console_handler.setLevel(logging.INFO)
-if PIPELINE_DEBUG_ALL:
-    console_handler.setLevel(logging.DEBUG)
-
-console_handler.setFormatter(log_formatter)
-logger.addHandler(console_handler)
 
 #====================================
 # KIM ERRORS

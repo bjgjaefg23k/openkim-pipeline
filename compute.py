@@ -9,7 +9,8 @@ import simplejson
 import signal
 import itertools
 from config import *
-logger = logger.getChild("runner")
+from logger import logging
+logger = logging.getLogger("pipeline").getChild("compute")
 
 import kimobjects
 import subprocess, threading

@@ -7,7 +7,8 @@ Currently these calls mostly glob on the database, could be replaced by somethin
 
 """
 from config import *
-logger = logger.getChild("database")
+from logger import logging
+logger = logging.getLogger("pipeline").getChild("database")
 import re, os, glob, operator
 import kimobjects
 import random
