@@ -3,47 +3,31 @@ Simple set of tools for having rsync commands go through
 """
 
 from config import *
-logger = logger.getChild("rsync_tools")
+from logger import logging
+logger = logging.getLogger("pipeline").getChild("rsync_tools")
+
 import os
 import subprocess, tempfile
 import database
 from functools import partial
 
-RSYNC_ADDRESS     = RSYNC_USER+"@"+RSYNC_HOST
-RSYNC_REMOTE_ROOT = RSYNC_DIR
-RSYNC_FLAGS = "-vvrtLhptgo -uzREc --progress --stats -e 'ssh -i /persistent/id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' --exclude-from=/home/vagrant/openkim-pipeline/.rsync-exclude"
 # --delete ensures that we delete files that aren't on remote
+RSYNC_FLAGS = "-vvrtLhptgo -uzREc --progress --stats -e 'ssh -i /persistent/id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' --exclude-from=/home/vagrant/openkim-pipeline/.rsync-exclude"
+RSYNC_PATH = RSYNC_ADDRESS+":"+RSYNC_REMOTE_ROOT
 
-#RSYNC_PATH = '--rsync-path="cd {} && rsync"'.format(RSYNC_REMOTE_ROOT)
-RSYNC_PATH = RSYNC_ADDRESS + ":" + RSYNC_REMOTE_ROOT
+RSYNC_LOG_FILE_FLAG = "--log-file={}/rsync.log".format(KIM_LOG_DIR)
+RSYNC_LOG_PIPE_FLAG = " >> {} 2>&1".format(KIM_LOG_DIR+"/rsync_stdout.log")
 
-RSYNC_LOG_FILE_FLAG = "--log-file={}/rsync.log".format(LOG_DIR)
-RSYNC_LOG_PIPE_FLAG = " >> {} 2>&1".format(LOG_DIR+"/rsync_stdout.log")
-
+READ_PENDING  = os.path.join(RSYNC_PATH,"/read/pending/./")
 READ_APPROVED = os.path.join(RSYNC_PATH,"/read/approved/./")
-READ_PENDING =  os.path.join(RSYNC_PATH,"/read/pending/./")
-
-if PIPELINE_DEBUG == True:
-    WRITE_RESULTS = os.path.join(RSYNC_PATH, "/write/debug/./")
-else:
-    WRITE_RESULTS = os.path.join(RSYNC_PATH, "/write/results/./")
-
-# FIXME: add explicit /./ here and remove in rsync_command
-
-# RSYNC_TEST_MODE = True
-
-if RSYNC_TEST_MODE:
-    READ_APPROVED = READ_PENDING = WRITE_APPROVED = WRITE_PENDING = WRITE_RESULTS = os.path.join(RSYNC_PATH,"/write/testing/")
-
-LOCAL_REPO_ROOT = KIM_REPOSITORY_DIR
+WRITE_RESULTS = os.path.join(RSYNC_PATH, "/write/results/./")
 
 #================================
 # rsync wrappers
 #================================
-
 def rsync_command(files,read=True,path=None):
     """ run rsync, syncing the files (or folders) listed in files, assumed to be paths or partial
-    paths from the LOCAL_REPO_ROOT
+    paths from the RSYNC_LOCAL_ROOT
     """
     if path:
         full_path = RSYNC_PATH + path + "/./"
@@ -58,10 +42,10 @@ def rsync_command(files,read=True,path=None):
             if read:    
                 flags = "-f \"- */tr\" " + flags
                 cmd = " ".join(["rsync", flags, full_path, RSYNC_LOG_FILE_FLAG,
-                    "--files-from={}".format(tmp.name), LOCAL_REPO_ROOT, RSYNC_LOG_PIPE_FLAG])
+                    "--files-from={}".format(tmp.name), RSYNC_LOCAL_ROOT, RSYNC_LOG_PIPE_FLAG])
             else:
                 cmd = " ".join(["rsync", flags, RSYNC_LOG_FILE_FLAG,
-                    "--files-from={}".format(tmp.name), LOCAL_REPO_ROOT, full_path, RSYNC_LOG_PIPE_FLAG])
+                    "--files-from={}".format(tmp.name), RSYNC_LOCAL_ROOT, full_path, RSYNC_LOG_PIPE_FLAG])
             logger.debug("rsync command = %r",cmd)
             out = subprocess.check_call(cmd, shell=True)
         except subprocess.CalledProcessError:
@@ -71,7 +55,6 @@ def rsync_command(files,read=True,path=None):
 #======================================
 # Helper methods
 #======================================
-
 def kid_to_folder(kid):
     """ Convert a kim_code to its directory """
     #obj = models.KIMObject(kid)
@@ -82,8 +65,7 @@ def kid_to_folder(kid):
 
 ktf = kid_to_folder
 
-rsync_read = partial(rsync_command, read=True)
-
+rsync_read  = partial(rsync_command, read=True)
 rsync_write = partial(rsync_command, read=False)
 
 def j(*s):
@@ -100,7 +82,6 @@ WR = WRITE_RESULTS
 # Not for realsy
 #   This next section is just convience, not to be relied on
 #============================
-
 def full_test_sync():
     """ grab the whole repository """
     rsync_read([j(WP,"te/"),j(WP,"mo/"),j(WP,"md/"),j(WR,"tr/"),j(WP,"td/"),j(WP,"vt/"),j(WP,"vm/"),j(WR,"vr/"),j(WP,"pr/"),j(WP,"rd/")])
@@ -131,8 +112,6 @@ def full_test_sync():
 #=================================
 # director methods
 #=================================
-
-#READS
 def director_full_approved_read():
     """ when a director trys to get everything """
     files = [j(RA,"te/"),j(RA,"mo/"),j(RA,"md/"),j(WR,"tr/"),j(RA,"td/"),j(RA,"vt/"),j(RA,"vm/"),j(WR,"vr/"),j(RA,"pr/"),j(RA,"rd/")]

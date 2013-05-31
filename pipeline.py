@@ -16,40 +16,27 @@ Any of the classes below rely on a secure public key to open an ssh
 tunnel to the remote host.  It then connects to the beanstalkd
 across this tunnel.
 """
-from config import *
 import beanstalkc as bean
 from subprocess import check_call, Popen, PIPE, CalledProcessError
 from multiprocessing import cpu_count, Process
 from threading import Thread, Lock
 import time, simplejson, traceback, sys, zmq, uuid
-import rsync_tools, runner, database 
+
+from config import *
+import network
+import rsync_tools
+import compute
+import database 
 import kimobjects
+
+from logger import logging
+logger = logging.getLogger("pipeline").getChild("pipeline")
 
 PIPELINE_WAIT    = 1
 PIPELINE_TIMEOUT = 60
 PIPELINE_MSGSIZE = 2**20
 PIPELINE_JOB_TIMEOUT = 3600*24 #one day 
-
-TUBE_UPDATE  = "updates"
-TUBE_JOBS    = "jobs"
-TUBE_RESULTS = "results"
-TUBE_ERRORS  = "errors"
-TUBE_LOG     = "logs"
-
 buildlock = Lock()
-BEANSTALK_LEVEL = logging.INFO
-
-def open_ports(port, rx, tx, user, addr, ip):
-    try:
-        bsd = bean.Connection(GLOBAL_IP, GLOBAL_PORT, PIPELINE_WAIT)
-        bsd.close()
-    except bean.SocketError:
-        st  = ""
-        st += "screen -dm ssh -i /persistent/id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "  
-        st +=                 "-L{}:{}:{}   -L{}:{}:{}  -L{}:{}:{}  {}@{}"
-        ssh = Popen(st.format(port,ip,port,  rx,ip,rx,  tx,ip,tx,   user,addr), shell=True)
-        logger.info("Waiting to open ports via ssh tunnels")
-        time.sleep(PIPELINE_WAIT)
 
 def getboxinfo():
     os.system("cd /home/vagrant/openkim-pipeline; git log -n 1 | grep commit | sed s/commit\ // > /persistent/setuphash")
@@ -63,99 +50,6 @@ def getboxinfo():
         except Exception as e:
             info[thing] = "not secure"
     return info
-
-def run_critical_verifiers(kimobj):
-    vt = ["Build__VT_000000000000_000",
-          "FilenamesPath__VT_000000000001_000",
-          "PipelineAPI__VT_000000000002_000",
-          "TemplateCheck__VT_000000000003_000"]
-    vm = ["Build__VM_000000000000_000",
-          "FilenamesPath__VM_000000000001_000",
-          "PipelineAPI__VM_000000000002_000"]
-   
-    if isinstance(kimobj, models.Test):
-        verifiers = vt
-    elif isinstance(kimobj, models.Model):
-        verifiers = vm
-    else:
-        return
-
-    passed = []
-    for v in verifiers:
-        try:
-            data = run_test_on_model(models.Verifier(v), kimobj)
-        except Exception as e:
-            data = {}
-            data['pass'] = False
-        passed.append(data['pass']) 
-    return verifiers,passed
-
-#==================================================================
-# communicator which gathers the information and sends out requests
-#==================================================================
-class Communicator(Thread):
-    def __init__(self):
-        self.data = {}
-
-        # decide on the port order
-        self.port_tx = PORT_TX
-        self.port_rx = PORT_RX 
- 
-        super(Communicator, self).__init__()
-        self.daemon = True
-
-    def connect(self):
-        self.con = zmq.Context()
-        # open both the rx/tx lines, bound
-        self.sock_tx = self.con.socket(zmq.PUB)
-        self.sock_tx.connect("tcp://127.0.0.1:"+str(self.port_tx))
- 
-        self.sock_rx = self.con.socket(zmq.SUB)
-        self.sock_rx.setsockopt(zmq.SUBSCRIBE, "")
-        self.sock_rx.connect("tcp://127.0.0.1:"+str(self.port_rx))
-
-    def disconnect(self):
-        pass
-
-    def register(self, **kwargs):
-        for key in kwargs.keys():
-            self.data[key] = kwargs[key]
-
-    def run(self):
-        while 1:
-            try:
-                obj = self.sock_rx.recv_pyobj()
-                header, message = obj
-
-                # then it is a string, test which type it is
-                if header == "ping":
-                    self.sock_tx.send( simplejson.dumps(("ping", simplejson.dumps(["reply", self.data['uuid'], self.data]))))
-
-            except Exception as e:
-                # just let it go, you failed.
-                logger.error("comm had an error: %r" % e)
-                pass
-
-    def send_msg(self, tube, msg):
-        self.sock_tx.send(simplejson.dumps(("ping", simplejson.dumps([tube, msg]))))
-
-
-#==================================================================
-# the logging handler for beanstalkd queues
-#==================================================================
-class BeanstalkHandler(logging.Handler):
-    """ A beanstalk logging handler """
-    def __init__(self,comm):
-        self.comm = comm 
-        self.info = runner.getboxinfo()
-        super(BeanstalkHandler,self).__init__()
-
-    def emit(self,record):
-        """ Send the message """
-        err_message = self.format(record)
-        message = self.info.copy()
-        message['message'] = err_message
-        self.comm.send_msg(TUBE_LOG,message)
 
 class Message(dict):
     def __init__(self, **kwargs):
@@ -180,6 +74,9 @@ class Message(dict):
 def ll(iterator):
     return len(list(iterator))
 
+def pingpongHandler(header, message, agent):
+    if header == "ping":
+        agent.comm.send_msg("reply", [agent.uuid, agent.data])
 
 #==================================================================
 # Agent is the base class for Director, Worker, Site
@@ -188,10 +85,10 @@ def ll(iterator):
 class Agent(object):
     def __init__(self, name='worker', num=0, uuid=uuid.uuid4()):
         self.ip       = GLOBAL_IP
-        self.port     = GLOBAL_PORT
+        self.port     = BEAN_PORT
         self.timeout  = PIPELINE_TIMEOUT
         self.msg_size = PIPELINE_MSGSIZE
-        self.boxinfo  = runner.getboxinfo()
+        self.boxinfo  = getboxinfo()
 
         self.job = None
         self.name = name
@@ -199,13 +96,15 @@ class Agent(object):
         self.halt = False
         self.uuid = uuid.hex+":"+str(self.num)
 
-        self.comm   = Communicator()
+        self.comm   = network.Communicator()
         self.logger = logger.getChild("%s-%i" % (self.name, num))
+        
+        self.data = {"job": self.job, "data": self.boxinfo}
 
     def connect(self):
         # start up the 2-way comm too
         self.comm.connect()
-        self.comm.register(uuid=self.uuid, job=self.job, boxinfo=self.boxinfo)
+        self.comm.addHandler(func=pingpongHandler, args=(self,))
         self.comm.start()
 
         self.logger.info("Connecting to beanstalkd")
@@ -217,10 +116,7 @@ class Agent(object):
             raise bean.SocketError("Failed to connect to %s" % GLOBAL_HOST)
 
         #attach the beanstalk logger
-        beanstalk_handler = BeanstalkHandler(self.comm)
-        beanstalk_handler.setLevel(BEANSTALK_LEVEL)
-        beanstalk_handler.setFormatter(log_formatter)
-        self.logger.addHandler(beanstalk_handler)
+        network.addNetworkHandler(self.comm, self.boxinfo)
         self.logger.info("%s ready" % self.name.title())
 
     def disconnect(self):
@@ -280,13 +176,13 @@ class Director(Agent):
     def run(self):
         """ connect and grab the job thread """
         self.connect()
-        self.bsd.watch(TUBE_UPDATE)
+        self.bsd.watch(TUBE_UPDATES)
         self.bsd.ignore("default")
         self.get_updates()
 
     def get_updates(self):
         """
-        Endless loop that waits for updates on the tube TUBE_UPDATE
+        Endless loop that waits for updates on the tube TUBE_UPDATES
 
         The update is a json string for a dictionary with key-values pairs
         that look like:
@@ -308,7 +204,7 @@ class Director(Agent):
 
             # got a request to update a model or test
             # from the website (or other trusted place)
-            if request.stats()['tube'] == TUBE_UPDATE:
+            if request.stats()['tube'] == TUBE_UPDATES:
                 # update the repository,send it out as a job to compute
                 try:    
                     # FIXME - Alex, there are just so many dependencies, I'm going to read the
@@ -454,7 +350,7 @@ class Director(Agent):
                     self.logger.error("Tried to update an invalid KIM ID!: %r",kimid)
                 checkmatch = False 
 
-        if checkmatch == True:
+        if checkmatch:
             for test, model in zip(tests,models):
                 if database.valid_match(test,model):
                     priority = int(priority_factor*database.test_model_to_priority(test,model) * 1000000)
@@ -534,7 +430,6 @@ class Worker(Agent):
             job.bury()
             self.comm.send_msg("running", job.body)
 
-            # got a job -----
             # update the repository, attempt to run the job and return the results to the director
             try:
                 jobmsg = Message(string=job.body)
@@ -571,12 +466,9 @@ class Worker(Agent):
                     verifier = kimobjects.Verifier(verifier_kcode)
                     subject  = kimobjects.Subject(subject_kcode)
 
-                    with verifier.move_to_tmp_dir(jobmsg.jobid):
-                        self.logger.info("Running (%r,%r)",verifier,subject)
-                        result = runner.run_test_on_model(verifier,subject)
-
-                        #create the verification result object (will be written)
-                        vr = kimobjects.VerificationResult(jobmsg.jobid, results = result, search=False)
+                    self.logger.info("Running (%r,%r)",verifier,subject)
+                    comp = compute.Computation(verifier, subject)
+                    comp.run(jobmsg.jobid)
 
                     self.logger.info("rsyncing results %r", jobmsg.jobid)
                     rsync_tools.worker_verification_write(jobmsg.jobid)
@@ -611,12 +503,9 @@ class Worker(Agent):
                     test = kimobjects.Test(test_kcode)
                     model = kimobjects.Model(model_kcode)
 
-                    with test.move_to_tmp_dir(jobmsg.jobid):
-                        self.logger.info("Running (%r,%r)",test,model)
-                        result = runner.run_test_on_model(test,model)
-
-                        #create the test result object (will be written)
-                        tr = kimobjects.TestResult(jobmsg.jobid, results = result, search=False)
+                    self.logger.info("Running (%r,%r)",test,model)
+                    comp = compute.Computation(test, model)
+                    comp.run(jobmsg.jobid)
 
                     self.logger.info("rsyncing results %r", jobmsg.jobid)
                     rsync_tools.worker_test_result_write(jobmsg.jobid)
@@ -684,7 +573,7 @@ def signal_handler(): #signal, frame):
         p.join(timeout=1)
     sys.exit(1)
 
-open_ports(GLOBAL_PORT, PORT_RX, PORT_TX, GLOBAL_USER, GLOBAL_HOST, GLOBAL_IP)
+network.open_ports(BEAN_PORT, PORT_RX, PORT_TX, GLOBAL_USER, GLOBAL_HOST, GLOBAL_IP)
 
 if __name__ == "__main__":
     import sys 

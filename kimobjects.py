@@ -24,7 +24,8 @@ classes, all of which inherit from ``KIMObject`` and aim to know how to handle t
 """
 
 from config import *
-logger = logger.getChild("models")
+from logger import logging
+logger = logging.getLogger("pipeline").getChild("kimobjects")
 
 from persistent import PersistentDict
 from contextlib import contextmanager
@@ -139,7 +140,6 @@ class KIMObject(simplejson.JSONEncoder):
             self.path = os.path.join(self.parent_dir, subdir)
         else:
             self.path = os.path.join(self.parent_dir, self.kim_code)
-        self.info = PersistentDict(os.path.join(self.path, METADATA_INFO_FILE))
 
     def __str__(self):
         """ the string representation is the full kim_code """
@@ -1187,7 +1187,6 @@ class VerificationResult(KIMObject):
 #------------------------------------------
 # ReferenceDatum
 #------------------------------------------
-
 class ReferenceDatum(KIMObject):
     """ a piece of reference data, a KIMObject with:
 
@@ -1210,7 +1209,6 @@ class ReferenceDatum(KIMObject):
 #------------------------------------------
 # VirtualMachine
 #------------------------------------------
-
 class VirtualMachine(KIMObject):
     """ for a virtual machine, a KIMObject with:
 
@@ -1228,7 +1226,6 @@ class VirtualMachine(KIMObject):
 #--------------------------------------------
 # Helper code
 #--------------------------------------------
-
 # two letter codes to the associated class
 code_to_model = {"TE": Test, "MO": Model, "TD": TestDriver, "TR": TestResult ,
     "VT": VerificationTest, "VM": VerificationModel, "VR": VerificationResult,
@@ -1247,22 +1244,4 @@ class KIMData(object):
             return code_to_model[item.upper()].all()
         else:
             return kim_obj(item)
-
-    @property
-    def help(self):
-        from collections import OrderedDict
-        funcs = [{"te": "all tests"},{ "td" : "all test drivers"},{ "mo" : "all models"},{ "md" : "all model drivers"},{ 
-                "rd" : "all reference data"},{ "pr" : "all primitives"},{ "tr": "all test results"},{ "vt": "all verification checks for tests"},{ 
-                "vm": "all verification checks for models"},{ "vr": "all verification results"},{ "VALID_KIMCODE": "returns only that particular kim object"},{ 
-                "(: <some python code> :)": "FILTER - filters the current with valid python code"},{ 
-                "@@/apicall@@": "APICALL - applies this API call to the previous object while in a filter"},{
-                "@# some text #@": "COMMENT - removes this section of the filter for commenting"},{
-                "([ /apicall : /secondcall <: /othercalls> ])": "BUNDLE - create a tuple of API objects"}]
-        
-        dic = OrderedDict()
-        for d in funcs:
-            dic.update(d)
-        return dic
-
-data = KIMData()
 
