@@ -24,7 +24,8 @@ classes, all of which inherit from ``KIMObject`` and aim to know how to handle t
 """
 
 from config import *
-logger = logger.getChild("models")
+from logger import logging
+logger = logging.getLogger("pipeline").getChild("kimobjects")
 
 from persistent import PersistentDict
 from contextlib import contextmanager
