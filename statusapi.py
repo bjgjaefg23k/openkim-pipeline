@@ -1,9 +1,13 @@
+from config import *
+from network import Communicator
+from logger import logging
+logger = logging.getLogger("pipeline").getChild("statusapi")
+
 import simplejson, re, time, os
 from collections import OrderedDict, deque
 from os.path import join, abspath
 from cStringIO import StringIO
 import cPickle as pickle
-import pygmentlog
 import urllib2
 
 from flask import make_response, Flask, request
@@ -116,7 +120,7 @@ def trimjob(job):
 
 def pygment(string):
     st = StringIO()
-    pygmentlog.pygmentize(string, formatter="html", outfile=st)
+    logger.pygmentize(string, formatter="html", outfile=st)
     return st.getvalue() 
 
 # this allows up to use two different processes to host the website
@@ -177,29 +181,13 @@ def agents_uuids(uuid=None):
 #==================================================================
 # communicator which gathers the information and sends out requests
 #==================================================================
-class Communicator(object):
-    def __init__(self, debug=False):
-        # decide on the port order
-        if debug == False:
-            self.port_tx = 14176
-            self.port_rx = 14175
-        else:
-            self.port_tx = 14172
-            self.port_rx = 14173
-        self.con = context
-
+class WebCommunicator(Communicator):
+    def __init__(self):
         # api request specific objects
-        self.waiting = {}
         self.info = {}
-        self.agent_index = 0
 
-        # open both the rx/tx lines, bound
-        self.sock_tx = self.con.socket(zmq.PUB)
-        self.sock_tx.bind("tcp://127.0.0.1:"+str(self.port_tx))
-
-        self.sock_rx = self.con.socket(zmq.SUB)
-        self.sock_rx.setsockopt(zmq.SUBSCRIBE, "")
-        self.sock_rx.bind("tcp://127.0.0.1:"+str(self.port_rx))
+    def connect(self):
+        super(WebCommunicator, self).connect()
 
         # in process sockets to send data to the websockets
         self.sock_jobs = self.con.socket(zmq.PUB)
@@ -244,15 +232,15 @@ class Communicator(object):
 #================================================================
 if __name__ == "__main__":
     import sys
+    port = 8080
+
     if len(sys.argv) > 1:
-        print "DEBUG MODE : ON"
         LOGSFILE = LOGSFILE+".dbg"
         JOBSFILE = JOBSFILE+".dbg"
-        comm = Communicator(debug=True)
-        http_server = WSGIServer(('',8081), app, handler_class=WebSocketHandler)
-    else:
-        comm = Communicator(debug=False)
-        http_server = WSGIServer(('',8080), app, handler_class=WebSocketHandler)
+        port = 8081
+
+    comm = WebCommunicator()
+    http_server = WSGIServer(('',port), app, handler_class=WebSocketHandler)
 
     try:
         load_from_disk(LOGSFILE, JOBSFILE)

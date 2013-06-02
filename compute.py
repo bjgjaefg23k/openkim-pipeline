@@ -76,12 +76,16 @@ class Computation(object):
         
             cwd = os.getcwd()
             os.chdir(self.runner_temp.path)
-            yield
-            os.chdir(cwd)
 
-            self._delete_tempdir()
-        else:
+        try:
             yield
+        except Exception as e:
+            logger.error("%r" % e)
+            raise e
+        finally:
+            if trcode:
+                os.chdir(cwd)
+                self._delete_tempdir()
 
     def execute_in_place(self):
         """ Execute a test with a corresponding model
@@ -194,7 +198,13 @@ class Computation(object):
             logger.info("no result code provided, leaving in %r", self.runner_temp.path)
             return 
 
-        result = kimobjects.TestResult(trcode, search=False) 
+        result = kimobjects.TestResult(kim_code=trcode, search=False) 
+        shutil.rmtree(result.path)
+
+        p1 = os.path.join(self.runner_temp.path, TR_OUTPUT)
+        p2 = os.path.join(self.runner_temp.path, trcode)
+        shutil.copy2(p1, p2)
+
         shutil.copytree(self.runner_temp.path, result.path)
 
     def run(self, trcode=None, extrainfo=None):

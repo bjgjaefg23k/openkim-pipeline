@@ -283,7 +283,7 @@ class Runner(KIMObject):
                 dependencies_good_to_go - kids for ready dependencies
                 dependencies_not_ready - tuples of test/model pairs to run """
         if subject:
-            return template.dependency_check(self.modelname_processed_infile(model))
+            return template.dependency_check(self.modelname_processed_infile(subject))
         return template.dependency_check(self.infile,model=False)
 
     @property
@@ -373,7 +373,6 @@ class Result(KIMObject):
 
                 tr = TestResult(pair=(Test("TE_000000000000_000"), Model("MO_000000000000_000")))
         """
-
         if pair and kim_code:
             raise SyntaxWarning, "TestResult should have a pair, or a kim_code or neither, not both"
 
@@ -387,7 +386,7 @@ class Result(KIMObject):
                 kim_code = database.new_test_result_id()
                 search = False
 
-        super(TestResult,self).__init__(kim_code,search=search)
+        super(Result,self).__init__(kim_code,search=search)
 
         if not self.exists and not search:
             #If this TR doesn't exist and we have search off, create it
@@ -469,13 +468,13 @@ class Result(KIMObject):
         """ Make it so that results behave like their result dictionary for access """
         return self.results.__getitem__(key)
 
-    def __getattr__(self,attr):
-        """ if we didn't find the attr, look in self.results for the attr,
+    #def __getattr__(self,attr):
+    #    """ if we didn't find the attr, look in self.results for the attr,
 
-            This magic allows the result object to behave like its result dictionary magically
-        """
-        self.info = PersistentDict(os.path.join(self.path,METADATA_INFO_FILE))
-        return self.results.__getattribute__(attr)
+    #        This magic allows the result object to behave like its result dictionary magically
+    #    """
+    #    self.info = PersistentDict(os.path.join(self.path,METADATA_INFO_FILE))
+    #    return self.results.__getattribute__(attr)
 
     @property
     def keys(self):
@@ -524,7 +523,7 @@ class TestResult(Result):
 
     def __init__(self, kim_code = None,*args,**kwargs):
         """ Naked initialization """
-        super(TestResult,self).__init__(self,kim_code,*args,**kwargs)
+        super(TestResult,self).__init__(kim_code,*args,**kwargs)
 
 #------------------------------------------
 # VerificationResult
@@ -537,7 +536,7 @@ class VerificationResult(KIMObject):
 
     def __init__(self, kim_code = None, *args, **kwargs):
         """ Naked initialization """
-        super(VerificationResult,self).__init__(self,kim_code,*args,**kwargs)
+        super(VerificationResult,self).__init__(kim_code,*args,**kwargs)
 
 #------------------------------------------
 # ReferenceDatum
@@ -656,7 +655,7 @@ class Test(Runner):
         return self.result_with_subject(model)
 
     def modelname_processed_infile(self, model):
-        return self.subjectname_processed_infile(self,model)
+        return self.subjectname_processed_infile(model)
 
     @property
     def models(self):

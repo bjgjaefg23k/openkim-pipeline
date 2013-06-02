@@ -140,10 +140,8 @@ def createLogger():
     if PIPELINE_DEBUG_VBS:
         log_formatter = logging.Formatter('%(filename)s:%(lineno)d _ %(asctime)s - %(levelname)s - %(name)s - %(message)s')
     
-    LOG_DIR = os.path.join(KIM_PIPELINE_DIR,"logs")
-    
     #create a rotating file handler
-    rotfile_handler = logging.handlers.RotatingFileHandler(os.path.join(LOG_DIR,"pipeline.log"),
+    rotfile_handler = logging.handlers.RotatingFileHandler(os.path.join(KIM_LOG_DIR,"pipeline.log"),
             mode='a', backupCount=5, maxBytes=10*1024*1024)
     rotfile_handler.setLevel(logging.DEBUG)
     rotfile_handler.setFormatter(log_formatter)

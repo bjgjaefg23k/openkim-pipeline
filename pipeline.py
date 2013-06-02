@@ -16,11 +16,13 @@ Any of the classes below rely on a secure public key to open an ssh
 tunnel to the remote host.  It then connects to the beanstalkd
 across this tunnel.
 """
-import beanstalkc as bean
 from subprocess import check_call, Popen, PIPE, CalledProcessError
 from multiprocessing import cpu_count, Process
 from threading import Thread, Lock
-import time, simplejson, traceback, sys, zmq, uuid
+import sys
+import time
+import simplejson
+import traceback
 
 from config import *
 import network
@@ -35,20 +37,22 @@ logger = logging.getLogger("pipeline").getChild("pipeline")
 PIPELINE_WAIT    = 1
 PIPELINE_TIMEOUT = 60
 PIPELINE_MSGSIZE = 2**20
-PIPELINE_JOB_TIMEOUT = 3600*24 #one day 
+PIPELINE_JOB_TIMEOUT = 3600*24 
 buildlock = Lock()
 
 def getboxinfo():
     os.system("cd /home/vagrant/openkim-pipeline; git log -n 1 | grep commit | sed s/commit\ // > /persistent/setuphash")
 
     info = {}
-    things = ['sitename','username','boxtype','ipaddr','vmversion','setuphash']
+    things = ['sitename', 'username', 'boxtype',
+            'ipaddr', 'vmversion', 'setuphash', 'uuid',
+            'gitargs', 'gitbranch', 'githost']
 
     for thing in things:
         try:
             info[thing] = open(os.path.join('/persistent',thing)).read().strip()
         except Exception as e:
-            info[thing] = "not secure"
+            info[thing] = "NA"
     return info
 
 class Message(dict):
@@ -83,45 +87,33 @@ def pingpongHandler(header, message, agent):
 # handles basic networking and message responding (so it is not duplicated)
 #==================================================================
 class Agent(object):
-    def __init__(self, name='worker', num=0, uuid=uuid.uuid4()):
-        self.ip       = GLOBAL_IP
-        self.port     = BEAN_PORT
-        self.timeout  = PIPELINE_TIMEOUT
-        self.msg_size = PIPELINE_MSGSIZE
+    def __init__(self, name='worker', num=0):
         self.boxinfo  = getboxinfo()
 
         self.job = None
         self.name = name
         self.num = num
-        self.halt = False
-        self.uuid = uuid.hex+":"+str(self.num)
+        self.uuid = self.boxinfo['uuid']+":"+str(self.num)
 
         self.comm   = network.Communicator()
+        self.bean   = network.BeanstalkConnection()
         self.logger = logger.getChild("%s-%i" % (self.name, num))
         
         self.data = {"job": self.job, "data": self.boxinfo}
 
     def connect(self):
         # start up the 2-way comm too
+        self.logger.info("Bringing up RX/TX")
         self.comm.connect()
         self.comm.addHandler(func=pingpongHandler, args=(self,))
         self.comm.start()
-
-        self.logger.info("Connecting to beanstalkd")
-        try:
-            self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
-        except bean.SocketError:
-            # We failed to connect, this is really bad
-            self.logger.error("Failed to connect to beanstalk queue after launching ssh")
-            raise bean.SocketError("Failed to connect to %s" % GLOBAL_HOST)
-
+        
         #attach the beanstalk logger
         network.addNetworkHandler(self.comm, self.boxinfo)
-        self.logger.info("%s ready" % self.name.title())
 
-    def disconnect(self):
-        if self.bsd:
-            self.bsd.close()
+        self.logger.info("Connecting to beanstalkd")
+        self.bean.connect()
+        self.logger.info("%s ready" % self.name.title())
 
     def exit_safe(self): 
         # we got the signal to shutdown, so release the job first
@@ -137,8 +129,8 @@ class Agent(object):
         jobmsg.errors = errors
         jobmsg.update(self.boxinfo)
         msg = simplejson.dumps(jobmsg)
-        self.bsd.use(tube)
-        self.bsd.put(msg)
+
+        self.bean.send_msg(tube, msg)
         self.comm.send_msg(tube, msg)
 
     def make_object(self, kimid):
@@ -170,14 +162,13 @@ class Director(Agent):
     """ The Director object, knows to listen to incoming jobs, computes dependencies
     and passes them along to workers
     """
-    def __init__(self, num=0, uuid=uuid.uuid4()):
-        super(Director, self).__init__(name="director", num=num, uuid=uuid)
+    def __init__(self, num=0):
+        super(Director, self).__init__(name="director", num=num)
 
     def run(self):
         """ connect and grab the job thread """
         self.connect()
-        self.bsd.watch(TUBE_UPDATES)
-        self.bsd.ignore("default")
+        self.bean.watch(TUBE_UPDATES)
         self.get_updates()
 
     def get_updates(self):
@@ -194,9 +185,9 @@ class Director(Agent):
                 run after verification or update
 
         """
-        while not self.halt:
+        while True:
             self.logger.info("Director Waiting for message...")
-            request = self.bsd.reserve()
+            request = self.bean.reserve()
             self.job = request
 
             # make sure it doesn't come alive again soon
@@ -407,21 +398,20 @@ class Director(Agent):
 #==================================================================
 class Worker(Agent):
     """ Represents a worker, knows how to do jobs he is given, create results and rsync them back """
-    def __init__(self, num=0, uuid=uuid.uuid4()):
-        super(Worker, self).__init__(name='worker', num=num, uuid=uuid)
+    def __init__(self, num=0):
+        super(Worker, self).__init__(name='worker', num=num)
 
     def run(self):
         """ Start to listen, tunnels should be open and ready """
         self.connect()
-        self.bsd.watch(TUBE_JOBS)
-        self.bsd.ignore("default")
+        self.bean.watch(TUBE_JOBS)
         self.get_jobs()
 
     def get_jobs(self):
         """ Endless loop that awaits jobs to run """
-        while not self.halt:
+        while True:
             self.logger.info("Waiting for jobs...")
-            job = self.bsd.reserve()
+            job = self.bean.reserve()
             self.job = job
             
             # if appears that there is a 120sec re-birth of jobs that have been reserved
@@ -546,8 +536,7 @@ class Site(Agent):
 
     def send_update(self, kimid):
         self.logger.info("Pushing jobs")
-        self.bsd.use("web_updates")
-        self.bsd.put(simplejson.dumps({"kimid": kimid, "priority":"normal", "status":"approved"}))
+        self.bean.send_msg("web_updates", simplejson.dumps({"kimid": kimid, "priority":"normal", "status":"approved"}))
 
 
 class APIAgent(Agent):
@@ -567,7 +556,6 @@ procs = {}
 def signal_handler(): #signal, frame):
     print "Sending signal to flush, wait 1 sec..."
     for p in pipe.values():
-        p.halt = True
         p.exit_safe()
     for p in procs.values():
         p.join(timeout=1)
@@ -577,12 +565,11 @@ network.open_ports(BEAN_PORT, PORT_RX, PORT_TX, GLOBAL_USER, GLOBAL_HOST, GLOBAL
 
 if __name__ == "__main__":
     import sys 
-    UUID = uuid.uuid4()
 
     if len(sys.argv) > 1:
         # directors are not multithreaded for build safety
         if sys.argv[1] == "director":
-            director = Director(num=0, uuid=UUID)
+            director = Director(num=0)
             director.run()
 
         # workers can be multi-threaded so launch the appropriate
@@ -590,7 +577,7 @@ if __name__ == "__main__":
         elif sys.argv[1] == "worker":
             thrds = cpu_count() 
             for i in range(thrds):
-                pipe[i] = Worker(num=i, uuid=UUID)
+                pipe[i] = Worker(num=i)
                 procs[i] = Thread(target=Worker.run, args=(pipe[i],), name='worker-%i'%i)
                 procs[i].daemon = True
                 procs[i].start()

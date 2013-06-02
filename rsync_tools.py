@@ -12,9 +12,11 @@ import database
 from functools import partial
 
 # --delete ensures that we delete files that aren't on remote
-RSYNC_FLAGS = "-vvrtLhptgo -uzREc --progress --stats -e 'ssh -i /persistent/id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' --exclude-from=/home/vagrant/openkim-pipeline/.rsync-exclude"
-RSYNC_PATH = RSYNC_ADDRESS+":"+RSYNC_REMOTE_ROOT
+RSYNC_FLAGS  = "-vvrtLhptgo -uzREc --progress --stats -e "
+RSYNC_FLAGS += "'ssh -i "+GLOBAL_KEY+" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'"
+RSYNC_FLAGS += " --exclude-from="+RSYNC_EXCLUDE_FILE
 
+RSYNC_PATH = RSYNC_ADDRESS+":"+RSYNC_REMOTE_ROOT
 RSYNC_LOG_FILE_FLAG = "--log-file={}/rsync.log".format(KIM_LOG_DIR)
 RSYNC_LOG_PIPE_FLAG = " >> {} 2>&1".format(KIM_LOG_DIR+"/rsync_stdout.log")
 
@@ -108,6 +110,16 @@ def full_test_sync():
 # def real_read(files,*args):
 #     """ read things from the real read directory """
 #     rsync_command(files,read=True,path=REAL_READ_PATH)
+
+def rsync_read_full():
+    # first, read everything from the /read directory, except all mentions of tr/
+    rsync_command(["read/submitted/", "read/approved/"], read=True)
+    rsync_command(["write/results/"], read=True)
+
+def rsync_write_results(debug=False):
+    # write the results back to the webserver in the appropriate place
+    rsync_command(["write/results/tr/", "write/results/vr/"], read=False)
+
 
 #=================================
 # director methods

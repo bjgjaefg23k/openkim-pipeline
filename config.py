@@ -45,7 +45,6 @@ STDOUT_FILE     = "pipeline.stdout"
 STDERR_FILE     = "pipeline.stderr"
 KIMLOG_FILE     = "kim.log"
 
-
 #==============================
 # Settings for remote access
 #==============================
@@ -53,6 +52,7 @@ GLOBAL_IP   = "127.0.0.1"
 GLOBAL_TOUT = 1
 GLOBAL_USER = "pipeline"
 GLOBAL_HOST = "pipeline.openkim.org"
+GLOBAL_KEY  = "/persistent/id_rsa"
 
 WEBSITE_ROOT    = "/"
 if PIPELINE_DEBUG:
@@ -65,6 +65,7 @@ RSYNC_HOST  = "pipeline.openkim.org"
 RSYNC_ADDRESS     = RSYNC_USER+"@"+RSYNC_HOST
 RSYNC_LOCAL_ROOT  = KIM_REPOSITORY_DIR
 RSYNC_REMOTE_ROOT = GATEWAY_ROOT
+RSYNC_EXCLUDE_FILE= KIM_PIPELINE_DIR+"/.rsync-exclude"
 
 if PIPELINE_DEBUG:
     BEAN_PORT = 14174
@@ -79,6 +80,7 @@ if PIPELINE_GATEWAY:
     PORT_TX, PORT_RX = PORT_RX, PORT_TX  # swap RX, TX
     RSYNC_LOCAL_ROOT  = GATEWAY_ROOT
     RSYNC_REMOTE_ROOT = WEBSITE_ROOT
+    GLOBAL_KEY = "/home/ubuntu/id_ecdsa_pipeline"
 
 TUBE_WEB_UPDATES = "web_updates"
 TUBE_WEB_RESULTS = "web_results"
@@ -87,6 +89,9 @@ TUBE_RESULTS     = "results"
 TUBE_JOBS        = "jobs"
 TUBE_ERRORS      = "errors"
 TUBE_LOGS        = "logs"
+
+PIPELINE_TIMEOUT = 60
+PIPELINE_MSGSIZE = 2**20
 
 #============================
 # Runner Internals

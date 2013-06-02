@@ -9,6 +9,7 @@ across this tunnel.
 """
 import beanstalkc as bean
 import time, simplejson, zmq
+from subprocess import Popen
 from threading import Thread
 
 from config import *
@@ -28,6 +29,41 @@ def open_ports(port=BEAN_PORT, rx=PORT_RX, tx=PORT_TX, user=GLOBAL_USER,
         logger.info("Waiting to open ports via ssh tunnels")
         time.sleep(1)
 
+
+#==================================================================
+# a generic beanstalk connection
+#==================================================================
+class BeanstalkConnection(object):
+    def __init__(self, ):
+        self.ip       = GLOBAL_IP
+        self.port     = BEAN_PORT
+        self.timeout  = PIPELINE_TIMEOUT
+        self.msg_size = PIPELINE_MSGSIZE
+
+    def connect(self):
+        try:
+            self.bsd = bean.Connection(host=self.ip, port=self.port, connect_timeout=self.timeout)
+        except bean.SocketError:
+            # We failed to connect, this is really bad
+            logger.error("Failed to connect to beanstalk queue after launching ssh")
+            raise bean.SocketError("Failed to connect to %s" % GLOBAL_HOST)
+ 
+    def disconnect(self):
+        if self.bsd:
+            self.bsd.close()
+
+    def send_msg(self, tube, msg):
+        self.bsd.use(tube)
+        self.bsd.put(msg)
+
+    def watch(self, *tubes):
+        for tube in tubes:
+            self.bsd.watch(tube)
+
+    def reserve(self):
+        return self.bsd.reserve()
+
+
 #==================================================================
 # communicator which gathers the information and sends out requests
 #==================================================================
@@ -46,11 +82,14 @@ class Communicator(Thread):
         self.con = zmq.Context()
         # open both the rx/tx lines, bound
         self.sock_tx = self.con.socket(zmq.PUB)
-        self.sock_tx.connect("tcp://127.0.0.1:"+str(self.port_tx))
- 
         self.sock_rx = self.con.socket(zmq.SUB)
         self.sock_rx.setsockopt(zmq.SUBSCRIBE, "")
-        self.sock_rx.connect("tcp://127.0.0.1:"+str(self.port_rx))
+        if PIPELINE_GATEWAY:
+            self.sock_tx.bind("tcp://127.0.0.1:"+str(self.port_tx))
+            self.sock_rx.bind("tcp://127.0.0.1:"+str(self.port_rx))
+        else:
+            self.sock_tx.connect("tcp://127.0.0.1:"+str(self.port_tx))
+            self.sock_rx.connect("tcp://127.0.0.1:"+str(self.port_rx))
 
     def addHandler(self, func, args):
         self.handler_funcs.append(func)
