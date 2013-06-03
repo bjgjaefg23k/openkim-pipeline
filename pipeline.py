@@ -16,8 +16,8 @@ Any of the classes below rely on a secure public key to open an ssh
 tunnel to the remote host.  It then connects to the beanstalkd
 across this tunnel.
 """
-from subprocess import check_call, Popen, PIPE, CalledProcessError
-from multiprocessing import cpu_count, Process
+from subprocess import check_call, CalledProcessError
+from multiprocessing import cpu_count
 from threading import Thread, Lock
 import sys
 import time
@@ -52,7 +52,7 @@ def getboxinfo():
         try:
             info[thing] = open(os.path.join('/persistent',thing)).read().strip()
         except Exception as e:
-            info[thing] = "NA"
+            info[thing] = None
     return info
 
 class Message(dict):
@@ -114,6 +114,9 @@ class Agent(object):
         self.logger.info("Connecting to beanstalkd")
         self.bean.connect()
         self.logger.info("%s ready" % self.name.title())
+
+    def disconnect(self):
+        self.bean.disconnect()
 
     def exit_safe(self): 
         # we got the signal to shutdown, so release the job first
@@ -198,10 +201,6 @@ class Director(Agent):
             if request.stats()['tube'] == TUBE_UPDATES:
                 # update the repository,send it out as a job to compute
                 try:    
-                    # FIXME - Alex, there are just so many dependencies, I'm going to read the
-                    # whole thing.  The latest was submitting a single test after a complete repo
-                    # wipe - it pulled the TRs to get a unique jobid to submit, but the TRs referred
-                    # tests which hadn't been pulled causing errors...
                     rsync_tools.director_full_approved_read()
                     self.push_jobs(simplejson.loads(request.body))
                 except Exception as e:
@@ -235,23 +234,14 @@ class Director(Agent):
         #     self.bsd.put(simplejson.dumps({"error": "Could not build %r" % kimid}))
         #     return
 
+        self.make_all()
+        
         if leader=="VT":
-            # we have a new VT
-            # first pull it and build it
-            rsync_tools.director_new_test_verification_read(kimid)
-            self.make_all()
-
             # for every test launch
             test = kimobjects.VerificationTest(kimid)
             models = kimobjects.Test.all()
             tests = [test]*ll(models)
         elif leader=="VM":
-            # we have a new VM
-
-            # first pull it and build it
-            rsync_tools.director_new_model_verification_read(kimid)
-            self.make_all()
-
             #for all of the models, run a job
             test = kimobjects.VerificationModel(kimid)
             models = kimobjects.Model.all()
@@ -259,28 +249,16 @@ class Director(Agent):
         else:
             if status == "approved":
                 if leader=="TE":
-                    # we have a new TE, first pull it and build it
-                    rsync_tools.director_new_test_read(kimid)
-                    self.make_all()
-
                     # for all of the models, add a job
                     test = kimobjects.Test(kimid)
                     models = list(test.models)
                     tests = [test]*ll(models)
                 elif leader=="MO":
-                    # we have a model, first pull it and build it
-                    rsync_tools.director_new_model_read(kimid)
-                    self.make_all()
-
                     # for all of the tests, add a job
                     model = kimobjects.Model(kimid)
                     tests = list(model.tests)
                     models = [model]*ll(tests)
                 elif leader=="TD":
-                    # we have a new test driver, first pull and build it
-                    rsync_tools.director_new_test_driver_read(kimid)
-                    self.make_all()
-
                     # if it is a new version of an existing test driver, hunt
                     # down all of the tests that use it and launch their
                     # corresponding jobs
@@ -295,10 +273,6 @@ class Director(Agent):
                             tests.extend([t]*ll(tmodels))
 
                 elif leader=="MD":
-                    # we have a new model driver, first build and push
-                    rsync_tools.director_new_model_driver_read(kimid)
-                    self.make_all()
-
                     # if this is a new version, hunt down all of the models
                     # that rely on it and recompute their results
                     driver = kimobjects.ModelDriver(kimid)
@@ -459,7 +433,8 @@ class Worker(Agent):
                     self.logger.info("Running (%r,%r)",verifier,subject)
                     comp = compute.Computation(verifier, subject)
                     comp.run(jobmsg.jobid)
-
+                    
+                    result = kimobjects.Result(jobmsg.jobid).results
                     self.logger.info("rsyncing results %r", jobmsg.jobid)
                     rsync_tools.worker_verification_write(jobmsg.jobid)
                     self.logger.info("sending result message back")
@@ -497,6 +472,7 @@ class Worker(Agent):
                     comp = compute.Computation(test, model)
                     comp.run(jobmsg.jobid)
 
+                    result = kimobjects.Result(jobmsg.jobid).results
                     self.logger.info("rsyncing results %r", jobmsg.jobid)
                     rsync_tools.worker_test_result_write(jobmsg.jobid)
                     self.logger.info("sending result message back")

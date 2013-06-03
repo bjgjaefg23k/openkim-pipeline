@@ -48,68 +48,25 @@ template_environment.filters['json'] = partial(simplejson.dumps,indent=4)
 #--------------------------------------------
 # DATA directive handlers
 #--------------------------------------------
-def data_path_from_match(match):
-    """ Given a match, try to find where it exists
-
-    outputs:
-        exists - bool
-        path - either a kim_code, or a pair that must be run
-    """
-    groups = match.groups()
-    logger.debug("trying to find data for groups: %r",groups)
-    part, query = groups
-    try:
-         tr = te.result_with_model(mo)
-    except Exception as e:
-         return (False, [te,mo])
-    return (True, tr)
-
 def data_from_match(match):
     """ Get the data from a re match """
     groups = match.groups()
-    logger.debug("looking at groups %r",groups)
+    part, query = groups
     try:
-        if len(groups) == 2:
-            #a 2 call is an rd
-            part, rd_kcode = groups
-            rd = kimobjects.ReferenceDatum(rd_kcode)
-            data = rd.data
-            return data
-
-        if len(groups) == 3:
-            # a 3 call is TR, PR
-            part, tr_kcode, pr_kcode = groups
-            tr = kimobjects.TestResult(tr_kcode)
-            pr = kimobjects.Property(pr_kcode)
-            data = tr[pr]
-            return str(data)
-        if len(groups) == 4:
-            # a 4 call is part,te,mo,pr
-            part, te_kcode, mo_kcode, pr_kcode = groups
-            te = kimobjects.Test(te_kcode)
-            mo = kimobjects.Model(mo_kcode)
-            pr = kimobjects.Property(pr_kcode)
-
-            tr = te.result_with_model(mo)
-            data = tr[pr.kim_code]
-            return str(data)
-    except KeyError:
-        raise PipelineTemplateError, "I don't understand how to parse this: {}".format(match.groups())
-
+        data = kimquery.query(querydata=query)
+    except PipelineQueryError as e:
+        logger.error("Error executing query %r" % query)
+        raise e
+    return data
 
 #----------------------------------------
 # PATH directive handlers
 #----------------------------------------
-def path_kim_obj_from_match(match):
-    """ return the kim object of the path directive """
+def path_from_match(match):
+    """ return the appropriate path for a match """
     part,cand = match.groups()
     logger.debug("looking at cand: %r", cand)
     obj = kimobjects.kim_obj(cand)
-    return obj
-
-def path_from_match(match):
-    """ return the appropriate path for a match """
-    obj = path_kim_obj_from_match(match)
     try:
         path = obj.executable
     except AttributeError:
@@ -117,7 +74,6 @@ def path_from_match(match):
 
     logger.debug("thinks the path is %r",path)
     return path
-
 
 #-----------------------------------------
 # Processors
@@ -129,18 +85,6 @@ def path_processor(line,model,test):
 def data_processor(line,model,test):
     """ replace all data directives with the appropriate path """
     return re.sub(RE_DATA,data_from_match,line)
-
-def dependency_processor(line):
-    """ find the data directives and get the location of data, if any, as generator """
-    matches = re.finditer(RE_DATA,line)
-    for match in matches:
-        yield data_path_from_match(match)
-
-def dependency_path_processor(line):
-    """ get the paths of all PATH directives for dependency checking """
-    matches = re.finditer(RE_PATH,line)
-    for match in matches:
-        yield (True, path_kim_obj_from_match(match))
 
 def modelname_processor(line,model,test):
     """ replace all modelname directives with the appropriate path """
@@ -156,17 +100,20 @@ def process_line(line,*args):
     """ Takes a string for the line and processes it, appling all processors """
     for processor in processors:
         line = processor(line,*args)
-        #logger.debug("current line is: %r",line)
     return line
-
 
 #-----------------------------------------
 # Main Methods
 #-----------------------------------------
+def dependency_processor(line):
+    matches = re.finditer(RE_KIMID, line)
+    for match in matches:
+        yield (True, match.groups()[0])
+
 def dependency_check(inp, model=True):
     """ Given an input file
         find all of the data directives and obtain the pointers to the relevant data if it exists
-        if it doesn't exist, return a false and a list of dependant tests
+        if it doesn't exist, return a false and a list of dependent tests
 
         outputs:
             ready - bool
@@ -179,27 +126,21 @@ def dependency_check(inp, model=True):
     cands = []
     #try to find all of the possible dependencies
     for line in inp:
-        if model:
-            for cand in dependency_processor(line):
-                cands.append(cand)
-                logger.debug("found a candidate dependency: %r", cand)
-        for path_cand in dependency_path_processor(line):
-            cands.append(path_cand)
-            logger.debug("found a path candidate dependency: %r", path_cand)
+        matches = re.finditer(RE_KIMID, line)
+        for match in matches:
+            matched_code = match.string[match.start():match.end()]
+            cands.append((True, matched_code))
 
     if not cands:
         return (True, None, None)
 
     #cheap transpose
     candstranspose = zip(*cands)
-    #is everyone ready?
     allready = all(candstranspose[0])
 
     if allready:
-        #good to go
         return allready, candstranspose[1], None
     else:
-        #grab the pairs
         return allready, ( kid for ready,kid in cands if ready ), ( pair for ready, pair in cands if not ready )
 
 

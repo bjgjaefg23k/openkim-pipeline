@@ -139,7 +139,6 @@ def format_kim_code(name,leader,num,version):
 #--------------------------------
 # some list generators 
 #--------------------------------
-
 def test_model_to_priority(test,model):
     """ method to assign priorities to test model pairs, currently empty 
 
@@ -153,7 +152,6 @@ def test_model_to_priority(test,model):
 #======================================
 # Some kim api wrapped things
 #======================================
-
 def valid_match(test,model):
     """ Test to see if a test and model match using the kim API, returns bool
 
