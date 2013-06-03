@@ -8,7 +8,7 @@ logger = logging.getLogger("pipeline").getChild("rsync_tools")
 
 import os
 import subprocess, tempfile
-import database
+from database import parse_kim_code
 from functools import partial
 
 # --delete ensures that we delete files that aren't on remote
@@ -61,7 +61,7 @@ def kid_to_folder(kid):
     """ Convert a kim_code to its directory """
     #obj = models.KIMObject(kid)
     #return obj.path
-    name,leader,num,version = database.parse_kim_code(kid)
+    name,leader,num,version = parse_kim_code(kid)
     path = os.path.join(leader.lower(),kid)
     return path
 

@@ -361,10 +361,10 @@ class Director(Agent):
         return depids
 
     def get_tr_id(self):
-        return database.new_test_result_id()
+        return kimobjects.new_test_result_id()
 
     def get_vr_id(self):
-        return database.new_verification_result_id()
+        return kimobjects.new_verification_result_id()
 
 
 #==================================================================

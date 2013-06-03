@@ -7,58 +7,16 @@ Currently these calls mostly glob on the database, could be replaced by somethin
 
 """
 from config import *
+import re, os, glob, operator
+
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("database")
-import re, os, glob, operator
-import kimobjects
-import random
-import kimservice
+
 #-------------------------------------------------
 # Helper routines (probably move)
 #-------------------------------------------------
-
 #KIMID matcher  ( optional name             __) (prefix  ) ( number  )( opt version )
 RE_KIMID    = r"(?:([_a-zA-Z][_a-zA-Z0-9]*?)__)?([A-Z]{2})_([0-9]{12})(?:_([0-9]{3}))?"
-
-def new_test_result_id(number=None):
-    """ Generate or get a new test result id, currently make them up, eventually request them from the website """
-    if number:
-        version = get_new_version(None,"TR",number)
-        return format_kim_code(None,"TR",number,version)
-    else:
-        kim_code =  new_tr_kimid()
-        logger.info("Generated new TR kim_code: %r", kim_code)
-        return kim_code
-
-def new_verification_result_id(number=None):
-    """ Generate or get a new verification result id, currently make them up, eventually request them from the website """
-    if number:
-        version = get_new_version(None,"VR",number)
-        return format_kim_code(None,"VR",number,version)
-    else:
-        kim_code =  new_vr_kimid()
-        logger.info("Generated new VR kim_code: %r", kim_code)
-        return kim_code
-
-def randint():
-    """ Return a random kim integer """
-    return random.randint(0,1e12)
-
-def new_tr_kimid():
-    """ Generate a new Test Result kimid """
-    existing = set( result.kim_code for result in kimobjects.TestResult.all() )
-    kim_code = format_kim_code(None,"TR","{:012d}".format(randint()),"000")
-    while kim_code in existing:
-        kim_code = format_kim_code(None,"TR","{:012d}".format(randint()),"000")
-    return kim_code
-
-def new_vr_kimid():
-    """ Generate a new Test Result kimid """
-    existing = set( result.kim_code for result in kimobjects.VerificationResult.all() )
-    kim_code = format_kim_code(None,"VR","{:012d}".format(randint()),"000")
-    while kim_code in existing:
-        kim_code = format_kim_code(None,"VR","{:012d}".format(randint()),"000")
-    return kim_code
 
 def parse_kim_code(kim_code):
     """ Parse a kim code into it's pieces,
@@ -147,41 +105,4 @@ def test_model_to_priority(test,model):
         implements priorities
     """
     return 1
-
-
-#======================================
-# Some kim api wrapped things
-#======================================
-def valid_match(test,model):
-    """ Test to see if a test and model match using the kim API, returns bool
-
-        Tests through ``kimservice.KIM_API_init``, running in its own forked process
-    """
-    #logger.debug("attempting to match %r with %r",testname,modelname)
-    logger.debug("invoking KIMAPI for (%r,%r)",test,model)
-    pid = os.fork()
-    if (pid==0):
-        logger.debug("in fork")
-        match, pkim = kimservice.KIM_API_init(test.kim_code,model.kim_code)
-        if match:
-            kimservice.KIM_API_free(pkim)
-            os._exit(0)
-        os._exit(1)
-
-    # try to get the exit code from the kim api process
-    exitcode = os.waitpid(pid,0)[1]/256
-    logger.debug("got exitcode: %r" , exitcode )
-    if exitcode == 0:
-        match = True
-    elif exitcode == 1:
-        match = False
-    else:
-        logger.error("We seem to have a Kim init error on (%r,%r)", test, model)
-        raise KIMRuntimeError
-        match = False
-
-    if match:
-        return True
-    else:
-        return False
 

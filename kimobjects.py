@@ -31,14 +31,14 @@ from persistent import PersistentDict
 from contextlib import contextmanager
 import template
 import database
+import kimapi
 import shutil
 import subprocess
 import re
 import dircache
 import simplejson, yaml
-import uuid
-from jsonschema import validate
 from template import template_environment
+import random
 
 #------------------------------------------------
 # Base KIMObject
@@ -311,7 +311,7 @@ class Runner(KIMObject):
     @property
     def subjects(self):
         """ Return a generator for all of the valid subjects """
-        return (subject for subject in self.subject_type.all() if database.valid_match(self,subject) )
+        return (subject for subject in self.subject_type.all() if kimapi.valid_match(self,subject) )
 
     def result_with_subject(self, subject):
         """ Get the first result with the model: model, or None """
@@ -352,7 +352,7 @@ class Subject(KIMObject):
     @property
     def runners(self):
         """ Return a generator of the valid matching tests that match this model """
-        return ( test for test in Test.all() if database.valid_match(test,self) )
+        return ( test for test in Test.all() if kimapi.valid_match(test,self) )
 
 
 class Result(KIMObject):
@@ -388,7 +388,7 @@ class Result(KIMObject):
 
         else:
             if not kim_code:
-                kim_code = database.new_test_result_id()
+                kim_code = new_test_result_id()
                 search = False
 
         super(Result,self).__init__(kim_code,search=search)
@@ -519,7 +519,6 @@ class Result(KIMObject):
 #-------------------------------------
 # TestResult
 #-------------------------------------
-
 class TestResult(Result):
     """ A test result, KIMObject with
     """
@@ -546,7 +545,6 @@ class VerificationResult(KIMObject):
 #------------------------------------------
 # ReferenceDatum
 #------------------------------------------
-
 class ReferenceDatum(KIMObject):
     """ a piece of reference data, a KIMObject with:
 
@@ -573,7 +571,6 @@ class ReferenceDatum(KIMObject):
 #--------------------------------------
 # Model
 #-------------------------------------
-
 class Model(Subject):
     """ A KIM Model, KIMObject with
 
@@ -606,7 +603,7 @@ class Model(Subject):
     @property
     def tests(self):
         """ Return a generator of the valid matching tests that match this model """
-        return ( test for test in Test.all() if database.valid_match(test,self) )
+        return ( test for test in Test.all() if kimapi.valid_match(test,self) )
 
 
 #=============================================
@@ -616,7 +613,6 @@ class Model(Subject):
 #---------------------------------------------
 # Test
 #---------------------------------------------
-
 class Test(Runner):
     """ A kim test, it is a KIMObject, plus
 
@@ -671,7 +667,6 @@ class Test(Runner):
 #------------------------------------------
 # VerificationTest(Check)
 #------------------------------------------
-
 class VerificationTest(Runner):
     """ A kim test, it is a KIMObject, plus
 
@@ -707,7 +702,6 @@ class VerificationTest(Runner):
 #------------------------------------------
 # VerificationModel(Check)
 #------------------------------------------
-
 class VerificationModel(KIMObject):
     """ A kim test, it is a KIMObject, plus
 
@@ -753,7 +747,6 @@ class VerificationModel(KIMObject):
 #------------------------------------------
 # TestDriver
 #------------------------------------------
-
 class TestDriver(KIMObject):
     """ A test driver, a KIMObject with,
 
@@ -789,7 +782,6 @@ class TestDriver(KIMObject):
 #------------------------------------------
 # ModelDriver
 #------------------------------------------
-
 class ModelDriver(KIMObject):
     """ A model driver, a KIMObject with,
 
@@ -809,13 +801,9 @@ class ModelDriver(KIMObject):
         """ Return a generator of all of the models using this model driver """
         return ( model for model in Model.all() if self==model.model_driver )
 
-
-
-
 #------------------------------------------
 # VirtualMachine
 #------------------------------------------
-
 class VirtualMachine(KIMObject):
     """ for a virtual machine, a KIMObject with:
 
@@ -833,6 +821,45 @@ class VirtualMachine(KIMObject):
 #--------------------------------------------
 # Helper code
 #--------------------------------------------
+def new_tr_kimid():
+    """ Generate a new Test Result kimid """
+    existing = set( result.kim_code for result in TestResult.all() )
+    kim_code = database.format_kim_code(None,"TR","{:012d}".format(database.randint()),"000")
+    while kim_code in existing:
+        kim_code = database.format_kim_code(None,"TR","{:012d}".format(database.randint()),"000")
+    return kim_code
+
+def new_vr_kimid():
+    """ Generate a new Test Result kimid """
+    existing = set( result.kim_code for result in VerificationResult.all() )
+    kim_code = database.format_kim_code(None,"VR","{:012d}".format(database.randint()),"000")
+    while kim_code in existing:
+        kim_code = database.format_kim_code(None,"VR","{:012d}".format(database.randint()),"000")
+    return kim_code
+
+def new_test_result_id(number=None):
+    """ Generate or get a new test result id, currently make them up, eventually request them from the website """
+    if number:
+        version = database.get_new_version(None,"TR",number)
+        return database.format_kim_code(None,"TR",number,version)
+    else:
+        kim_code = new_tr_kimid()
+        logger.info("Generated new TR kim_code: %r", kim_code)
+        return kim_code
+
+def new_verification_result_id(number=None):
+    """ Generate or get a new verification result id, currently make them up, eventually request them from the website """
+    if number:
+        version = database.get_new_version(None,"VR",number)
+        return database.format_kim_code(None,"VR",number,version)
+    else:
+        kim_code = new_vr_kimid()
+        logger.info("Generated new VR kim_code: %r", kim_code)
+        return kim_code
+
+def randint():
+    """ Return a random kim integer """
+    return random.randint(0,1e12)
 
 # two letter codes to the associated class
 code_to_model = {"TE": Test, "MO": Model, "TD": TestDriver, "TR": TestResult ,
