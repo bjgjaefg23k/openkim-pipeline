@@ -9,12 +9,7 @@ The simple markup language as the following directives:
         in the pipeline.in file so the test can execute the appropriate model
     * @PATH[kim_code] - for use in pipeline.in gives the path of the corresponding kim_code;
         the executable if its a test or a test driver, and the folder otherwise
-    * @DATA[RD_2342...] - gives the data contained in the corresponding reference datum, the
-        version is optional, if omitted get the latest version
-    * @DATA[TR_232...][PR_2342...] - get the data stored for the PR code given in the test result (TR) code given
-        both kim_codes can lack trailing versions, if so, get the latest
-    * @DATA[TE_234...][MO_234...][PR_234...] - Get the data for the PR code given as a result of the specified TE, MO pair
-        if it exists, if not, run it. version numbers can be ommited.
+    * @DATA[string] - gives the data string returned by the query string
 """
 import re, shutil, os
 from config import *
@@ -26,28 +21,18 @@ import database
 import jinja2, simplejson
 from functools import partial
 
-
 #==========================
 # Keywords
 #==========================
-
 RE_KIMID    = r"((?:[_a-zA-Z][_a-zA-Z0-9]*?_?_)?[A-Z]{2}_[0-9]{12}(?:_[0-9]{3})?)"
-#RE_KIMID = database.RE_KIMID
-#RE_KIMID    = r"(?:[_a-zA-Z][_a-zA-Z0-9]*?__)?[A-Z]{2}_[0-9]{10,12}(?:_[0-9]{3})?"
-
-RE_FILE     = re.compile(r"(@FILE\[(.*)\])")     # matches @FILE[stuff] and returns stuff
 RE_MODEL    = re.compile(r"(@MODELNAME)")       # matches @MODELNAME as a word
-#RE_DATA     = re.compile(r"@DATA\[(.*)\]\[(.*)\]{2}")      # matches @DATA[RD_XXXX_000] fill-in, etc
-RE_DATA     = re.compile(r"(@DATA(?:\[" + RE_KIMID + r"\])(?:\[" +  RE_KIMID +  r"\])?(?:\[" + RE_KIMID + "\])?)")
-#RE_CLEANER  = re.compile("(@[A-Z]*\[)(.*)(\])") # to remove the @FILE[] and @DATA[]
-RE_PATH     = re.compile("(@PATH\[(.*?)\])")
-RE_TEST     = re.compile("(@TESTNAME)")
-
+RE_DATA     = re.compile(r"(@DATA\[(.*?)\])")
+RE_PATH     = re.compile(r"(@PATH\[(.*?)\])")
+RE_TEST     = re.compile(r"(@TESTNAME)")
 
 #-----------------------------------------
 # Jinja Stuff
 #-----------------------------------------
-
 template_environment = jinja2.Environment(
         loader=jinja2.FileSystemLoader('/'),
         block_start_string='@[',
@@ -60,34 +45,9 @@ template_environment = jinja2.Environment(
 
 template_environment.filters['json'] = partial(simplejson.dumps,indent=4)
 
-
-#-------------------------------------------
-# FILE Directive handlers
-#------------------------------------------
-
-# FIXME - only one layer deep, won't catch @FILES
-def files_from_results(results):
-    """ Given a dictionary of results,
-    return the filenames for any files contained in the results, from the @FILE directive """
-    logger.debug("parsing results for file directives")
-    testname = results["test-extended-id"]
-    test = kimobjects.Test(testname)
-    #get only those files:that match the file directive, needs strings to process
-    files = filter(None,(get_file(str(val),test.path) for key,val in results.iteritems()))
-    return files
-
-def get_file(string,testdir):
-    """ If the string has a FILE directive, get the full path to the file, else return zero """
-    match = re.match(RE_FILE,string)
-    if match:
-        part, filename = match.groups()
-        logger.debug("Found @FILE directive match for %r",filename)
-        return os.path.join(testdir,filename)
-
 #--------------------------------------------
 # DATA directive handlers
 #--------------------------------------------
-
 def data_path_from_match(match):
     """ Given a match, try to find where it exists
 
@@ -96,31 +56,13 @@ def data_path_from_match(match):
         path - either a kim_code, or a pair that must be run
     """
     groups = match.groups()
-    logger.debug("trying to find data path for groups: %r",groups)
-    if len(groups) == 2:
-        # a 2 call is an rd
-        part, rd_kcode = groups
-        rd = kimobjects.ReferenceDatum(rd_kcode)
-        return (True, rd)
-    if len(groups) == 3:
-        # a 3 call is TR, PR
-        part, tr_kcode, pr_kcode = groups
-        tr = kimobjects.TestResult(tr_kcode)
-        return (True, tr)
-    if len(groups) == 4:
-        # a 4 call is part,te,mo,pr
-        part, te_kcode, mo_kcode, pr_kcode = groups
-        te = kimobjects.Test(te_kcode)
-        mo = kimobjects.Model(mo_kcode)
-        pr = kimobjects.Property(pr_kcode)
-        try:
-            tr = te.result_with_model(mo)
-        except PipelineDataMissing:
-            #tr doesn't exist
-            return (False, [te,mo])
-        else:
-            return (True, tr)
-    raise PipelineTemplateError, "didn't understand the in file"
+    logger.debug("trying to find data for groups: %r",groups)
+    part, query = groups
+    try:
+         tr = te.result_with_model(mo)
+    except Exception as e:
+         return (False, [te,mo])
+    return (True, tr)
 
 def data_from_match(match):
     """ Get the data from a re match """
@@ -152,14 +94,12 @@ def data_from_match(match):
             data = tr[pr.kim_code]
             return str(data)
     except KeyError:
-        raise PipelineDataMissing, "We couldn't get the requested data"
-    raise PipelineTemplateError, "I don't understand how to parse this: {}".format(match.groups())
+        raise PipelineTemplateError, "I don't understand how to parse this: {}".format(match.groups())
 
 
 #----------------------------------------
 # PATH directive handlers
 #----------------------------------------
-
 def path_kim_obj_from_match(match):
     """ return the kim object of the path directive """
     part,cand = match.groups()
@@ -182,7 +122,6 @@ def path_from_match(match):
 #-----------------------------------------
 # Processors
 #-----------------------------------------
-
 def path_processor(line,model,test):
     """replace all path directives with the appropriate path"""
     return re.sub(RE_PATH,path_from_match,line)
@@ -224,8 +163,6 @@ def process_line(line,*args):
 #-----------------------------------------
 # Main Methods
 #-----------------------------------------
-
-
 def dependency_check(inp, model=True):
     """ Given an input file
         find all of the data directives and obtain the pointers to the relevant data if it exists

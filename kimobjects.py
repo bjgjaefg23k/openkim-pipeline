@@ -205,8 +205,13 @@ class KIMObject(simplejson.JSONEncoder):
         cwd = os.getcwd()
         os.chdir(self.path)
         logger.debug("moved to dir: {}".format(self.path))
-        yield
-        os.chdir(cwd)
+        
+        try:
+            yield
+        except Exception as e:
+            raise e
+        finally:
+            os.chdir(cwd)
 
     def make(self):
         """ Try to build the thing, by executing ``make`` in its directory """

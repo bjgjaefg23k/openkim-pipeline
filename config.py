@@ -124,3 +124,6 @@ class PipelineSearchError(Exception):
 
 class PipelineTemplateError(Exception):
     """ some kind of templating format is wrong, doesn't conform to our templating directives """
+
+class PipelineQueryError(Exception):
+    """ there was an error while attempting a remote query """
