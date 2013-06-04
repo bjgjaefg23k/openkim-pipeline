@@ -19,15 +19,12 @@ PIPELINE_DEBUG_VBS = False  # do we want all information to print
 
 if os.environ.has_key("PIPELINE_REMOTE"):
     PIPELINE_REMOTE = True
-    print "REMOTE MODE: ON"
 
 if os.environ.has_key("PIPELINE_DEBUG"):
     PIPELINE_DEBUG = True
-    print "DEBUG MODE: ON"
 
 if os.environ.has_key("PIPELINE_GATEWAY"):
     PIPELINE_GATEWAY = True
-    print "GATEWAY MODE: ON"
 
 #===============================
 # KIM FLAGS

@@ -19,21 +19,21 @@ class Gateway(object):
             request = self.bean.reserve()
             tube = request.stats()['tube']
             if tube == TUBE_WEB_UPDATES:
-                logger.info("processing %r" % request.body)
+                logger.debug("processing %r" % request.body)
                 try:
                     if not PIPELINE_DEBUG:
                         rsync_tools.rsync_read_full(debug=self.debug)
                 except Exception as e:
                     logger.error("%r" % e)
-                self.bean.post_msg(TUBE_UPDATES, request.body)
+                self.bean.send_msg(TUBE_UPDATES, request.body)
             elif tube == TUBE_RESULTS:
-                logger.info("processing %r" % request.body)
+                logger.debug("processing %r" % request.body)
                 try:
                     if not PIPELINE_DEBUG:
                         rsync_tools.rsync_write_results(debug=self.debug)
                 except Exception as e:
                     logger.error("%r" % e)
-                self.bean.post_msg(TUBE_WEB_RESULTS, request.body)
+                self.bean.send_msg(TUBE_WEB_RESULTS, request.body)
 
             request.delete()
 

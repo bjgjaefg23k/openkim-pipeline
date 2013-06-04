@@ -1,6 +1,6 @@
 from config import *
 from network import Communicator
-from logger import logging
+from logger import logging, pygmentize
 logger = logging.getLogger("pipeline").getChild("statusapi")
 
 import simplejson, re, time, os
@@ -20,8 +20,6 @@ from geventwebsocket.handler import WebSocketHandler
 #=================================================================
 # The dictionary of jobs and how it is organized
 #=================================================================
-context = zmq.Context()
-
 app = Flask(__name__)
 app.debug = True
 comm = None
@@ -31,8 +29,8 @@ agents = {}
 jobs = OrderedDict()
 logs = deque(maxlen=500)
 
-LOGSFILE = join(join(abspath(os.environ['HOME']), "weblog"), "pickle.logs")
-JOBSFILE = join(join(abspath(os.environ['HOME']), "weblog"), "pickle.jobs")
+LOGSFILE = join(KIM_LOG_DIR, "pickle.logs")
+JOBSFILE = join(KIM_LOG_DIR, "pickle.jobs")
 
 def s2d(s):
     return simplejson.loads(s)
@@ -120,7 +118,7 @@ def trimjob(job):
 
 def pygment(string):
     st = StringIO()
-    logger.pygmentize(string, formatter="html", outfile=st)
+    pygmentize(string, formatter="html", outfile=st)
     return st.getvalue() 
 
 # this allows up to use two different processes to host the website
@@ -185,6 +183,7 @@ class WebCommunicator(Communicator):
     def __init__(self):
         # api request specific objects
         self.info = {}
+        super(WebCommunicator, self).__init__()
 
     def connect(self):
         super(WebCommunicator, self).connect()
@@ -234,12 +233,13 @@ if __name__ == "__main__":
     import sys
     port = 8080
 
-    if len(sys.argv) > 1:
+    if PIPELINE_DEBUG:
         LOGSFILE = LOGSFILE+".dbg"
         JOBSFILE = JOBSFILE+".dbg"
         port = 8081
 
     comm = WebCommunicator()
+    comm.connect()
     http_server = WSGIServer(('',port), app, handler_class=WebSocketHandler)
 
     try:
@@ -248,7 +248,7 @@ if __name__ == "__main__":
         print "Could not open pickled status, restarting..."
 
     gevent.spawn(sync_to_disk, LOGSFILE, JOBSFILE)
-    gevent.spawn(Communicator.run, comm)
-    gevent.spawn(Communicator.poll_uuid, comm)
+    gevent.spawn(WebCommunicator.run, comm)
+    gevent.spawn(WebCommunicator.poll_uuid, comm)
     http_server.serve_forever()
 

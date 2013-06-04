@@ -1,0 +1,4 @@
+#!/bin/bash
+
+screen -dm -S gateway     env PIPELINE_GATEWAY=1 python /home/ubuntu/openkim-pipeline/gateway.py
+screen -dm -S gateway_dbg env PIPELINE_GATEWAY=1 PIPELINE_DEBUG=1 python /home/ubuntu/openkim-pipeline/gateway.py dbg

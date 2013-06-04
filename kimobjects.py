@@ -824,17 +824,17 @@ class VirtualMachine(KIMObject):
 def new_tr_kimid():
     """ Generate a new Test Result kimid """
     existing = set( result.kim_code for result in TestResult.all() )
-    kim_code = database.format_kim_code(None,"TR","{:012d}".format(database.randint()),"000")
+    kim_code = database.format_kim_code(None,"TR","{:012d}".format(randint()),"000")
     while kim_code in existing:
-        kim_code = database.format_kim_code(None,"TR","{:012d}".format(database.randint()),"000")
+        kim_code = database.format_kim_code(None,"TR","{:012d}".format(randint()),"000")
     return kim_code
 
 def new_vr_kimid():
     """ Generate a new Test Result kimid """
     existing = set( result.kim_code for result in VerificationResult.all() )
-    kim_code = database.format_kim_code(None,"VR","{:012d}".format(database.randint()),"000")
+    kim_code = database.format_kim_code(None,"VR","{:012d}".format(randint()),"000")
     while kim_code in existing:
-        kim_code = database.format_kim_code(None,"VR","{:012d}".format(database.randint()),"000")
+        kim_code = database.format_kim_code(None,"VR","{:012d}".format(randint()),"000")
     return kim_code
 
 def new_test_result_id(number=None):

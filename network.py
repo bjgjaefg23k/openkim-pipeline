@@ -8,13 +8,20 @@ tunnel to the remote host.  It then connects to the beanstalkd
 across this tunnel.
 """
 import beanstalkc as bean
-import time, simplejson, zmq
+import time, simplejson
 from subprocess import Popen
-from threading import Thread
+
+if PIPELINE_GATEWAY:
+    from gevent_zeromq import zmq
+else:
+    import zmq
+    from threading import Thread
 
 from config import *
 from logger import logging, log_formatter
 logger = logging.getLogger("pipeline").getChild("network")
+
+context = zmq.Context()
 
 def open_ports(port=BEAN_PORT, rx=PORT_RX, tx=PORT_TX, user=GLOBAL_USER, 
         addr=GLOBAL_HOST, ip=GLOBAL_IP):
@@ -69,6 +76,7 @@ class BeanstalkConnection(object):
 #==================================================================
 class Communicator(Thread):
     def __init__(self):
+        self.con = context
         # decide on the port order
         self.port_tx = PORT_TX
         self.port_rx = PORT_RX 
@@ -79,7 +87,6 @@ class Communicator(Thread):
         self.handler_args  = []
 
     def connect(self):
-        self.con = zmq.Context()
         # open both the rx/tx lines, bound
         self.sock_tx = self.con.socket(zmq.PUB)
         self.sock_rx = self.con.socket(zmq.SUB)
@@ -135,8 +142,11 @@ class NetworkHandler(logging.Handler):
 
 def addNetworkHandler(comm, boxinfo):
     # add in the beanstalk logger if applicable
+    from logger import logging
+    tlog = logging.getLogger("pipeline")
+
     network_handler = NetworkHandler(comm, boxinfo)
     network_handler.setLevel(logging.INFO)
     network_handler.setFormatter(log_formatter)
-    logger.addHandler(network_handler)
+    tlog.addHandler(network_handler)
 

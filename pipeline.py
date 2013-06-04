@@ -30,6 +30,7 @@ import rsync_tools
 import compute
 import database 
 import kimobjects
+import kimapi
 
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("pipeline")
@@ -317,7 +318,7 @@ class Director(Agent):
 
         if checkmatch:
             for test, model in zip(tests,models):
-                if database.valid_match(test,model):
+                if kimapi.valid_match(test,model):
                     priority = int(priority_factor*database.test_model_to_priority(test,model) * 1000000)
                     self.check_dependencies_and_push(test,model,priority,status)
         else:
@@ -541,6 +542,15 @@ network.open_ports(BEAN_PORT, PORT_RX, PORT_TX, GLOBAL_USER, GLOBAL_HOST, GLOBAL
 
 if __name__ == "__main__":
     import sys 
+    if PIPELINE_REMOTE:
+        print "REMOTE MODE: ON"
+    
+    if PIPELINE_DEBUG:
+        print "DEBUG MODE: ON"
+    
+    if PIPELINE_GATEWAY:
+        print "GATEWAY MODE: ON"
+
 
     if len(sys.argv) > 1:
         # directors are not multithreaded for build safety
