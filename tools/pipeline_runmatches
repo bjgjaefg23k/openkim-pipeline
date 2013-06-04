@@ -14,7 +14,7 @@ if __name__ == "__main__":
             if len(list(test.models)) > 0:
                 for model in test.models:
                     logger.info("Running combination <%r, %r" % (test, model))
-                    runner.run_test_on_model(test, model)
+                    Computation(test, model).run()
             else:
                 logger.info("No matches found for your test")
         if leader == "TD":
@@ -23,7 +23,7 @@ if __name__ == "__main__":
                 for t in test.tests:
                     for m in t.models:
                         logger.info("Running combination <%r, %r" % (t, m))
-                        runner.run_test_on_model(t, m)
+                        Computation(t, m).run()
             else:
                 logger.info("No matches found for your test driver")
         if leader == "MO":
@@ -31,7 +31,7 @@ if __name__ == "__main__":
             if len(list(model.tests)) > 0:
                 for t in model.tests:
                     logger.info("Running combination <%r, %r" % (t, model))
-                    runner.run_test_on_model(t, model)
+                    Computation(t, model).run()
             else:
                 logger.info("No matches found for your test driver")
         if leader == "MD":
@@ -40,9 +40,9 @@ if __name__ == "__main__":
                 for m in driver.models:
                     for t in m.tests:
                         logger.info("Running combination <%r, %r" % (t, m))
-                        runner.run_test_on_model(t, m)
+                        Computation(t, m).run()
             else:
                 logger.info("No matches found for your test driver")
     
     else:
-        logger.info("Usage: debugtest.py <testname>")
+        logger.info("Usage: pipeline_runmatches <testname>")
