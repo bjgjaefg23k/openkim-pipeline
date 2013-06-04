@@ -7,19 +7,19 @@ Any of the classes below rely on a secure public key to open an ssh
 tunnel to the remote host.  It then connects to the beanstalkd
 across this tunnel.
 """
+from config import *
+from logger import logging, log_formatter
+logger = logging.getLogger("pipeline").getChild("network")
+
 import beanstalkc as bean
 import time, simplejson
 from subprocess import Popen
+from threading import Thread
 
 if PIPELINE_GATEWAY:
     from gevent_zeromq import zmq
 else:
     import zmq
-    from threading import Thread
-
-from config import *
-from logger import logging, log_formatter
-logger = logging.getLogger("pipeline").getChild("network")
 
 context = zmq.Context()
 

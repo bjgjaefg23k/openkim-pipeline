@@ -1,5 +1,5 @@
 from config import *
-from network import Communicator
+from network import Communicator, context
 from logger import logging, pygmentize
 logger = logging.getLogger("pipeline").getChild("statusapi")
 
