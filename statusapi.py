@@ -28,9 +28,6 @@ agents = {}
 jobs = OrderedDict()
 logs = deque(maxlen=500)
 
-comm = WebCommunicator()
-comm.connect()
-
 LOGSFILE = join(KIM_LOG_DIR, "pickle.logs")
 JOBSFILE = join(KIM_LOG_DIR, "pickle.jobs")
 
@@ -67,14 +64,8 @@ def dic_stash(tube, dic):
         first, second = dic['job']
         leader1 = get_leader(first)
         leader2 = get_leader(second)
-        if leader1 == "VM" or leader1 == "VT":
-            info.update({"verifier": first})       
-        else:
-            info.update({"test": first})       
-        if leader2 == "TE":
-            info.update({"test": second})
-        else:
-            info.update({"model": second})
+        info.update({"test": first})       
+        info.update({"model": second})
     
     # re-json the results dictionary
     if dic.has_key('results'):
@@ -134,7 +125,7 @@ def loosen_security(msg):
 def tube_handler():
     if request.environ.get("wsgi.websocket"):
         ws = request.environ['wsgi.websocket']
-        sock = conn.con.socket(zmq.SUB)
+        sock = comm.con.socket(zmq.SUB)
         sock.setsockopt(zmq.SUBSCRIBE, "")
         sock.connect('inproc://jobs')
         for key,val in jobs.iteritems():
@@ -156,7 +147,7 @@ def msg_handler(tr=None, tube=None):
 def logs_handler():
     if request.environ.get("wsgi.websocket"):
         ws = request.environ['wsgi.websocket']
-        sock = conn.con.socket(zmq.SUB)
+        sock = comm.con.socket(zmq.SUB)
         sock.setsockopt(zmq.SUBSCRIBE, "")
         sock.connect('inproc://logs')
         for log in logs:
@@ -239,6 +230,10 @@ if __name__ == "__main__":
         LOGSFILE = LOGSFILE+".dbg"
         JOBSFILE = JOBSFILE+".dbg"
         port = 8081
+
+    global comm
+    comm = WebCommunicator()
+    comm.connect()
 
     http_server = WSGIServer(('',port), app, handler_class=WebSocketHandler)
 

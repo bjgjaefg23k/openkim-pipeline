@@ -667,7 +667,7 @@ class Test(Runner):
 #------------------------------------------
 # VerificationTest(Check)
 #------------------------------------------
-class VerificationTest(Runner):
+class VerificationTest(Test):
     """ A kim test, it is a KIMObject, plus
 
         Settings:
@@ -686,6 +686,7 @@ class VerificationTest(Runner):
                 Property objects
     """
     required_leader = "VT"
+    makeable = True
     subject_type = Test
     result_type = VerificationResult
 
@@ -693,16 +694,11 @@ class VerificationTest(Runner):
         """ Initialize the Test, with a kim_code """
         super(VerificationTest,self).__init__(kim_code,*args,**kwargs)
 
-    @property
-    def _reversed_out_dict(self):
-        """ Reverses the out_dict """
-        return { value:key for key,value in self.out_dict.iteritems() }
-
 
 #------------------------------------------
 # VerificationModel(Check)
 #------------------------------------------
-class VerificationModel(KIMObject):
+class VerificationModel(Test):
     """ A kim test, it is a KIMObject, plus
 
         Settings:
@@ -722,22 +718,12 @@ class VerificationModel(KIMObject):
     """
     required_leader = "VM"
     makeable = True
+    subject_type = Model
+    result_type = VerificationResult 
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Test, with a kim_code """
         super(VerificationModel,self).__init__(kim_code,*args,**kwargs)
-        self.executable = os.path.join(self.path,self.kim_code)
-        # self.outfile_path = os.path.join(self.path,OUTPUT_FILE)
-        self.infile_path = os.path.join(self.path,INPUT_FILE)
-        # self.out_dict = self._outfile_to_dict()
-
-    def __call__(self,*args,**kwargs):
-        """ Calling a test object executes its executable in its own directory
-            args and kwargs are passed to ``subprocess.check_call`` """
-        with self.in_dir():
-            subprocess.check_call(self.executable,*args,**kwargs)
-
-
 
 
 #==========================================

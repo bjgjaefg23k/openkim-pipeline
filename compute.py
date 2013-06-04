@@ -60,6 +60,7 @@ class Computation(object):
         self.subject = subject
         self.runner_temp = runner
         self.runtime = None
+        self.results = None
 
     def _create_tempdir(self, trcode):
         tempname = self.runner.kim_code_name+"_running"+trcode+"__"+self.runner.kim_code_id
@@ -148,6 +149,7 @@ class Computation(object):
             raise PipelineTemplateError, "Test didn't return JSON! \n<<STDOUT: \n%s>> \n<<STDERR: \n%s>>" % (last_out, last_err)
 
         logger.debug('Found JSON:\n{}'.format(simplejson.dumps(data,indent=4)))
+        self.results = data
 
         #Add output
         pipelineinfo = {"kim-template-tags": ["pipeline-info"]}

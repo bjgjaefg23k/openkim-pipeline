@@ -128,7 +128,7 @@ class Agent(object):
     def job_message(self, jobmsg, errors=None, results=None, tube=TUBE_RESULTS):
         """ Send back a job message """
         jobmsg.results = results
-        jobmsg.errors = errors
+        jobmsg.errors = "%r" % errors
         jobmsg.update(self.boxinfo)
         msg = simplejson.dumps(jobmsg)
 
@@ -232,16 +232,17 @@ class Director(Agent):
         #     return
 
         self.make_all()
-        
+       
+        checkmatch = False
         if leader=="VT":
             # for every test launch
             test = kimobjects.VerificationTest(kimid)
-            models = kimobjects.Test.all()
+            models = list(kimobjects.Test.all())
             tests = [test]*ll(models)
         elif leader=="VM":
             #for all of the models, run a job
             test = kimobjects.VerificationModel(kimid)
-            models = kimobjects.Model.all()
+            models = list(kimobjects.Model.all())
             tests = [test]*ll(models)
         else:
             if status == "approved":
@@ -559,7 +560,7 @@ if __name__ == "__main__":
             for i in range(thrds):
                 pipe[i] = Worker(num=i)
                 procs[i] = Process(target=Worker.run, args=(pipe[i],), name='worker-%i'%i)
-                procs[i].daemon = True
+                #procs[i].daemon = True
                 procs[i].start()
 
             try:
