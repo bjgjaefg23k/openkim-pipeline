@@ -423,14 +423,14 @@ class Worker(Agent):
                         self.make_all()
 
                     verifier_kcode, subject_kcode = jobmsg.job
-                    verifier = kimobjects.Verifier(verifier_kcode)
-                    subject  = kimobjects.Subject(subject_kcode)
+                    verifier = kimobjects.kim_obj(verifier_kcode)
+                    subject  = kimobjects.kim_obj(subject_kcode)
 
                     self.logger.info("Running (%r,%r)",verifier,subject)
                     comp = compute.Computation(verifier, subject)
                     comp.run(jobmsg.jobid)
                     
-                    result = kimobjects.Result(jobmsg.jobid).results
+                    result = kimobjects.kim_obj(jobmsg.jobid).results
                     self.logger.info("rsyncing results %r", jobmsg.jobid)
                     rsync_tools.worker_verification_write(jobmsg.jobid)
                     self.logger.info("sending result message back")

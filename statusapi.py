@@ -35,7 +35,7 @@ def s2d(s):
     return simplejson.loads(s)
 
 def d2s(d):
-    return simplejson.dumps(d)
+    return simplejson.dumps(d, indent=4)
 
 def get_leader(kimcode):
     name, leader, code, version = re.match(regex, kimcode).groups()
@@ -69,7 +69,7 @@ def dic_stash(tube, dic):
     
     # re-json the results dictionary
     if dic.has_key('results'):
-        info.update({"results": d2s(dic["results"])})
+        info.update({"results": dic["results"]})
 
     # deal with running jobs 
     info["tube"] = tube
@@ -139,7 +139,10 @@ def tube_handler():
 # only one at a time.  not websocket based (get only) 
 @app.route("/msg/<tube>/<tr>")
 def msg_handler(tr=None, tube=None):
-    output = d2s([j[tube] for j in jobs.values() if j['jobid'] == tr and j['tube'] == tube])
+    if tube == "results":
+        output = d2s(s2d(([j[tube] for j in jobs.values() if j['jobid'] == tr and j['tube'] == tube][0])))
+    else: 
+        output = d2s([j[tube] for j in jobs.values() if j['jobid'] == tr and j['tube'] == tube][0])
     return loosen_security(output)
 
 # the websocket method to follow the tail of the combined logs 

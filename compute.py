@@ -199,8 +199,8 @@ class Computation(object):
         if not trcode:
             logger.info("no result code provided, leaving in %r", self.runner_temp.path)
             return 
-
-        result = kimobjects.TestResult(kim_code=trcode, search=False) 
+        
+        result = kimobjects.kim_obj(kim_code=trcode, search=False) 
         shutil.rmtree(result.path)
 
         p1 = os.path.join(self.runner_temp.path, TR_OUTPUT)

@@ -423,7 +423,7 @@ class Result(KIMObject):
             files = template.files_from_results(incoming_results)
             if files:
                 logger.debug("found files to move")
-                testdir = Test(testname).path
+                testdir = kim_obj(testname).path
                 for src in files:
                     logger.debug("copying %r over", src)
                     shutil.copy(os.path.join(testdir,src),self.path)
@@ -433,11 +433,11 @@ class Result(KIMObject):
             logger.info("Results created in %r", self.kim_code)
 
         try:
-            self.test = Test(self.results["test-extended-id"])
+            self.test = kim_obj(self.results["test-extended-id"])
         except KeyError:
             self.test = None
         try:
-            self.model = Model(self.results["model-extended-id"])
+            self.model = kim_obj(self.results["model-extended-id"])
         except KeyError:
             self.model = None
 
@@ -532,7 +532,7 @@ class TestResult(Result):
 #------------------------------------------
 # VerificationResult
 #------------------------------------------
-class VerificationResult(KIMObject):
+class VerificationResult(Result):
     """ A verification result, KIMObject with
     """
     required_leader = "VR"
