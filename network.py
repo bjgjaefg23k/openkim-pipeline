@@ -21,8 +21,6 @@ if PIPELINE_GATEWAY:
 else:
     import zmq
 
-context = zmq.Context()
-
 def open_ports(port=BEAN_PORT, rx=PORT_RX, tx=PORT_TX, user=GLOBAL_USER, 
         addr=GLOBAL_HOST, ip=GLOBAL_IP):
     try:
@@ -35,7 +33,6 @@ def open_ports(port=BEAN_PORT, rx=PORT_RX, tx=PORT_TX, user=GLOBAL_USER,
         ssh = Popen(st.format(port,ip,port,  rx,ip,rx,  tx,ip,tx,   user,addr), shell=True)
         logger.info("Waiting to open ports via ssh tunnels")
         time.sleep(1)
-
 
 #==================================================================
 # a generic beanstalk connection
@@ -76,7 +73,8 @@ class BeanstalkConnection(object):
 #==================================================================
 class Communicator(Thread):
     def __init__(self):
-        self.con = context
+        self.con = zmq.Context()
+
         # decide on the port order
         self.port_tx = PORT_TX
         self.port_rx = PORT_RX 

@@ -17,8 +17,7 @@ tunnel to the remote host.  It then connects to the beanstalkd
 across this tunnel.
 """
 from subprocess import check_call, CalledProcessError
-from multiprocessing import cpu_count
-from threading import Thread, Lock
+from multiprocessing import cpu_count, Process, Lock
 import sys
 import time
 import simplejson
@@ -95,15 +94,14 @@ class Agent(object):
         self.name = name
         self.num = num
         self.uuid = self.boxinfo['uuid']+":"+str(self.num)
-
-        self.comm   = network.Communicator()
-        self.bean   = network.BeanstalkConnection()
         self.logger = logger.getChild("%s-%i" % (self.name, num))
-        
         self.data = {"job": self.job, "data": self.boxinfo}
 
     def connect(self):
         # start up the 2-way comm too
+        self.comm = network.Communicator()
+        self.bean = network.BeanstalkConnection()
+
         self.logger.info("Bringing up RX/TX")
         self.comm.connect()
         self.comm.addHandler(func=pingpongHandler, args=(self,))
@@ -170,12 +168,6 @@ class Director(Agent):
         super(Director, self).__init__(name="director", num=num)
 
     def run(self):
-        """ connect and grab the job thread """
-        self.connect()
-        self.bean.watch(TUBE_UPDATES)
-        self.get_updates()
-
-    def get_updates(self):
         """
         Endless loop that waits for updates on the tube TUBE_UPDATES
 
@@ -189,6 +181,10 @@ class Director(Agent):
                 run after verification or update
 
         """
+        # connect and grab the job thread 
+        self.connect()
+        self.bean.watch(TUBE_UPDATES)
+
         while True:
             self.logger.info("Director Waiting for message...")
             request = self.bean.reserve()
@@ -380,9 +376,7 @@ class Worker(Agent):
         """ Start to listen, tunnels should be open and ready """
         self.connect()
         self.bean.watch(TUBE_JOBS)
-        self.get_jobs()
 
-    def get_jobs(self):
         """ Endless loop that awaits jobs to run """
         while True:
             self.logger.info("Waiting for jobs...")
@@ -564,7 +558,7 @@ if __name__ == "__main__":
             thrds = cpu_count() 
             for i in range(thrds):
                 pipe[i] = Worker(num=i)
-                procs[i] = Thread(target=Worker.run, args=(pipe[i],), name='worker-%i'%i)
+                procs[i] = Process(target=Worker.run, args=(pipe[i],), name='worker-%i'%i)
                 procs[i].daemon = True
                 procs[i].start()
 
@@ -574,7 +568,7 @@ if __name__ == "__main__":
                         procs[i].join(timeout=1.0)
             except (KeyboardInterrupt, SystemExit):
                 signal_handler()
-           
+
         # site is a one off for testing
         elif sys.argv[1] == "site":
             obj = Site()
