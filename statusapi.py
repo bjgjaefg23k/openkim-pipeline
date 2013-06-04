@@ -1,14 +1,13 @@
 from config import *
-from network import Communicator, context
+from network import Communicator
 from logger import logging, pygmentize
 logger = logging.getLogger("pipeline").getChild("statusapi")
 
 import simplejson, re, time, os
 from collections import OrderedDict, deque
-from os.path import join, abspath
+from os.path import join
 from cStringIO import StringIO
 import cPickle as pickle
-import urllib2
 
 from flask import make_response, Flask, request
 
@@ -28,6 +27,9 @@ regex = r"(?:([_a-zA-Z][_a-zA-Z0-9]*?)__)?([A-Z]{2})_([0-9]{10,12})(?:_([0-9]{3}
 agents = {}
 jobs = OrderedDict()
 logs = deque(maxlen=500)
+
+comm = WebCommunicator()
+comm.connect()
 
 LOGSFILE = join(KIM_LOG_DIR, "pickle.logs")
 JOBSFILE = join(KIM_LOG_DIR, "pickle.jobs")
@@ -50,8 +52,8 @@ def dic_stash(tube, dic):
     # job needs to be split into test/model/verifier and results need to be 
     # re-jsoned
     tests  = ['jobid', 'priority', 'errors', 'message',
-              '_sitename', '_username', '_boxtype', '_ipaddr', 
-              '_vmversion', '_setuphash']
+              'sitename', 'username', 'boxtype', 'ipaddr', 
+              'vmversion', 'setuphash']
     info = {}
     for j in tests:
         if dic.has_key(j):
@@ -132,7 +134,7 @@ def loosen_security(msg):
 def tube_handler():
     if request.environ.get("wsgi.websocket"):
         ws = request.environ['wsgi.websocket']
-        sock = context.socket(zmq.SUB)
+        sock = conn.con.socket(zmq.SUB)
         sock.setsockopt(zmq.SUBSCRIBE, "")
         sock.connect('inproc://jobs')
         for key,val in jobs.iteritems():
@@ -154,7 +156,7 @@ def msg_handler(tr=None, tube=None):
 def logs_handler():
     if request.environ.get("wsgi.websocket"):
         ws = request.environ['wsgi.websocket']
-        sock = context.socket(zmq.SUB)
+        sock = conn.con.socket(zmq.SUB)
         sock.setsockopt(zmq.SUBSCRIBE, "")
         sock.connect('inproc://logs')
         for log in logs:
@@ -217,7 +219,7 @@ class WebCommunicator(Communicator):
                     self.sock_jobs.send(simplejson.dumps({dic['jobid']: trimjob(jobs[dic['jobid']])}))
 
             except Exception as e:
-                raise #pass #print e 
+                raise 
 
     def poll_uuid(self):
         while 1:
@@ -238,8 +240,6 @@ if __name__ == "__main__":
         JOBSFILE = JOBSFILE+".dbg"
         port = 8081
 
-    comm = WebCommunicator()
-    comm.connect()
     http_server = WSGIServer(('',port), app, handler_class=WebSocketHandler)
 
     try:
