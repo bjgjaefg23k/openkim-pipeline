@@ -64,14 +64,8 @@ def dic_stash(tube, dic):
         first, second = dic['job']
         leader1 = get_leader(first)
         leader2 = get_leader(second)
-        if leader1 == "VM" or leader1 == "VT":
-            info.update({"verifier": first})       
-        else:
-            info.update({"test": first})       
-        if leader2 == "TE":
-            info.update({"test": second})
-        else:
-            info.update({"model": second})
+        info.update({"test": first})       
+        info.update({"model": second})
     
     # re-json the results dictionary
     if dic.has_key('results'):

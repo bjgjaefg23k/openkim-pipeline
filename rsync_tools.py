@@ -180,15 +180,19 @@ def director_test_verification_read(testname):
 #==================================
 
 
-def worker_verification_read(subject,verifier):
+def worker_verification_read(subject,verifier,depends):
     """ when a worker needs to run a model verification job """
     files = [j(RP,ktf(subject)), j(RA,ktf(verifier))]
+    for depend in depends:
+        if depend.startswith("TR"):
+            files.append(j(WR,ktf(depend)))
+        else:
+            files.append(j(RA,ktf(depend)))
     rsync_read(files)
 
 def worker_test_result_read(testname,modelname,depends):
     """ when a worker needs to run a test result """
-    files = [j(RA,ktf(modelname)), j(RA,ktf(testname)), j(RA,"pr/")]
-    # FIXME: Do we really need the PR directory???
+    files = [j(RA,ktf(modelname)), j(RA,ktf(testname))]
     for depend in depends:
         if depend.startswith("TR"):
             files.append(j(WR,ktf(depend)))

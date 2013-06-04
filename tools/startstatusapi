@@ -1,0 +1,4 @@
+#!/bin/bash
+
+screen -dm -S statusapi     env PIPELINE_GATEWAY=1 python /home/ubuntu/openkim-pipeline/statusapi.py
+screen -dm -S statusapi_dbg env PIPELINE_GATEWAY=1 PIPELINE_DEBUG=1 python /home/ubuntu/openkim-pipeline/statusapi.py
