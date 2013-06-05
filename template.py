@@ -129,7 +129,7 @@ def dependency_check(inp, model=True):
         matches = re.finditer(RE_KIMID, line)
         for match in matches:
             matched_code = match.string[match.start():match.end()]
-            cands.append((True, matched_code))
+            cands.append((True, kimobjects.kim_obj(matched_code)))
 
     if not cands:
         return (True, None, None)

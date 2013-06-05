@@ -87,8 +87,10 @@ TUBE_JOBS        = "jobs"
 TUBE_ERRORS      = "errors"
 TUBE_LOGS        = "logs"
 
+PIPELINE_WAIT    = 1
 PIPELINE_TIMEOUT = 60
-PIPELINE_MSGSIZE = 2**20
+PIPELINE_MSGSIZE = 2**16
+PIPELINE_JOB_TIMEOUT = 3600*24 
 
 #============================
 # Runner Internals

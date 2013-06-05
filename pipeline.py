@@ -34,10 +34,6 @@ import kimapi
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("pipeline")
 
-PIPELINE_WAIT    = 1
-PIPELINE_TIMEOUT = 60
-PIPELINE_MSGSIZE = 2**20
-PIPELINE_JOB_TIMEOUT = 3600*24 
 buildlock = Lock()
 
 def getboxinfo():
@@ -130,8 +126,13 @@ class Agent(object):
         jobmsg.results = results
         jobmsg.errors = "%r" % errors
         jobmsg.update(self.boxinfo)
-        msg = simplejson.dumps(jobmsg)
 
+        if len(simplejson.dumps(jobmsg.results)) > PIPELINE_MSGSIZE:
+            jobmsg.results = "too long"
+        if len(jobmsg.errors) > PIPELINE_MSGSIZE:
+            jobmsg.errors = "too long"
+
+        msg = simplejson.dumps(jobmsg)
         self.bean.send_msg(tube, msg)
         self.comm.send_msg(tube, msg)
 

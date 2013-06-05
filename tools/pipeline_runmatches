@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 import database
 import kimobjects
-import compute
+from compute import Computation
 import sys
 from config import *
+from logger import logging
+logger = logging.getLogger("pipeline").getChild("development")
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:

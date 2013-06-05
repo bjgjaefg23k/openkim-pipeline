@@ -139,10 +139,7 @@ def tube_handler():
 # only one at a time.  not websocket based (get only) 
 @app.route("/msg/<tube>/<tr>")
 def msg_handler(tr=None, tube=None):
-    if tube == "results":
-        output = d2s(s2d(([j[tube] for j in jobs.values() if j['jobid'] == tr and j['tube'] == tube][0])))
-    else: 
-        output = d2s([j[tube] for j in jobs.values() if j['jobid'] == tr and j['tube'] == tube][0])
+    output = d2s([j[tube] for j in jobs.values() if j['jobid'] == tr and j['tube'] == tube][0])
     return loosen_security(output)
 
 # the websocket method to follow the tail of the combined logs 
