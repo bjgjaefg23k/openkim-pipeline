@@ -46,10 +46,10 @@ def dic_insert(dic):
 
 def dic_stash(tube, dic):
     # almost everything done with this loop - results and job are special
-    # job needs to be split into test/model/verifier and results need to be 
+    # job needs to be split into test/model/verifier and results need to be
     # re-jsoned
     tests  = ['jobid', 'priority', 'errors', 'message',
-              'sitename', 'username', 'boxtype', 'ipaddr', 
+              'sitename', 'username', 'boxtype', 'ipaddr',
               'vmversion', 'setuphash']
     info = {}
     for j in tests:
@@ -57,31 +57,31 @@ def dic_stash(tube, dic):
             info[j] = dic[j]
         else:
             info[j] = None
-    info.update({"tube": tube})    
-    
+    info.update({"tube": tube})
+
     # extract the test/model
     if dic.has_key('job'):
         first, second = dic['job']
         leader1 = get_leader(first)
         leader2 = get_leader(second)
-        info.update({"test": first})       
+        info.update({"test": first})
         info.update({"model": second})
-    
+
     # re-json the results dictionary
     if dic.has_key('results'):
         info.update({"results": dic["results"]})
 
-    # deal with running jobs 
+    # deal with running jobs
     info["tube"] = tube
     if tube == "jobs":
         info["tube"] = "queued"
     dic_insert(info)
-   
+
 def arr_stash(log):
     logs.append(log)
 
 def reply_stash(uuid, obj):
-    agents[uuid] = obj 
+    agents[uuid] = obj
 
 def sync_to_disk(logfile, jobfile):
     while True:
@@ -98,7 +98,7 @@ def load_from_disk(logfile, jobfile):
         logs = pickle.load(ff)
     with open(jobfile, "r") as ff:
         jobs = pickle.load(ff)
-      
+
 #=================================================================
 # Web interface to the information
 #=================================================================
@@ -112,7 +112,7 @@ def trimjob(job):
 def pygment(string):
     st = StringIO()
     pygmentize(string, formatter="html", outfile=st)
-    return st.getvalue() 
+    return st.getvalue()
 
 # this allows up to use two different processes to host the website
 def loosen_security(msg):
@@ -134,15 +134,15 @@ def tube_handler():
             msg = sock.recv()
             ws.send(msg)
     return simplejson.dumps(jobs)
-   
+
 # the static method that requests certain error or result messages
-# only one at a time.  not websocket based (get only) 
+# only one at a time.  not websocket based (get only)
 @app.route("/msg/<tube>/<tr>")
 def msg_handler(tr=None, tube=None):
     output = d2s([j[tube] for j in jobs.values() if j['jobid'] == tr and j['tube'] == tube][0])
     return loosen_security(output)
 
-# the websocket method to follow the tail of the combined logs 
+# the websocket method to follow the tail of the combined logs
 @app.route("/logs")
 def logs_handler():
     if request.environ.get("wsgi.websocket"):
@@ -198,7 +198,7 @@ class WebCommunicator(Communicator):
                     arr_stash(templog)
                     self.sock_logs.send(templog)
 
-                # if it is a reply to a request, treat it as 
+                # if it is a reply to a request, treat it as
                 # obj[1] is uuid | obj[2] is the message
                 elif message[0] == "reply":
                     reply_stash(message[1][0], message[1][1])
@@ -210,7 +210,7 @@ class WebCommunicator(Communicator):
                     self.sock_jobs.send(simplejson.dumps({dic['jobid']: trimjob(jobs[dic['jobid']])}))
 
             except Exception as e:
-                raise 
+                raise
 
     def poll_uuid(self):
         while 1:
@@ -240,7 +240,7 @@ if __name__ == "__main__":
     try:
         load_from_disk(LOGSFILE, JOBSFILE)
     except Exception as e:
-        print "Could not open pickled status, restarting..."
+        logger.warning("Could not open pickled status, restarting...")
 
     gevent.spawn(sync_to_disk, LOGSFILE, JOBSFILE)
     gevent.spawn(WebCommunicator.run, comm)

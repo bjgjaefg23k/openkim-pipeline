@@ -27,7 +27,7 @@ from config import *
 import network
 import rsync_tools
 import compute
-import database 
+import database
 import kimobjects
 import kimapi
 
@@ -64,7 +64,7 @@ class Message(dict):
         if not self.has_key(name):
             return None
         return self[name]
-    
+
     def __setattr__(self, name, value):
         self[name] = value
 
@@ -102,7 +102,7 @@ class Agent(object):
         self.comm.connect()
         self.comm.addHandler(func=pingpongHandler, args=(self,))
         self.comm.start()
-        
+
         #attach the beanstalk logger
         network.addNetworkHandler(self.comm, self.boxinfo)
 
@@ -113,11 +113,11 @@ class Agent(object):
     def disconnect(self):
         self.bean.disconnect()
 
-    def exit_safe(self): 
+    def exit_safe(self):
         # we got the signal to shutdown, so release the job first
         if hasattr(self, 'job') and self.job is not None:
             self.job.delete()
-            if hasattr(self, 'jobmsg') and self.jobmsg is not None: 
+            if hasattr(self, 'jobmsg') and self.jobmsg is not None:
                 self.job_message(self.jobmsg, errors="Caught SIGINT and killed", tube=TUBE_ERRORS)
         self.disconnect()
 
@@ -182,7 +182,7 @@ class Director(Agent):
                 run after verification or update
 
         """
-        # connect and grab the job thread 
+        # connect and grab the job thread
         self.connect()
         self.bean.watch(TUBE_UPDATES)
 
@@ -198,7 +198,7 @@ class Director(Agent):
             # from the website (or other trusted place)
             if request.stats()['tube'] == TUBE_UPDATES:
                 # update the repository,send it out as a job to compute
-                try:    
+                try:
                     rsync_tools.director_full_approved_read()
                     self.push_jobs(simplejson.loads(request.body))
                 except Exception as e:
@@ -207,7 +207,7 @@ class Director(Agent):
 
             request.delete()
             self.job = None
-        
+
     def priority_to_number(self,priority):
         priorities = {"immediate": 0, "very high": 0.01, "high": 0.1,
                       "normal": 1, "low": 10, "very low": 100}
@@ -233,7 +233,7 @@ class Director(Agent):
         #     return
 
         self.make_all()
-       
+
         checkmatch = False
         if leader=="VT":
             # for every test launch
@@ -312,7 +312,7 @@ class Director(Agent):
                     pass
                 else:
                     self.logger.error("Tried to update an invalid KIM ID!: %r",kimid)
-                checkmatch = False 
+                checkmatch = False
 
         if checkmatch:
             for test, model in zip(tests,models):
@@ -353,8 +353,8 @@ class Director(Agent):
                         depids.append(self.check_dependencies_and_push(str(t),str(m),priority/10,
                             status,child=(str(test),str(model),trid)))
 
-            msg = Message(job=(str(test),str(model)),jobid=trid, 
-                    child=child, depends=TR_ids+tuple(depids), status=status) 
+            msg = Message(job=(str(test),str(model)),jobid=trid,
+                    child=child, depends=TR_ids+tuple(depids), status=status)
             self.job_message(msg, tube=TUBE_JOBS)
 
         return depids
@@ -384,7 +384,7 @@ class Worker(Agent):
             self.logger.info("Waiting for jobs...")
             job = self.bean.reserve()
             self.job = job
-            
+
             # if appears that there is a 120sec re-birth of jobs that have been reserved
             # and I do not want to put an artificial time limit, so let's bury jobs
             # when we get them
@@ -430,7 +430,7 @@ class Worker(Agent):
                     self.logger.info("Running (%r,%r)",verifier,subject)
                     comp = compute.Computation(verifier, subject)
                     comp.run(jobmsg.jobid)
-                    
+
                     result = kimobjects.kim_obj(jobmsg.jobid).results
                     self.logger.info("rsyncing results %r", jobmsg.jobid)
                     rsync_tools.worker_verification_write(jobmsg.jobid)
@@ -492,10 +492,10 @@ class Worker(Agent):
                     self.logger.error("Run failed, deleting... %r" % e)
                     self.job_message(jobmsg, errors="%r"%e, tube=TUBE_ERRORS)
                     job.delete()
-                    
+
             self.job = None
             self.jobsmsg = None
- 
+
 #=========================================================
 # emulator for the website so we can do independent debug
 #=========================================================
@@ -527,7 +527,7 @@ class APIAgent(Agent):
 pipe = {}
 procs = {}
 def signal_handler(): #signal, frame):
-    print "Sending signal to flush, wait 1 sec..."
+    logger.info("Sending signal to flush, wait 1 sec...")
     for p in pipe.values():
         p.exit_safe()
     for p in procs.values():
@@ -537,15 +537,15 @@ def signal_handler(): #signal, frame):
 network.open_ports(BEAN_PORT, PORT_RX, PORT_TX, GLOBAL_USER, GLOBAL_HOST, GLOBAL_IP)
 
 if __name__ == "__main__":
-    import sys 
+    import sys
     if PIPELINE_REMOTE:
-        print "REMOTE MODE: ON"
-    
+        logger.info("REMOTE MODE: ON")
+
     if PIPELINE_DEBUG:
-        print "DEBUG MODE: ON"
-    
+        logger.info("DEBUG MODE: ON")
+
     if PIPELINE_GATEWAY:
-        print "GATEWAY MODE: ON"
+        logger.info("GATEWAY MODE: ON")
 
 
     if len(sys.argv) > 1:
@@ -557,7 +557,7 @@ if __name__ == "__main__":
         # workers can be multi-threaded so launch the appropriate
         # number of worker threads
         elif sys.argv[1] == "worker":
-            thrds = cpu_count() 
+            thrds = cpu_count()
             for i in range(thrds):
                 pipe[i] = Worker(num=i)
                 procs[i] = Process(target=Worker.run, args=(pipe[i],), name='worker-%i'%i)
@@ -582,4 +582,4 @@ if __name__ == "__main__":
             obj.run()
 
     else:
-        print "Specify {worker|director|site}"
+        logger.info("Specify {worker|director|site}")
