@@ -12,9 +12,23 @@ import kimservice
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("kimapi")
 
+from subprocess import check_output
+
 #======================================
 # Some kim api wrapped things
 #======================================
+
+def valid_match_util(test,model):
+    """ Check to see if a test and model mach by using Ryan's utility """
+    logger.debug("invoking Ryan's utility for (%r,%r)",test,model)
+    test_dotkim = os.path.join(test.path,test.kim_code+".kim")
+    model_dotkim = os.path.join(model.path,model.kim_code+".kim")
+    out = check_output([KIM_API_CHECK_MATCH_UTIL,test_dotkim,model_dotkim])
+    if out == "MATCH\n":
+        return True
+    return False
+
+
 def valid_match_codes(test_code,model_code):
     """ Test to see if a test and model match using the kim API, returns bool
 

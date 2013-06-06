@@ -29,9 +29,13 @@ if os.environ.has_key("PIPELINE_GATEWAY"):
 #===============================
 # KIM FLAGS
 #===============================
-KIM_REPOSITORY_DIR = "/home/vagrant/openkim-repository"
+HOME               = os.path.expanduser('~')
+KIM_REPOSITORY_DIR = os.path.join(HOME,"openkim-repository")
 KIM_PIPELINE_DIR   = os.path.abspath(os.path.dirname(__file__))
 KIM_LOG_DIR        = os.path.join(KIM_PIPELINE_DIR, "logs")
+KIM_API_DIR        = os.path.join(HOME,"openkim-api")
+KIM_API_LIB_DIR    = os.path.join(KIM_API_DIR,"KIM_API")
+KIM_API_CHECK_MATCH_UTIL = os.path.join(KIM_API_LIB_DIR,"openkim-api-descriptor-file-match")
 
 INPUT_FILE      = "pipeline.in"
 TEMP_INPUT_FILE = "pipeline.in.tmp"
@@ -90,7 +94,7 @@ TUBE_LOGS        = "logs"
 PIPELINE_WAIT    = 1
 PIPELINE_TIMEOUT = 60
 PIPELINE_MSGSIZE = 2**16
-PIPELINE_JOB_TIMEOUT = 3600*24 
+PIPELINE_JOB_TIMEOUT = 3600*24
 
 #============================
 # Runner Internals
