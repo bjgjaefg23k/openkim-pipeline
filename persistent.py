@@ -82,7 +82,7 @@ class PersistentDict(dict):
         if self.format=='yaml':
             try:
                 fileobj.seek(0)
-                self['dict'] = list(yaml.load_all(fileobj))
+                self['dict'] = next(yaml.load_all(fileobj))
                 return self
             except Exception:
                 raise ValueError("Not YAML!")
@@ -97,7 +97,7 @@ class PersistentDict(dict):
             try:
                 return super(PersistentDict,self).__getitem__('dict')[0].__getitem__(item)
             except KeyError:
-                pass 
+                pass
 
         value = super(PersistentDict,self).__getitem__(item)
         if isinstance(value,dict):
