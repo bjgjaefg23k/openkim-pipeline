@@ -148,6 +148,9 @@ def process(inp, model, test, modelonly= False):
     """ takes in a file like object and retuns a processed file like object, writing a copy to TEMP_INPUT_FILE """
     logger.info("attempting to process %r for (%r,%r)",inp,model.kim_code,test.kim_code)
     with test.in_dir():
+        if not os.path.exists(OUTPUT_DIR):
+            os.makedirs(OUTPUT_DIR)
+
         with open(TEMP_INPUT_FILE,'w') as out:
             for line in inp:
                 logger.debug("line to process is:\n\t %r",line)

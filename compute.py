@@ -15,6 +15,7 @@ logger = logging.getLogger("pipeline").getChild("compute")
 import kimobjects
 import subprocess, threading
 import yaml
+import json
 import shutil
 from contextlib import contextmanager
 
@@ -62,19 +63,24 @@ class Computation(object):
         self.runtime = None
         self.results = None
 
-    def _create_tempdir(self, trcode):
-        tempname = self.runner.kim_code_name+"_running"+trcode+"__"+self.runner.kim_code_id
-        self.runner_temp = kimobjects.kim_obj(self.runner.kim_code, search=False, subdir=tempname)
+    def _create_tempdir(self):
+        self.tempname = self.runner.kim_code_name+"_running__"+self.runner.kim_code_id
+        self.runner_temp = kimobjects.kim_obj(self.runner.kim_code, search=False, subdir=self.tempname)
         shutil.copytree(self.runner.path, self.runner_temp.path)
+
+    def _create_output_dir(self):
+        outputdir = os.path.join(self.runner_temp.path,OUTPUT_DIR)
+        if not os.path.exists(outputdir):
+            os.makedirs(outputdir)
 
     def _delete_tempdir(self):
         shutil.rmtree(self.runner_temp.path)
 
     @contextmanager
-    def tempdir(self, trcode):
-        if trcode:
-            self._create_tempdir(trcode)
-        
+    def tempdir(self,tmp=False):
+        if tmp:
+            self._create_tempdir()
+
             cwd = os.getcwd()
             os.chdir(self.runner_temp.path)
 
@@ -84,7 +90,7 @@ class Computation(object):
             logger.error("%r" % e)
             raise e
         finally:
-            if trcode:
+            if tmp:
                 os.chdir(cwd)
                 self._delete_tempdir()
 
@@ -93,10 +99,10 @@ class Computation(object):
         with /usr/bin/time profilling where ever the test exists
         """
         logger.info("running %r with %r",self.runner,self.subject)
-    
+
         executable = self.runner_temp.executable
         timeblock = "/usr/bin/time --format={\\\"usertime\\\":%U,\\\"memmax\\\":%M,\\\"memavg\\\":%K} "
-    
+
         # run the test in its own directory
         with self.runner_temp.in_dir():
             with self.runner_temp.processed_infile(self.subject) as kim_stdin_file, open(STDOUT_FILE,'w') as stdout_file, open(STDERR_FILE,'w') as stderr_file:
@@ -108,14 +114,14 @@ class Computation(object):
                 except PipelineTimeout:
                     logger.error("test %r timed out",self.runner)
                     raise PipelineTimeout, "your test timed out"
-    
+
                 end_time = time.time()
-    
+
         # It seems the test didn't finish
         if process.poll() is None:
             process.kill()
             raise KIMRuntimeError, "your test didn't terminate nicely"
-    
+
         elapsed = end_time - start_time
         logger.info("run completed in %r seconds" % elapsed)
         if retcode != 0:
@@ -123,7 +129,7 @@ class Computation(object):
         self.runtime = elapsed
         return elapsed, retcode
 
-    def process_output(self, trcode=None, extrainfo=None):
+    def process_output(self, extrainfo=None):
         """ Template the run results into the proper YAML
         """
         with self.runner_temp.in_dir(), open(STDOUT_FILE) as stdout_file:
@@ -155,7 +161,7 @@ class Computation(object):
         pipelineinfo = {"kim-template-tags": ["pipeline-info"]}
         pipelineinfo['test-extended-id']  = self.runner.kim_code
         pipelineinfo['model-extended-id']  = self.subject.kim_code
-        pipelineinfo['test-result-extended-id']  = trcode
+        # pipelineinfo['test-result-extended-id']  = trcode
         pipelineinfo['output'] = simplejson.dumps(data)
 
         # Add metadata
@@ -163,7 +169,7 @@ class Computation(object):
         info_dict = pipelineinfo['info']
         info_dict["kimlog"] = "@FILE[{}]".format(KIMLOG_FILE)
         info_dict["stdout"] = "@FILE[{}]".format(STDOUT_FILE)
-        info_dict["time"] = self.runtime 
+        info_dict["time"] = self.runtime
         info_dict["created-at"] = time.time()
         info_dict["vmversion"] = os.environ["VMVERSION"]
 
@@ -187,29 +193,43 @@ class Computation(object):
         tryaml = list(yaml.load_all(renderedyaml))
         logger.debug("Formed dict:\n{}".format("\n".join([simplejson.dumps(temp,indent=4) for temp in tryaml])))
 
-        documents = [pipelineinfo]
+        documents = []
         documents.extend(tryaml)
+
+        logger.debug("writing profile information")
+        with self.runner_temp.in_dir(), open(PROFILE_FILE,'w') as f:
+            json.dump(pipelineinfo,f,indent=4)
+
+        logger.debug("Writing RUNNER_NAME and SUBJECT_NAME file")
+        with self.runner_temp.in_dir(), open(RUNNER_FILE,'w') as f, open(SUBJECT_FILE,'w') as g:
+            f.write(self.runner.kim_code)
+            g.write(self.subject.kim_code)
 
         logger.debug("got data %r",data)
         with self.runner_temp.in_dir(), open(TR_OUTPUT,'w') as f:
             f.write(yaml.dump_all(documents, default_flow_style=False, explicit_start=True))
 
 
-    def write_result(self, trcode=None):
-        if not trcode:
-            logger.info("no result code provided, leaving in %r", self.runner_temp.path)
-            return 
-        
-        result = kimobjects.kim_obj(kim_code=trcode, search=False) 
-        shutil.rmtree(result.path)
+    def write_result(self, trname=None):
+        """ Write the result folder """
+        trname = trname or os.path.dirname(self.runner_temp.path)
+
+        # result = kimobjects.kim_obj(kim_code=trcode, search=False)
+        # shutil.rmtree(result.path)
+        result_path = os.path.join(KIM_REPOSITORY_DIR,'tr',self.tempname)
+        logger.debug("Result path = %s", result_path)
 
         p1 = os.path.join(self.runner_temp.path, TR_OUTPUT)
-        p2 = os.path.join(self.runner_temp.path, trcode)
+        p2 = os.path.join(self.runner_temp.path, RESULT_FILE)
         shutil.copy2(p1, p2)
 
-        shutil.copytree(self.runner_temp.path, result.path)
+        outputdir = os.path.join(self.runner_temp.path,OUTPUT_DIR)
+        logger.info("Copying the contents of %s to %s", outputdir, result_path)
 
-    def run(self, trcode=None, extrainfo=None):
+        shutil.copytree(os.path.join(self.runner_temp.path,OUTPUT_DIR), result_path)
+
+
+    def run(self, tmp=False, extrainfo=None):
         """
         run a test with the corresponding model, with /usr/bin/time profilling,
         capture the output as a dict, and return or
@@ -217,10 +237,10 @@ class Computation(object):
 
         if trcode is set, then run in a temporary directory, otherwise local run
         """
-        with self.tempdir(trcode):
+        with self.tempdir(tmp):
             self.execute_in_place()
-            self.process_output(trcode, extrainfo)
-            self.write_result(trcode)
+            self.process_output(extrainfo)
+            self.write_result()
 
 
 #================================================================
