@@ -8,15 +8,16 @@ import time
 import simplejson
 import signal
 import itertools
-from config import *
-from logger import logging
-logger = logging.getLogger("pipeline").getChild("compute")
-
-import kimobjects
 import subprocess, threading
 import yaml
 import shutil
 from contextlib import contextmanager
+
+from config import *
+import kimobjects
+from logger import logging
+logger = logging.getLogger("pipeline").getChild("compute")
+
 
 #================================================================
 # a class to be able to timeout on a command
@@ -42,6 +43,9 @@ class Command(object):
             self.process.terminate()
             thread.join()
             raise PipelineTimeout
+       
+        # be sure to grab the returncode (poll is to activate it)
+        self.process.poll()
         return self.process.returncode
 
     def poll(self):
@@ -95,39 +99,43 @@ class Computation(object):
                 self._delete_tempdir()
 
     def execute_in_place(self):
-        """ Execute a test with a corresponding model
-        with /usr/bin/time profilling where ever the test exists
+        """ Execute a runner with a corresponding subject 
+        with /usr/bin/time profilling where ever the executable exists
         """
         logger.info("running %r with %r",self.runner,self.subject)
     
         executable = self.runner_temp.executable
         timeblock = "/usr/bin/time --format={\\\"usertime\\\":%U,\\\"memmax\\\":%M,\\\"memavg\\\":%K} "
     
-        # run the test in its own directory
+        # run the runner in its own directory
         with self.runner_temp.in_dir():
-            with self.runner_temp.processed_infile(self.subject) as kim_stdin_file, open(STDOUT_FILE,'w') as stdout_file, open(STDERR_FILE,'w') as stderr_file:
+            with self.runner_temp.processed_infile(self.subject) as kim_stdin_file,  \
+                    open(STDOUT_FILE,'w') as stdout_file, \
+                    open(STDERR_FILE,'w') as stderr_file:
                 start_time = time.time()
-                process = Command(timeblock+executable,stdin=kim_stdin_file,stdout=stdout_file,stderr=stderr_file)
+
                 logger.info("launching run...")
+                process = Command(timeblock+executable,stdin=kim_stdin_file,
+                        stdout=stdout_file,stderr=stderr_file)
+
                 try:
-                    retcode = process.run(timeout=RUNNER_TIMEOUT)
+                    self.retcode = process.run(timeout=RUNNER_TIMEOUT)
                 except PipelineTimeout:
-                    logger.error("test %r timed out",self.runner)
-                    raise PipelineTimeout, "your test timed out"
+                    logger.error("runner %r timed out",self.runner)
+                    raise PipelineTimeout, "your executable timed out"
     
                 end_time = time.time()
     
-        # It seems the test didn't finish
+        # It seems the runner didn't finish
         if process.poll() is None:
             process.kill()
-            raise KIMRuntimeError, "your test didn't terminate nicely"
+            raise KIMRuntimeError, "your executable didn't terminate nicely"
     
-        elapsed = end_time - start_time
-        logger.info("run completed in %r seconds" % elapsed)
-        if retcode != 0:
-            logger.error("test returned error code %r, %r" % (retcode, os.strerror(retcode)) )
-        self.runtime = elapsed
-        return elapsed, retcode
+        self.runtime = end_time - start_time
+        logger.info("run completed in %r seconds" % self.runtime)
+        if self.retcode != 0:
+            logger.error("Runner returned error code %r, %r" % (self.retcode, os.strerror(self.retcode)) )
+            raise KIMRuntimeError("Executable %r returned error code %r" % (self.runner_temp, self.retcode))
 
     def process_output(self, trcode=None, extrainfo=None):
         """ Template the run results into the proper YAML
@@ -205,23 +213,32 @@ class Computation(object):
             f.write(self.runner.kim_code)
             g.write(self.subject.kim_code)
 
-        logger.debug("got data %r",data)
+        logger.debug("Writing data...")
         with self.runner_temp.in_dir(), open(TR_OUTPUT,'w') as f:
             f.write(yaml.dump_all(documents, default_flow_style=False, explicit_start=True))
 
+        logger.debug("Copying kim.log")
+        with self.runner_temp.in_dir():
+            shutil.copy2("./kim.log", KIMLOG_FILE)
 
-    def write_result(self, trcode=None):
-        p1 = os.path.join(self.runner_temp.path, TR_OUTPUT)
-        p2 = os.path.join(self.runner_temp.path, RESULT_FILE)
-        logger.debug("Copying the test results from %s to %s", p1, p2)
-        shutil.copy2(p1, p2)
+
+    def write_result(self, trcode=None, error=False):
+        try:
+            p1 = os.path.join(self.runner_temp.path, TR_OUTPUT)
+            p2 = os.path.join(self.runner_temp.path, RESULT_FILE)
+            logger.debug("Copying the results from %s to %s", p1, p2)
+            shutil.copy2(p1, p2)
+        except Exception as e:
+            logger.error("No results were found at %s", p1)
 
         if not trcode:
             logger.info("No TR code provided, leaving in %s", os.path.join(self.runner_temp.path, OUTPUT_DIR))
             return 
 
-        result_path = os.path.join(KIM_REPOSITORY_DIR,'tr',trcode)
-        logger.debug("Result path = %s", result_path)
+        mesg = "Result" if not error else "Error"
+        rdir = "tr" if not error else "er"
+        result_path = os.path.join(KIM_REPOSITORY_DIR, rdir, trcode)
+        logger.debug("%s path = %s", mesg, result_path)
 
         outputdir = os.path.join(self.runner_temp.path,OUTPUT_DIR)
         logger.info("Copying the contents of %s to %s", outputdir, result_path)
@@ -230,17 +247,20 @@ class Computation(object):
 
     def run(self, trcode=None, extrainfo=None):
         """
-        run a test with the corresponding model, with /usr/bin/time profilling,
+        run a runner with the corresponding subject, with /usr/bin/time profilling,
         capture the output as a dict, and return or
         run a V{T,M} with the corresponding {TE,MO}
 
         if trcode is set, then run in a temporary directory, otherwise local run
         """
         with self.tempdir(trcode):
-            self.execute_in_place()
-            self.process_output(trcode, extrainfo)
-            self.write_result(trcode)
-
+            try:
+                self.execute_in_place()
+                self.process_output(trcode, extrainfo)
+                self.write_result(trcode)
+            except Exception as e:
+                self.write_result(trcode, error=True)
+                raise 
 
 #================================================================
 # helper functions
