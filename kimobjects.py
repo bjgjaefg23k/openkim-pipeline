@@ -27,7 +27,6 @@ from config import *
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("kimobjects")
 
-from persistent import PersistentDict
 from contextlib import contextmanager
 import template
 import database
@@ -205,7 +204,7 @@ class KIMObject(simplejson.JSONEncoder):
         cwd = os.getcwd()
         os.chdir(self.path)
         logger.debug("moved to dir: {}".format(self.path))
-        
+
         try:
             yield
         except Exception as e:
@@ -236,7 +235,12 @@ class KIMObject(simplejson.JSONEncoder):
         logger.debug("Attempting to find all %r...", cls.__name__)
         type_dir = os.path.join(KIM_REPOSITORY_DIR, cls.required_leader.lower() )
         kim_codes =  ( subpath for subpath in dircache.listdir(type_dir) if os.path.isdir( os.path.join( type_dir, subpath) ) )
-        return ( cls(x) for x in kim_codes )
+        for x in kim_codes:
+            try:
+                yield cls(x)
+            except Exception as e:
+                logger.exception("Exception on formation of kim_code (%s)", x, exc_info=e)
+
 
     def delete(self):
         """ Delete the folder for this object
@@ -353,216 +357,6 @@ class Subject(KIMObject):
     def runners(self):
         """ Return a generator of the valid matching tests that match this model """
         return ( test for test in Test.all() if kimapi.valid_match(test,self) )
-
-
-class Result(KIMObject):
-    """ A result, either a test result, or a verification result """
-    makeable = False
-
-    def __init__(self, kim_code = None, pair = None, results = None, search=True):
-        """ Initialize the TestResult.  You can either pass a kim_code as with other KIMObjects, or
-            a pair = (test,model) being a test and model object tuple, and try to look up the corresponding match
-
-            the results parameter, if passed will accept either a dictionary or a JSON decodable string, and the resuls
-            stored at the corresponding TestResult will be modified.
-
-            So, if you wanted to create a new TestResult with code "TR_012345678901_000"
-            with certain results you would::
-
-                results = {"one": 1, "two": 2}
-                tr = TestResult("TR_012345678901_000",results=results,search=False)
-
-            setting search to false is required if a test result without the passed kim_code doesn't yet exist
-
-            To find a test result for the test "TE_000000000000_000" and model "MO_000000000000_000" you would::
-
-                tr = TestResult(pair=(Test("TE_000000000000_000"), Model("MO_000000000000_000")))
-        """
-        if pair and kim_code:
-            raise SyntaxWarning, "TestResult should have a pair, or a kim_code or neither, not both"
-
-        if pair:
-            test, model = pair
-            result = test.result_with_model(model)
-            kim_code = result.kim_code
-
-        else:
-            if not kim_code:
-                kim_code = new_test_result_id()
-                search = False
-
-        super(Result,self).__init__(kim_code,search=search)
-
-        if not self.exists and not search:
-            #If this TR doesn't exist and we have search off, create it
-            self.create_dir()
-
-        self.results = PersistentDict(os.path.join(self.path,self.kim_code),format='yaml')
-        #if we recieved a json string, write it out
-        if results:
-            logger.debug("Recieved results, writing out to %r", self.kim_code)
-
-            if isinstance(results,dict):
-                #we have a dict
-                incoming_results = results
-            else:
-                #if it is a json string try to convert it
-                try:
-                    incoming_results = simplejson.loads(results)
-                except TypeError:
-                    #wasn't convertable
-                    raise PipelineResultsError, "Could not understand the format of the results: {}".format(results)
-
-            #also move all of the files
-            ### FIXME FIXME added these two lines, they're dumb
-            self.results.update(incoming_results)
-            incoming_results = self.results
-
-            testname = incoming_results["test-extended-id"]
-
-            files = template.files_from_results(incoming_results)
-            if files:
-                logger.debug("found files to move")
-                testdir = kim_obj(testname).path
-                for src in files:
-                    logger.debug("copying %r over", src)
-                    shutil.copy(os.path.join(testdir,src),self.path)
-
-            self.results.update(incoming_results)
-            self.results.sync()
-            logger.info("Results created in %r", self.kim_code)
-
-        try:
-            self.test = kim_obj(self.results["test-extended-id"])
-        except KeyError:
-            self.test = None
-        try:
-            self.model = kim_obj(self.results["model-extended-id"])
-        except KeyError:
-            self.model = None
-
-    def sync(self):
-        """ sync not only the info file but also the results """
-        self.results.sync()
-
-    @property
-    def files(self):
-        """ A list of all of the files in the test_result from the @FILE directive """
-        return map(os.path.basename,template.files_from_results(self.results))
-
-    @property
-    def full_file_paths(self):
-        """ generator of files from the @FILE directive with a full path """
-        return ( os.path.join(self.path, filename) for filename in self.files )
-
-    @property
-    def file_handlers(self):
-        """ return a generator of file handlers for all of the files """
-        return ( open(filename) for filename in self.full_file_paths )
-
-    def _is_property(self,key):
-        """ Tells whether a key is a property or not """
-        return bool(re.match(database.RE_KIMID, key))
-
-    @property
-    def property_codes(self):
-        """ Return a generator of all property kim_codes computed in this test result """
-        return ( x for x in filter(self._is_property, self.results.keys() ) )
-
-    def __getitem__(self,key):
-        """ Make it so that results behave like their result dictionary for access """
-        return self.results.__getitem__(key)
-
-    #def __getattr__(self,attr):
-    #    """ if we didn't find the attr, look in self.results for the attr,
-
-    #        This magic allows the result object to behave like its result dictionary magically
-    #    """
-    #    self.info = PersistentDict(os.path.join(self.path,METADATA_INFO_FILE))
-    #    return self.results.__getattribute__(attr)
-
-    @property
-    def keys(self):
-        return self.results.keys()
-
-    @property
-    def values(self):
-        return self.results.values()
-
-    @classmethod
-    def result_exists(cls,runner,subject):
-        """ Check to see if the test result exists for a (test,model) pair """
-        try:
-            cls(pair=(runner,subject))
-        except PipelineDataMissing:
-            return False
-        return True
-
-    @classmethod
-    def duplicates(cls):
-        """ Return a generator of all of the duplicated results,
-        duplication meaning the exact same (test,model) pairs """
-        pairs = set()
-        for result in cls.all():
-            pair = (result.runner, result.subject)
-            if pair in pairs:
-                yield result
-            else:
-                pairs.add(pair)
-
-
-#===========================================
-# Result Objs
-#===========================================
-
-
-#-------------------------------------
-# TestResult
-#-------------------------------------
-class TestResult(Result):
-    """ A test result, KIMObject with
-    """
-    required_leader = "TR"
-    makeable = False
-
-    def __init__(self, kim_code = None,*args,**kwargs):
-        """ Naked initialization """
-        super(TestResult,self).__init__(kim_code,*args,**kwargs)
-
-#------------------------------------------
-# VerificationResult
-#------------------------------------------
-class VerificationResult(Result):
-    """ A verification result, KIMObject with
-    """
-    required_leader = "VR"
-    makeable = False
-
-    def __init__(self, kim_code = None, *args, **kwargs):
-        """ Naked initialization """
-        super(VerificationResult,self).__init__(kim_code,*args,**kwargs)
-
-#------------------------------------------
-# ReferenceDatum
-#------------------------------------------
-class ReferenceDatum(KIMObject):
-    """ a piece of reference data, a KIMObject with:
-
-        Settings:
-            required_leader = "RD"
-            makeable = False
-
-        .. todo::
-
-            Not really implemented!
-
-    """
-    required_leader = "RD"
-    makeable = False
-
-    def __init__(self,kim_code,*args,**kwargs):
-        """ Initialize the ReferenceDatum, with a kim_code """
-        super(ReferenceDatum,self).__init__(kim_code,*args,**kwargs)
 
 #===============================================
 # Subject Objs
@@ -719,7 +513,7 @@ class VerificationModel(Test):
     required_leader = "VM"
     makeable = True
     subject_type = Model
-    result_type = VerificationResult 
+    result_type = VerificationResult
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Test, with a kim_code """
