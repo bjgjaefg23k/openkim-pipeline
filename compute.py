@@ -59,15 +59,19 @@ class Command(object):
 # the actual computation class
 #================================================================
 class Computation(object):
-    def __init__(self, runner=None, subject=None):
+    def __init__(self, runner=None, subject=None, result_code=""):
         self.runner = runner
         self.subject = subject
         self.runner_temp = runner
         self.runtime = None
         self.results = None
+        self.result_code = result_code
 
-    def _create_tempdir(self, trcode):
-        tempname = self.runner.kim_code_name+"_running"+trcode+"__"+self.runner.kim_code_id
+        self.result_path = os.path.join(self.runner_temp.result_leader.lower(), self.result_code)
+        self.full_result_path = os.path.join(KIM_REPOSITORY_DIR, self.result_path)
+
+    def _create_tempdir(self):
+        tempname = self.runner.kim_code_name+"_running"+self.result_code+"__"+self.runner.kim_code_id
         self.runner_temp = kimobjects.kim_obj(self.runner.kim_code, search=False, subdir=tempname)
         shutil.copytree(self.runner.path, self.runner_temp.path)
 
@@ -80,9 +84,9 @@ class Computation(object):
         shutil.rmtree(self.runner_temp.path)
 
     @contextmanager
-    def tempdir(self, trcode):
-        if trcode:
-            self._create_tempdir(trcode)
+    def tempdir(self):
+        if self.result_code:
+            self._create_tempdir()
         
             cwd = os.getcwd()
             os.chdir(self.runner_temp.path)
@@ -94,7 +98,7 @@ class Computation(object):
             logger.error("%r" % e)
             raise e
         finally:
-            if trcode:
+            if self.result_code:
                 os.chdir(cwd)
                 self._delete_tempdir()
 
@@ -137,7 +141,7 @@ class Computation(object):
             logger.error("Runner returned error code %r, %r" % (self.retcode, os.strerror(self.retcode)) )
             raise KIMRuntimeError("Executable %r returned error code %r" % (self.runner_temp, self.retcode))
 
-    def process_output(self, trcode=None, extrainfo=None):
+    def process_output(self, extrainfo=None):
         """ Template the run results into the proper YAML
         """
         with self.runner_temp.in_dir(), open(STDOUT_FILE) as stdout_file:
@@ -158,7 +162,7 @@ class Computation(object):
 
         if data is None:
             # We couldn't find any valid JSON
-            logger.error("We didn't get JSON back!")
+            logger.exception("We didn't get JSON back!")
             last_out, last_err = last_output_lines(self.runner_temp, STDOUT_FILE, STDERR_FILE)
             raise PipelineTemplateError, "Test didn't return JSON! \n<<STDOUT: \n%s>> \n<<STDERR: \n%s>>" % (last_out, last_err)
 
@@ -167,9 +171,9 @@ class Computation(object):
 
         #Add output
         pipelineinfo = {"kim-template-tags": ["pipeline-info"]}
-        pipelineinfo['test-extended-id']  = self.runner.kim_code
-        pipelineinfo['model-extended-id']  = self.subject.kim_code
-        pipelineinfo['test-result-extended-id']  = trcode
+        pipelineinfo['test-extended-id'] = self.runner.kim_code
+        pipelineinfo['model-extended-id'] = self.subject.kim_code
+        pipelineinfo['test-result-extended-id'] = self.result_code 
         pipelineinfo['output'] = simplejson.dumps(data)
 
         # Add metadata
@@ -219,10 +223,15 @@ class Computation(object):
 
         logger.debug("Copying kim.log")
         with self.runner_temp.in_dir():
-            shutil.copy2("./kim.log", KIMLOG_FILE)
+            if os.path.exists("./kim.log"):
+                shutil.copy2("./kim.log", KIMLOG_FILE)
 
 
-    def write_result(self, trcode=None, error=False):
+    def write_result(self, error=False):
+        if error:
+            self.result_path = os.path.join("er", self.result_code)
+            self.full_result_path = os.path.join(KIM_REPOSITORY_DIR, self.result_path)
+
         try:
             p1 = os.path.join(self.runner_temp.path, TR_OUTPUT)
             p2 = os.path.join(self.runner_temp.path, RESULT_FILE)
@@ -231,35 +240,33 @@ class Computation(object):
         except Exception as e:
             logger.error("No results were found at %s", p1)
 
-        if not trcode:
+        if not self.result_code:
             logger.info("No TR code provided, leaving in %s", os.path.join(self.runner_temp.path, OUTPUT_DIR))
             return 
 
         mesg = "Result" if not error else "Error"
-        rdir = "tr" if not error else "er"
-        result_path = os.path.join(KIM_REPOSITORY_DIR, rdir, trcode)
-        logger.debug("%s path = %s", mesg, result_path)
-
+        logger.debug("%s path = %s", mesg, self.full_result_path)
         outputdir = os.path.join(self.runner_temp.path,OUTPUT_DIR)
-        logger.info("Copying the contents of %s to %s", outputdir, result_path)
 
-        shutil.copytree(os.path.join(self.runner_temp.path,OUTPUT_DIR), result_path)
+        logger.info("Copying the contents of %s to %s", outputdir, self.full_result_path)
+        shutil.copytree(os.path.join(self.runner_temp.path,OUTPUT_DIR), self.full_result_path)
 
-    def run(self, trcode=None, extrainfo=None):
+    def run(self, extrainfo=None):
         """
         run a runner with the corresponding subject, with /usr/bin/time profilling,
         capture the output as a dict, and return or
         run a V{T,M} with the corresponding {TE,MO}
 
-        if trcode is set, then run in a temporary directory, otherwise local run
+        if result_code is set, then run in a temporary directory, otherwise local run
         """
-        with self.tempdir(trcode):
+        with self.tempdir():
             try:
                 self.execute_in_place()
-                self.process_output(trcode, extrainfo)
-                self.write_result(trcode)
+                self.process_output(extrainfo)
+                self.write_result(error=False)
             except Exception as e:
-                self.write_result(trcode, error=True)
+                logger.exception("Errors occured, switching to error result")
+                self.write_result(error=True)
                 raise 
 
 #================================================================

@@ -20,8 +20,8 @@ RSYNC_PATH = RSYNC_ADDRESS+":"+RSYNC_REMOTE_ROOT
 RSYNC_LOG_FILE_FLAG = "--log-file={}/rsync.log".format(KIM_LOG_DIR)
 RSYNC_LOG_PIPE_FLAG = " >> {} 2>&1".format(KIM_LOG_DIR+"/rsync_stdout.log")
 
-READ_PENDING  = os.path.join(RSYNC_PATH,"/read/pending/./")
-READ_APPROVED = os.path.join(RSYNC_PATH,"/read/approved/./")
+READ_PENDING  = os.path.join(RSYNC_PATH, "/read/pending/./")
+READ_APPROVED = os.path.join(RSYNC_PATH, "/read/approved/./")
 WRITE_RESULTS = os.path.join(RSYNC_PATH, "/write/results/./")
 
 #================================
@@ -51,8 +51,8 @@ def rsync_command(files,read=True,path=None):
             logger.debug("rsync command = %r",cmd)
             out = subprocess.check_call(cmd, shell=True)
         except subprocess.CalledProcessError:
-            logger.error("RSYNC FAILED!")
-            raise
+            logger.exception("RSYNC FAILED!")
+            raise subprocess.CalledProcessError("Rsync command failed")
 
 #======================================
 # Helper methods
@@ -124,34 +124,34 @@ def rsync_write_results(debug=False):
 #=================================
 # director methods
 #=================================
-def director_full_approved_read():
+def director_approved_read():
     """ when a director trys to get everything """
-    files = [j(RA,"te/"),j(RA,"mo/"),j(RA,"md/"),j(WR,"tr/"),j(RA,"td/"),j(RA,"vt/"),j(RA,"vm/"),j(WR,"vr/"),j(RA,"pr/"),j(RA,"rd/")]
+    files = [j(RA,"te/"),j(RA,"mo/"),j(RA,"md/"),j(RA,"td/"),j(RA,"vt/"),j(RA,"vm/")]
     rsync_read(files)
 
-def director_full_result_read():
-    """ when a director gets all of the results """
-    files = [j(WR,"tr/"), j(WR,"vr/")]
+def director_pending_read(kimobj):
+    """ when the director needs to verify a test """
+    files = [j(RP,ktf(testname))]
     rsync_read(files)
 
 def director_new_model_read(modelname):
     """ when a director gets a new model """
-    files = [j(RA,"te/"),j(RA,"td/"),j(WR,"tr/"),j(RA,"md/"),j(RA,ktf(modelname))]
+    files = [j(RA,"te/"),j(RA,"td/"),j(RA,"md/"),j(RA,ktf(modelname))]
     rsync_read(files)
 
 def director_new_test_read(testname):
     """ when a director gets a new test """
-    files = [j(RA,"mo/"),j(RA,"md/"),j(WR,"tr/"),j(RA,"td/"),j(RA,ktf(testname))]
+    files = [j(RA,"mo/"),j(RA,"md/"),j(RA,"td/"),j(RA,ktf(testname))]
     rsync_read(files)
 
 def director_new_test_driver_read(testname):
     """ when a director gets a new test """
-    files = [j(RA,"mo/"),j(RA,"md/"),j(WR,"tr/"),j(RA,"td/"),j(RA,"te/")]
+    files = [j(RA,"mo/"),j(RA,"md/"),j(RA,"td/"),j(RA,"te/")]
     rsync_read(files)
 
 def director_new_model_driver_read(testname):
     """ when a director gets a new test """
-    files = [j(RA,"mo/"),j(RA,"md/"),j(WR,"tr/"),j(RA,"td/"),j(RA,"te/")]
+    files = [j(RA,"mo/"),j(RA,"md/"),j(RA,"td/"),j(RA,"te/")]
     rsync_read(files)
 
 def director_new_model_verification_read(vmname):
@@ -164,47 +164,19 @@ def director_new_test_verification_read(vtname):
     files = [j(RA,"te/"),j(RA,"td/"),j(RA,ktf(vtname))]
     rsync_read(files)
 
-def director_model_verification_read(modelname):
-    """ when director needs to verify a model """
-    files = [j(RA,"vm/"), j(RA,"md/"), j(RP,ktf(modelname))]
-    rsync_read(files)
-
-def director_test_verification_read(testname):
-    """ when the director needs to verify a test """
-    files = [j(RA,"vt/"), j(RA,"td/"),j(RP,ktf(testname)) ]
-    rsync_read(files)
-
 
 #==================================
 # worker methods
 #==================================
-
-
-def worker_verification_read(subject,verifier,depends):
+def worker_read(runner, subject, depends, pending=False):
     """ when a worker needs to run a model verification job """
-    files = [j(RP,ktf(subject)), j(RA,ktf(verifier))]
+    subj_fldr = RP if pending else RA
+    files = [j(RA,ktf(runner)), j(subj_fldr,ktf(subject))]
     for depend in depends:
-        if depend.startswith("TR"):
-            files.append(j(WR,ktf(depend)))
-        else:
-            files.append(j(RA,ktf(depend)))
+        files.append(j(RA,ktf(depend)))
     rsync_read(files)
 
-def worker_test_result_read(testname,modelname,depends):
-    """ when a worker needs to run a test result """
-    files = [j(RA,ktf(modelname)), j(RA,ktf(testname))]
-    for depend in depends:
-        if depend.startswith("TR"):
-            files.append(j(WR,ktf(depend)))
-        else:
-            files.append(j(RA,ktf(depend)))
-        # FIXME: Make sure that this will be in RA
-    rsync_read(files)
-
-def worker_verification_write(vrname):
+def worker_write(rpath):
     """ when a worker ran a model verification """
-    rsync_write([ktf(vrname)],path=WR)
+    rsync_write([rpath],path=WR)
 
-def worker_test_result_write(trname):
-    """ when a worker ran a test result """
-    rsync_write([ktf(trname)],path=WR)

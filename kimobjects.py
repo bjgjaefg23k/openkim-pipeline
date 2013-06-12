@@ -10,13 +10,10 @@ Has a base ``KIMObject`` class and
 
  * Test
  * Model
- * TestResult
  * TestDriver
  * ModelDriver
- * Property
- * ReferenceDatum
- * VerificationCheck
- * VerificationResult
+ * VerificationTest
+ * VerificationModel
  * VirtualMachine
 
 classes, all of which inherit from ``KIMObject`` and aim to know how to handle themselves.
@@ -37,7 +34,6 @@ import re
 import dircache
 import simplejson, yaml
 from template import template_environment
-import random
 
 #------------------------------------------------
 # Base KIMObject
@@ -239,7 +235,7 @@ class KIMObject(simplejson.JSONEncoder):
             try:
                 yield cls(x)
             except Exception as e:
-                logger.exception("Exception on formation of kim_code (%s)", x, exc_info=e)
+                logger.exception("Exception on formation of kim_code (%s)", x)
 
 
     def delete(self):
@@ -264,6 +260,8 @@ class Runner(KIMObject):
     """ A Runner, something that runs things
     either a test or a verification check of sorts """
     makeable = True
+    result_leader = "TR"
+
     def __init__(self,kim_code,*args,**kwargs):
         super(Runner,self).__init__(kim_code,*args,**kwargs)
         self.executable = os.path.join(self.path,self.kim_code)
@@ -307,22 +305,10 @@ class Runner(KIMObject):
                 yield guy1
                 yield guy2
 
-    # @property
-    # def results(self):
-    #     """ Return a generator of all of the results of this test """
-    #     return ( result for result in TestResult.all() if result.test == self )
-
     @property
     def subjects(self):
         """ Return a generator for all of the valid subjects """
         return (subject for subject in self.subject_type.all() if kimapi.valid_match(self,subject) )
-
-    # def result_with_subject(self, subject):
-    #     """ Get the first result with the model: model, or None """
-    #     try:
-    #         return next( result for result in self.results if result.model == model )
-    #     except StopIteration:
-    #         raise PipelineDataMissing, "Could not find a TestResult for ({}, {})".format(self,model)
 
     def processed_infile(self,subject):
         """ Process the input file, with template, and return a file object to the result """
@@ -347,11 +333,6 @@ class Subject(KIMObject):
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Model, with a kim_code """
         super(Subject,self).__init__(kim_code,*args,**kwargs)
-
-    # @property
-    # def results(self):
-    #     """ Get a generator of all of the results for this model """
-    #     return ( result for result in TestResult.all() if result.model == self )
 
     @property
     def runners(self):
@@ -389,11 +370,6 @@ class Model(Subject):
         except StopIteration:
             return None
 
-    # @property
-    # def results(self):
-    #     """ Get a generator of all of the results for this model """
-    #     return ( result for result in TestResult.all() if result.model == self )
-
     @property
     def tests(self):
         """ Return a generator of the valid matching tests that match this model """
@@ -428,6 +404,7 @@ class Test(Runner):
     required_leader = "TE"
     makeable = True
     subject_type = Model
+    result_leader = "TR"
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Test, with a kim_code """
@@ -481,6 +458,7 @@ class VerificationTest(Test):
     required_leader = "VT"
     makeable = True
     subject_type = Test
+    result_leader = "VR"
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Test, with a kim_code """
@@ -511,6 +489,7 @@ class VerificationModel(Test):
     required_leader = "VM"
     makeable = True
     subject_type = Model
+    result_leader = "VR"
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Test, with a kim_code """
@@ -598,11 +577,6 @@ class VirtualMachine(KIMObject):
 #--------------------------------------------
 # Helper code
 #--------------------------------------------
-
-def randint():
-    """ Return a random kim integer """
-    return random.randint(0,1e12)
-
 # two letter codes to the associated class
 code_to_model = {"TE": Test, "MO": Model, "TD": TestDriver,
     "VT": VerificationTest, "VM": VerificationModel,

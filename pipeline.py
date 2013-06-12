@@ -21,7 +21,7 @@ from multiprocessing import cpu_count, Process, Lock
 import sys
 import time
 import simplejson
-import traceback
+import uuid
 
 from config import *
 import network
@@ -121,14 +121,12 @@ class Agent(object):
                 self.job_message(self.jobmsg, errors="Caught SIGINT and killed", tube=TUBE_ERRORS)
         self.disconnect()
 
-    def job_message(self, jobmsg, errors=None, results=None, tube=TUBE_RESULTS):
+    def job_message(self, jobmsg, errors=None, tube=TUBE_RESULTS):
         """ Send back a job message """
-        jobmsg.results = results
+        jobmsg.results = None
         jobmsg.errors = "%r" % errors
         jobmsg.update(self.boxinfo)
 
-        if len(simplejson.dumps(jobmsg.results)) > PIPELINE_MSGSIZE:
-            jobmsg.results = "too long"
         if len(jobmsg.errors) > PIPELINE_MSGSIZE:
             jobmsg.errors = "too long"
 
@@ -199,11 +197,10 @@ class Director(Agent):
             if request.stats()['tube'] == TUBE_UPDATES:
                 # update the repository,send it out as a job to compute
                 try:
-                    rsync_tools.director_full_approved_read()
+                    rsync_tools.director_approved_read()
                     self.push_jobs(simplejson.loads(request.body))
                 except Exception as e:
-                    tb = traceback.format_exc()
-                    self.logger.error("Director had an error on update: {}\n {}".format(e, tb))
+                    self.logger.exception("Director had an error on update")
 
             request.delete()
             self.job = None
@@ -222,15 +219,6 @@ class Director(Agent):
         priority_factor = self.priority_to_number(update['priority'])
 
         name,leader,num,version = database.parse_kim_code(kimid)
-
-        # try to build the kimid before sending jobs
-        # if self.make_object(kimid) == 0:
-        #     rsync_tools.director_build_write(kimid)
-        # else:
-        #     self.logger.error("Could not build %r", kimid)
-        #     self.bsd.use(TUBE_ERRORS)
-        #     self.bsd.put(simplejson.dumps({"error": "Could not build %r" % kimid}))
-        #     return
 
         self.make_all()
 
@@ -287,23 +275,17 @@ class Director(Agent):
                     self.logger.error("Tried to update an invalid KIM ID!: %r",kimid)
                 checkmatch = True
             if status == "pending":
-                if leader=="TE":
-                    # a pending test
-                    rsync_tools.director_test_verification_read(kimid)
-                    self.make_all()
+                rsync_tools.director_pending_read(kimid)
+                self.make_all()
 
+                if leader=="TE":
                     # run against all test verifications
                     tests = list(kimobjects.VertificationTest.all())
                     models = [kimobjects.Test(kimid, search=False)]*ll(tests)
                 elif leader=="MO":
-                    # a pending model
-                    rsync_tools.director_model_verification_read(kimid)
-                    self.make_all()
-
                     # run against all model verifications
                     tests = list(kimobjects.VertificationModel.all())
                     models = [kimobjects.Model(kimid, search=False)]*ll(tests)
-
                 elif leader=="TD":
                     # a pending test driver
                     pass
@@ -340,10 +322,7 @@ class Director(Agent):
                 if md:
                     TR_ids += (md.kim_code,)
 
-            if test.kim_code_leader == "VT" or test.kim_code_leader == "VM":
-                trid = self.get_vr_id()
-            else:
-                trid = self.get_tr_id()
+            trid = self.get_result_code()
             self.logger.info("Submitting job <%s, %s, %s> priority %i" % (test, model, trid, priority))
 
             if not ready:
@@ -359,11 +338,8 @@ class Director(Agent):
 
         return depids
 
-    def get_tr_id(self):
-        return kimobjects.new_test_result_id()
-
-    def get_vr_id(self):
-        return kimobjects.new_verification_result_id()
+    def get_result_code(self):
+        return str(uuid.uuid1( uuid.UUID(self.boxinfo['uuid']).int >> 80 ))
 
 
 #==================================================================
@@ -394,6 +370,7 @@ class Worker(Agent):
             # update the repository, attempt to run the job and return the results to the director
             try:
                 jobmsg = Message(string=job.body)
+                pending = True if jobmsg == "pending" else False
             except simplejson.JSONDecodeError:
                 # message is not JSON decodeable
                 self.logger.error("Did not recieve valid JSON, {}".format(job.body))
@@ -406,7 +383,6 @@ class Worker(Agent):
                 continue
 
             self.jobmsg = jobmsg
-            # check to see if this is a verifier or an actual test
             try:
                 name,leader,num,version = database.parse_kim_code(jobmsg.job[0])
             except InvalidKIMID as e:
@@ -416,82 +392,36 @@ class Worker(Agent):
                 job.delete()
                 continue
 
-            if leader == "VT" or leader == "VM":
+            try:
+                # check to see if this is a verifier or an actual test
+                with buildlock:
+                    self.logger.info("Rsyncing from repo %r", jobmsg.job+jobmsg.depends)
+                    rsync_tools.worker_read(*jobmsg.job, depends=jobmsg.depends, pending=pending)
+                    self.make_all()
+
+                runner_kcode, subject_kcode = jobmsg.job
+                runner  = kimobjects.kim_obj(runner_kcode)
+                subject = kimobjects.kim_obj(subject_kcode)
+
+                self.logger.info("Running (%r,%r)", runner, subject)
+                comp = compute.Computation(runner, subject, result_code=jobmsg.jobid)
+
                 try:
-                    with buildlock:
-                        self.logger.info("rsyncing to repo %r", jobmsg.job+jobmsg.depends)
-                        rsync_tools.worker_verification_read(*jobmsg.job, depends=jobmsg.depends)
-                        self.make_all()
-
-                    verifier_kcode, subject_kcode = jobmsg.job
-                    verifier = kimobjects.kim_obj(verifier_kcode)
-                    subject  = kimobjects.kim_obj(subject_kcode)
-
-                    self.logger.info("Running (%r,%r)",verifier,subject)
-                    comp = compute.Computation(verifier, subject)
-                    comp.run(jobmsg.jobid)
-
-                    result = kimobjects.kim_obj(jobmsg.jobid).results
-                    self.logger.info("rsyncing results %r", jobmsg.jobid)
-                    rsync_tools.worker_verification_write(jobmsg.jobid)
-                    self.logger.info("sending result message back")
-                    self.job_message(jobmsg, results=result, tube=TUBE_RESULTS)
-                    job.delete()
-
-                # could be that a dependency has not been met.
-                # put it back on the queue to wait
-                except PipelineDataMissing as e:
-                    if job.stats()['age'] < 5*PIPELINE_JOB_TIMEOUT:
-                        self.logger.error("Run failed, missing data.  Returning to queue... (%r)" % e)
-                        job.release(delay=PIPELINE_JOB_TIMEOUT)
-                    else:
-                        self.logger.error("Run failed, missing data. Lifetime has expired, deleting (%r)" % e)
-                        job.delete()
-
-                # another problem has occurred.  just remove the job
-                # and send the error back along the error queue
+                    comp.run()
                 except Exception as e:
-                    self.logger.error("Run failed, deleting... %r" % e)
-                    self.job_message(jobmsg, errors=e, tube=TUBE_ERRORS)
-                    job.delete()
-            else:
-                try:
-                    with buildlock:
-                        self.logger.info("rsyncing to repo %r %r", jobmsg.job,jobmsg.depends)
-                        rsync_tools.worker_test_result_read(*jobmsg.job, depends=jobmsg.depends)
-                        self.make_all()
+                    self.logger.exception("Errors occured, moving to er/")
+                finally:
+                    self.logger.info("Rsyncing results %r", jobmsg.jobid)
+                    rsync_tools.worker_write(comp.result_path)
 
-                    test_kcode, model_kcode = jobmsg.job
-                    test = kimobjects.Test(test_kcode)
-                    model = kimobjects.Model(model_kcode)
+                self.logger.debug("Sending result message back")
+                self.job_message(jobmsg, tube=TUBE_RESULTS)
+                job.delete()
 
-                    self.logger.info("Running (%r,%r)",test,model)
-                    comp = compute.Computation(test, model)
-                    comp.run(jobmsg.jobid)
-
-                    result = kimobjects.Result(jobmsg.jobid).results
-                    self.logger.info("rsyncing results %r", jobmsg.jobid)
-                    rsync_tools.worker_test_result_write(jobmsg.jobid)
-                    self.logger.info("sending result message back")
-                    self.job_message(jobmsg, results=result, tube=TUBE_RESULTS)
-                    job.delete()
-
-                # could be that a dependency has not been met.
-                # put it back on the queue to wait
-                except PipelineDataMissing as e:
-                    if job.stats()['age'] < 5*PIPELINE_JOB_TIMEOUT:
-                        self.logger.error("Run failed, missing data.  Returning to queue... (%r)" % e)
-                        job.release(delay=PIPELINE_JOB_TIMEOUT)
-                    else:
-                        self.logger.error("Run failed, missing data. Lifetime has expired, deleting (%r)" % e)
-                        job.delete()
-
-                # another problem has occurred.  just remove the job
-                # and send the error back along the error queue
-                except Exception as e:
-                    self.logger.error("Run failed, deleting... %r" % e)
-                    self.job_message(jobmsg, errors="%r"%e, tube=TUBE_ERRORS)
-                    job.delete()
+            except Exception as e:
+                self.logger.exception("Failed to initalize run, deleting... %r" % e)
+                self.job_message(jobmsg, errors=e, tube=TUBE_ERRORS)
+                job.delete()
 
             self.job = None
             self.jobsmsg = None

@@ -31,7 +31,7 @@ class LogStyle(Style):
         Whitespace:                "",
         Comment:                   "#000080",
         Comment.Preproc:           "",
-        Comment.Special:           "bold #cd0000",
+        Comment.Special:           "bold #2BB537",
 
         Keyword:                   "#cdcd00",
         Keyword.Declaration:       "#00cd00",
@@ -76,6 +76,7 @@ class LogLexer(RegexLexer):
     flags = re.VERBOSE 
     _logger = r'-\s(pipeline)(\.([a-z._\-0-9]+))*\s-'
     _kimid  = r"((?:[_a-zA-Z][_a-zA-Z0-9]*?_?_)?[A-Z]{2}_[0-9]{12}(?:_[0-9]{3})?)"
+    _uuid   = r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"
     _path   = r'(?:[a-zA-Z0-9_-]{0,}/{1,2}[a-zA-Z0-9_\.-]+)+'
     _debug  = r'DEBUG'
     _info   = r'INFO'
@@ -102,6 +103,7 @@ class LogLexer(RegexLexer):
             (_time, Generic.Output),
             (_path, Generic.Subheading),
             (_json, Generic.Deleted),
+            (_uuid, Comment.Special),
             (_debug, Generic.Strong),
             (_info, Generic.Traceback),
             (_error, Generic.Error),
