@@ -410,12 +410,14 @@ class Worker(Agent):
                     comp.run()
                 except Exception as e:
                     self.logger.exception("Errors occured, moving to er/")
+                    self.job_message(jobmsg, errors=e, tube=TUBE_ERRORS)
+                else:
+                    self.logger.debug("Sending result message back")
+                    self.job_message(jobmsg, tube=TUBE_RESULTS)
                 finally:
                     self.logger.info("Rsyncing results %r", jobmsg.jobid)
                     rsync_tools.worker_write(comp.result_path)
 
-                self.logger.debug("Sending result message back")
-                self.job_message(jobmsg, tube=TUBE_RESULTS)
                 job.delete()
 
             except Exception as e:

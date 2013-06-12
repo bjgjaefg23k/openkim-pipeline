@@ -1,3 +1,3 @@
 #! /usr/bin/env python
-from rsync_tools import director_full_approved_read
-director_full_approved_read()
+from rsync_tools import director_approved_read
+director_approved_read()
