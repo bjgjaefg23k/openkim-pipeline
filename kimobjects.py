@@ -307,22 +307,22 @@ class Runner(KIMObject):
                 yield guy1
                 yield guy2
 
-    @property
-    def results(self):
-        """ Return a generator of all of the results of this test """
-        return ( result for result in TestResult.all() if result.test == self )
+    # @property
+    # def results(self):
+    #     """ Return a generator of all of the results of this test """
+    #     return ( result for result in TestResult.all() if result.test == self )
 
     @property
     def subjects(self):
         """ Return a generator for all of the valid subjects """
         return (subject for subject in self.subject_type.all() if kimapi.valid_match(self,subject) )
 
-    def result_with_subject(self, subject):
-        """ Get the first result with the model: model, or None """
-        try:
-            return next( result for result in self.results if result.model == model )
-        except StopIteration:
-            raise PipelineDataMissing, "Could not find a TestResult for ({}, {})".format(self,model)
+    # def result_with_subject(self, subject):
+    #     """ Get the first result with the model: model, or None """
+    #     try:
+    #         return next( result for result in self.results if result.model == model )
+    #     except StopIteration:
+    #         raise PipelineDataMissing, "Could not find a TestResult for ({}, {})".format(self,model)
 
     def processed_infile(self,subject):
         """ Process the input file, with template, and return a file object to the result """
@@ -348,10 +348,10 @@ class Subject(KIMObject):
         """ Initialize the Model, with a kim_code """
         super(Subject,self).__init__(kim_code,*args,**kwargs)
 
-    @property
-    def results(self):
-        """ Get a generator of all of the results for this model """
-        return ( result for result in TestResult.all() if result.model == self )
+    # @property
+    # def results(self):
+    #     """ Get a generator of all of the results for this model """
+    #     return ( result for result in TestResult.all() if result.model == self )
 
     @property
     def runners(self):
@@ -389,10 +389,10 @@ class Model(Subject):
         except StopIteration:
             return None
 
-    @property
-    def results(self):
-        """ Get a generator of all of the results for this model """
-        return ( result for result in TestResult.all() if result.model == self )
+    # @property
+    # def results(self):
+    #     """ Get a generator of all of the results for this model """
+    #     return ( result for result in TestResult.all() if result.model == self )
 
     @property
     def tests(self):
@@ -427,7 +427,6 @@ class Test(Runner):
     """
     required_leader = "TE"
     makeable = True
-    result_type = TestResult
     subject_type = Model
 
     def __init__(self,kim_code,*args,**kwargs):
@@ -482,7 +481,6 @@ class VerificationTest(Test):
     required_leader = "VT"
     makeable = True
     subject_type = Test
-    result_type = VerificationResult
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Test, with a kim_code """
@@ -513,7 +511,6 @@ class VerificationModel(Test):
     required_leader = "VM"
     makeable = True
     subject_type = Model
-    result_type = VerificationResult
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Test, with a kim_code """
@@ -601,50 +598,15 @@ class VirtualMachine(KIMObject):
 #--------------------------------------------
 # Helper code
 #--------------------------------------------
-def new_tr_kimid():
-    """ Generate a new Test Result kimid """
-    existing = set( result.kim_code for result in TestResult.all() )
-    kim_code = database.format_kim_code(None,"TR","{:012d}".format(randint()),"000")
-    while kim_code in existing:
-        kim_code = database.format_kim_code(None,"TR","{:012d}".format(randint()),"000")
-    return kim_code
-
-def new_vr_kimid():
-    """ Generate a new Test Result kimid """
-    existing = set( result.kim_code for result in VerificationResult.all() )
-    kim_code = database.format_kim_code(None,"VR","{:012d}".format(randint()),"000")
-    while kim_code in existing:
-        kim_code = database.format_kim_code(None,"VR","{:012d}".format(randint()),"000")
-    return kim_code
-
-def new_test_result_id(number=None):
-    """ Generate or get a new test result id, currently make them up, eventually request them from the website """
-    if number:
-        version = database.get_new_version(None,"TR",number)
-        return database.format_kim_code(None,"TR",number,version)
-    else:
-        kim_code = new_tr_kimid()
-        logger.info("Generated new TR kim_code: %r", kim_code)
-        return kim_code
-
-def new_verification_result_id(number=None):
-    """ Generate or get a new verification result id, currently make them up, eventually request them from the website """
-    if number:
-        version = database.get_new_version(None,"VR",number)
-        return database.format_kim_code(None,"VR",number,version)
-    else:
-        kim_code = new_vr_kimid()
-        logger.info("Generated new VR kim_code: %r", kim_code)
-        return kim_code
 
 def randint():
     """ Return a random kim integer """
     return random.randint(0,1e12)
 
 # two letter codes to the associated class
-code_to_model = {"TE": Test, "MO": Model, "TD": TestDriver, "TR": TestResult ,
-    "VT": VerificationTest, "VM": VerificationModel, "VR": VerificationResult,
-    "RD": ReferenceDatum,  "MD": ModelDriver }
+code_to_model = {"TE": Test, "MO": Model, "TD": TestDriver,
+    "VT": VerificationTest, "VM": VerificationModel,
+     "MD": ModelDriver }
 
 def kim_obj(kim_code, *args, **kwargs):
     """ Just given a kim_code try to make the right object, i.e. try to make a TE code a Test, etc. """
