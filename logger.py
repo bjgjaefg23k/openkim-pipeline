@@ -7,7 +7,7 @@ made a child of eary::
     logger = logger.getChild("<child name>")
 """
 import re
-from pygments.lexer import RegexLexer, include 
+from pygments.lexer import RegexLexer, include
 from pygments.token import Punctuation, Text, Comment, Keyword, Name, String, \
      Generic, Operator, Number, Whitespace, Literal, Error, Token
 from pygments import highlight
@@ -20,6 +20,8 @@ import logging.handlers
 from config import *
 
 __all__ = ['LogLexer']
+
+FILELEVEL = logging.INFO
 
 class LogStyle(Style):
     background_color = "#000000"
@@ -73,7 +75,7 @@ class LogLexer(RegexLexer):
     filenames = ['*.log']
     mimetypes = ['text/x-log']
 
-    flags = re.VERBOSE 
+    flags = re.VERBOSE
     _logger = r'-\s(pipeline)(\.([a-z._\-0-9]+))*\s-'
     _kimid  = r"((?:[_a-zA-Z][_a-zA-Z0-9]*?_?_)?[A-Z]{2}_[0-9]{12}(?:_[0-9]{3})?)"
     _uuid   = r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"
@@ -135,29 +137,29 @@ class PygmentHandler(logging.StreamHandler):
 
 def createLogger():
     logger = logging.getLogger("pipeline")
-    logger.setLevel(logging.DEBUG)
-    
+    logger.setLevel(FILELEVEL)
+
     # create the formatting style (with lines and times if verbose)
     log_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
     if PIPELINE_DEBUG_VBS:
         log_formatter = logging.Formatter('%(filename)s:%(lineno)d _ %(asctime)s - %(levelname)s - %(name)s - %(message)s')
-    
+
     #create a rotating file handler
     rotfile_handler = logging.handlers.RotatingFileHandler(os.path.join(KIM_LOG_DIR,"pipeline.log"),
             mode='a', backupCount=5, maxBytes=10*1024*1024)
-    rotfile_handler.setLevel(logging.DEBUG)
+    rotfile_handler.setLevel(FILELEVEL)
     rotfile_handler.setFormatter(log_formatter)
     logger.addHandler(rotfile_handler)
-    
+
     #create a console logger
     console_handler = PygmentHandler()
     console_handler.setLevel(logging.INFO)
     if PIPELINE_DEBUG_VBS:
         console_handler.setLevel(logging.DEBUG)
-    
+
     console_handler.setFormatter(log_formatter)
     logger.addHandler(console_handler)
-   
+
     return log_formatter
 
 log_formatter = createLogger()
