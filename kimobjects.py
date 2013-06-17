@@ -355,6 +355,7 @@ class Model(Subject):
     """
     required_leader = "MO"
     makeable = True
+    subject_name = "MODEL_NAME"
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Model, with a kim_code """
@@ -405,6 +406,8 @@ class Test(Runner):
     makeable = True
     subject_type = Model
     result_leader = "TR"
+    runner_name = "TEST_NAME"
+    subject_name = "TEST_NAME"
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Test, with a kim_code """
@@ -459,6 +462,7 @@ class VerificationTest(Test):
     makeable = True
     subject_type = Test
     result_leader = "VR"
+    runner_name = "VERIFICATION_TEST"
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Test, with a kim_code """
@@ -490,6 +494,7 @@ class VerificationModel(Test):
     makeable = True
     subject_type = Model
     result_leader = "VR"
+    runner_name = "VERIFICATION_MODEL"
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Test, with a kim_code """

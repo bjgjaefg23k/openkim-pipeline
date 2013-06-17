@@ -38,19 +38,14 @@ KIM_API_LIB_DIR    = os.path.join(KIM_API_DIR,"KIM_API")
 KIM_API_CHECK_MATCH_UTIL = os.path.join(KIM_API_LIB_DIR,"openkim-api-descriptor-file-match")
 
 OUTPUT_DIR      = "output"
-INPUT_FILE      = "pipeline.in"
-TEMP_INPUT_FILE = os.path.join(OUTPUT_DIR,"pipeline.in.tmp")
-TEMPLATE_FILE   = 'pipeline.yaml'
-TEMPLATE_OUT    = os.path.join(OUTPUT_DIR,"pipeline.yaml.processed")
-TR_OUTPUT       = os.path.join(OUTPUT_DIR,"pipeline.tr.processed")
+INPUT_FILE      = "pipeline.stdin"
+TEMPLATE_FILE   = "pipeline.yaml"
+CONFIG_FILE     = "kimspec.ini"
+TEMP_INPUT_FILE = os.path.join(OUTPUT_DIR,"pipeline.processed.stdin")
 STDOUT_FILE     = os.path.join(OUTPUT_DIR,"pipeline.stdout")
 STDERR_FILE     = os.path.join(OUTPUT_DIR,"pipeline.stderr")
 KIMLOG_FILE     = os.path.join(OUTPUT_DIR,"kim.log")
 RESULT_FILE     = os.path.join(OUTPUT_DIR,"results.yaml")
-PROFILE_FILE    = os.path.join(OUTPUT_DIR,"profile.json")
-CONFIG_FILE     = "kimspec.ini"
-RUNNER_FILE     = os.path.join(OUTPUT_DIR,"RUNNER_NAME.txt")
-SUBJECT_FILE    = os.path.join(OUTPUT_DIR,"SUBJECT_NAME.txt")
 
 #==============================
 # Settings for remote access

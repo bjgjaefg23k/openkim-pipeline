@@ -12,6 +12,7 @@ import subprocess, threading
 import yaml
 import shutil
 from contextlib import contextmanager
+import ConfigParser
 
 from config import *
 import kimobjects
@@ -43,7 +44,7 @@ class Command(object):
             self.process.terminate()
             thread.join()
             raise PipelineTimeout
-       
+
         # be sure to grab the returncode (poll is to activate it)
         self.process.poll()
         return self.process.returncode
@@ -66,6 +67,7 @@ class Computation(object):
         self.runtime = None
         self.results = None
         self.result_code = result_code
+        self.info_dict = None
 
         self.result_path = os.path.join(self.runner_temp.result_leader.lower(), self.result_code)
         self.full_result_path = os.path.join(KIM_REPOSITORY_DIR, self.result_path)
@@ -87,7 +89,7 @@ class Computation(object):
     def tempdir(self):
         if self.result_code:
             self._create_tempdir()
-        
+
             cwd = os.getcwd()
             os.chdir(self.runner_temp.path)
 
@@ -103,14 +105,14 @@ class Computation(object):
                 self._delete_tempdir()
 
     def execute_in_place(self):
-        """ Execute a runner with a corresponding subject 
+        """ Execute a runner with a corresponding subject
         with /usr/bin/time profilling where ever the executable exists
         """
         logger.info("running %r with %r",self.runner,self.subject)
-    
+
         executable = self.runner_temp.executable
         timeblock = "/usr/bin/time --format={\\\"usertime\\\":%U,\\\"memmax\\\":%M,\\\"memavg\\\":%K} "
-    
+
         # run the runner in its own directory
         with self.runner_temp.in_dir():
             with self.runner_temp.processed_infile(self.subject) as kim_stdin_file,  \
@@ -127,14 +129,14 @@ class Computation(object):
                 except PipelineTimeout:
                     logger.error("runner %r timed out",self.runner)
                     raise PipelineTimeout, "your executable timed out"
-    
+
                 end_time = time.time()
-    
+
         # It seems the runner didn't finish
         if process.poll() is None:
             process.kill()
             raise KIMRuntimeError, "your executable didn't terminate nicely"
-    
+
         self.runtime = end_time - start_time
         logger.info("run completed in %r seconds" % self.runtime)
         if self.retcode != 0:
@@ -169,22 +171,11 @@ class Computation(object):
         logger.debug('Found JSON:\n{}'.format(simplejson.dumps(data,indent=4)))
         self.results = data
 
-        #Add output
-        pipelineinfo = {"kim-template-tags": ["pipeline-info"]}
-        pipelineinfo['test-extended-id'] = self.runner.kim_code
-        pipelineinfo['model-extended-id'] = self.subject.kim_code
-        pipelineinfo['test-result-extended-id'] = self.result_code 
-        pipelineinfo['output'] = simplejson.dumps(data)
-
         # Add metadata
-        pipelineinfo['info'] = {}
-        info_dict = pipelineinfo['info']
-        info_dict["kimlog"] = "@FILE[{}]".format(KIMLOG_FILE)
-        info_dict["stdout"] = "@FILE[{}]".format(STDOUT_FILE)
-        info_dict["time"] = self.runtime 
+        info_dict = {}
+        info_dict["time"] = self.runtime
         info_dict["created-at"] = time.time()
         info_dict["vmversion"] = os.environ["VMVERSION"]
-
         if extrainfo:
             info_dict.update(extrainfo)
 
@@ -199,27 +190,12 @@ class Computation(object):
 
         renderedyaml = self.runner_temp.template.render(**data)
         logger.debug("Manipulated template:\n{}".format(renderedyaml))
-        with self.runner_temp.in_dir(), open(TEMPLATE_OUT,'w') as f:
+        logger.debug("Writing output.")
+        with self.runner_temp.in_dir(), open(RESULT_FILE,'w') as f:
             f.write(renderedyaml)
 
-        tryaml = list(yaml.load_all(renderedyaml))
-        logger.debug("Formed dict:\n{}".format("\n".join([simplejson.dumps(temp,indent=4) for temp in tryaml])))
-
-        documents = []
-        documents.extend(tryaml)
-
-        logger.debug("writing profile information")
-        with self.runner_temp.in_dir(), open(PROFILE_FILE,'w') as f:
-            simplejson.dump(pipelineinfo,f,indent=4)
-
-        logger.debug("Writing RUNNER_NAME and SUBJECT_NAME file")
-        with self.runner_temp.in_dir(), open(RUNNER_FILE,'w') as f, open(SUBJECT_FILE,'w') as g:
-            f.write(self.runner.kim_code)
-            g.write(self.subject.kim_code)
-
-        logger.debug("Writing data...")
-        with self.runner_temp.in_dir(), open(TR_OUTPUT,'w') as f:
-            f.write(yaml.dump_all(documents, default_flow_style=False, explicit_start=True))
+        logger.debug("caching profile information")
+        self.info_dict = info_dict
 
         logger.debug("Copying kim.log")
         with self.runner_temp.in_dir():
@@ -232,17 +208,25 @@ class Computation(object):
             self.result_path = os.path.join("er", self.result_code)
             self.full_result_path = os.path.join(KIM_REPOSITORY_DIR, self.result_path)
 
-        try:
-            p1 = os.path.join(self.runner_temp.path, TR_OUTPUT)
-            p2 = os.path.join(self.runner_temp.path, RESULT_FILE)
-            logger.debug("Copying the results from %s to %s", p1, p2)
-            shutil.copy2(p1, p2)
-        except Exception as e:
-            logger.error("No results were found at %s", p1)
+        logger.debug("Create kimspec.ini file")
+        config = ConfigParser.ConfigParser()
+        config.optionxform = str
+        config.add_section('kimspec')
+        if self.result_code:
+            config.set('kimspec','UUID',self.result_code)
+        config.set('kimspec',self.runner.runner_name,self.runner.kim_code)
+        config.set('kimspec',self.subject.subject_name,self.subject.kim_code)
+        if self.info_dict:
+            config.add_section('profiling')
+            for key,value in self.info_dict.iteritems():
+                config.set('profiling',key,value)
+
+        with self.runner_temp.in_dir(), open(os.path.join(OUTPUT_DIR,CONFIG_FILE),'w') as f:
+            config.write(f)
 
         if not self.result_code:
             logger.info("No TR code provided, leaving in %s", os.path.join(self.runner_temp.path, OUTPUT_DIR))
-            return 
+            return
 
         mesg = "Result" if not error else "Error"
         logger.debug("%s path = %s", mesg, self.full_result_path)
@@ -267,7 +251,7 @@ class Computation(object):
             except Exception as e:
                 logger.exception("Errors occured, switching to error result")
                 self.write_result(error=True)
-                raise 
+                raise
 
 #================================================================
 # helper functions
