@@ -174,7 +174,6 @@ class Computation(object):
         info_dict = {}
         info_dict["time"] = self.runtime
         info_dict["created-at"] = time.time()
-        info_dict["vmversion"] = os.environ["VMVERSION"]
         if extrainfo:
             info_dict.update(extrainfo)
 
