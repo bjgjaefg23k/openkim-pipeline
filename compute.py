@@ -165,8 +165,7 @@ class Computation(object):
         if data is None:
             # We couldn't find any valid JSON
             logger.exception("We didn't get JSON back!")
-            last_out, last_err = last_output_lines(self.runner_temp, STDOUT_FILE, STDERR_FILE)
-            raise PipelineTemplateError, "Test didn't return JSON! \n<<STDOUT: \n%s>> \n<<STDERR: \n%s>>" % (last_out, last_err)
+            raise PipelineTemplateError, "Test didn't return JSON!"
 
         logger.debug('Found JSON:\n{}'.format(simplejson.dumps(data,indent=4)))
         self.results = data
@@ -249,9 +248,20 @@ class Computation(object):
                 self.process_output(extrainfo)
                 self.write_result(error=False)
             except Exception as e:
-                logger.exception("Errors occured, switching to error result")
+                import traceback
+                trace = traceback.format_exc()
+
                 self.write_result(error=True)
-                raise
+
+                files = [STDOUT_FILE, STDERR_FILE]
+                tails = last_output_lines(self.runner_temp, files)
+
+                outs = trace+"\n"
+                for f, t in zip(files, tails):
+                    outs += f+":\n"
+                    outs += "".join(["-"]*(len(f)+1))+"\n"
+                    outs += append_newline(t)+"\n"
+                raise PipelineRuntimeError(e, outs)
 
 #================================================================
 # helper functions
@@ -265,12 +275,16 @@ def tail(f, n=5):
         stdin.close()
         lines = stdout.readlines();
         stdout.close()
-    except:
-        lines = ["<NONE>"]
+    except Exception as e:
+        lines = [""]
     return "".join(lines)
 
-def last_output_lines(test, stdout, stderr):
-    with test.in_dir():
-        return tail(stdout), tail(stderr)
+def last_output_lines(kimobj, files, n=10):
+    with kimobj.in_dir():
+        tails = [ tail(f, n) for f in files ]
+    return tails
 
-
+def append_newline(string):
+    if string[-1] != '\n':
+        string += "\n"
+    return string

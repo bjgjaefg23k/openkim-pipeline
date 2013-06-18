@@ -131,3 +131,18 @@ class PipelineTemplateError(Exception):
 
 class PipelineQueryError(Exception):
     """ there was an error while attempting a remote query """
+
+class PipelineRuntimeError(Exception):
+    """ we had any number of errors while running """
+    def __init__(self, e, extra=""):
+        self._e = e
+        self.extra = extra
+
+    def __getattr__(self, name):
+        return getattr(self._e, name)
+
+    def __str__(self):
+        if isinstance(self._e, PipelineRuntimeError):
+            return str(self._e)
+        else:
+            return '%s: %s\n\n%s' % (self._e.__class__.__name__, str(self._e), self.extra)
