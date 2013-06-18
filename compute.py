@@ -233,7 +233,12 @@ class Computation(object):
         outputdir = os.path.join(self.runner_temp.path,OUTPUT_DIR)
 
         logger.info("Copying the contents of %s to %s", outputdir, self.full_result_path)
-        shutil.copytree(os.path.join(self.runner_temp.path,OUTPUT_DIR), self.full_result_path)
+        try:
+            shutil.rmtree(self.full_result_path)
+        except OSError:
+            pass
+        finally:
+            shutil.copytree(os.path.join(self.runner_temp.path,OUTPUT_DIR), self.full_result_path)
 
     def run(self, extrainfo=None):
         """
