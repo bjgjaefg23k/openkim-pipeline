@@ -18,7 +18,7 @@ match_object = re.compile(r"^([a-zA-Z0-9_\-:]*)(\/*.*)")    # matches any_c_type
 match_import  = r"import"       # get rid of imports
 match_comment = r"(@#.*?#@)"    # used in re.sub to get rid of comments
 match_replace = r"@@(.*?)@@"    # used in re.sub to substitute @@/apicall@@ -> x.api("/apicall")
-match_index   = r"@\[(\d)\]@"   # FIXME - not implemented
+match_index   = r"@\[(\d)\]@"   # not implemented
 
 #=======================================================
 # the base APIObject which implements all standard calls

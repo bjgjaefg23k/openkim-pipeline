@@ -92,7 +92,6 @@ class PersistentDict(dict):
         return json.dumps(self,separators=(',',':'),indent=4)
 
     def __getitem__(self, item):
-        # FIXME FIXME FIXME FIXME (please....)
         if self.format == 'yaml':
             try:
                 return super(PersistentDict,self).__getitem__('dict')[0].__getitem__(item)
