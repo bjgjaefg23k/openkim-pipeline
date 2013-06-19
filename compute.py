@@ -111,7 +111,7 @@ class Computation(object):
         logger.info("running %r with %r",self.runner,self.subject)
 
         executable = self.runner_temp.executable
-        timeblock = "/usr/bin/time --format={\\\"usertime\\\":%U,\\\"memmax\\\":%M,\\\"memavg\\\":%K} "
+        timeblock = "LIBC_FATAL_STDERR_=1 /usr/bin/time --format={\\\"usertime\\\":%U,\\\"memmax\\\":%M,\\\"memavg\\\":%K} "
 
         # run the runner in its own directory
         with self.runner_temp.in_dir():
@@ -257,7 +257,7 @@ class Computation(object):
 
                 self.write_result(error=True)
 
-                files = [STDOUT_FILE, STDERR_FILE]
+                files = [STDOUT_FILE, STDERR_FILE, KIMLOG_FILE]
                 tails = last_output_lines(self.runner_temp, files)
 
                 outs = trace+"\n"
@@ -289,6 +289,6 @@ def last_output_lines(kimobj, files, n=10):
     return tails
 
 def append_newline(string):
-    if string[-1] != '\n':
+    if len(string) > 0 and string[-1] != '\n':
         string += "\n"
     return string
