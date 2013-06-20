@@ -157,6 +157,8 @@ class Computation(object):
                 data = simplejson.loads(data_string)
             except simplejson.JSONDecodeError:
                 continue
+            else:
+                break
 
         if data is None or not isinstance(data, dict):
             # We couldn't find any valid JSON
