@@ -391,7 +391,7 @@ class Test(KIMObject):
         else:
             raise IOError("Temporary file already exists %r" % tmpath)
 
-        # FIXME - should be a better way of creating the object we want
+        # - should be a better way of creating the object we want
         self.path = tmpath    
         self.info = PersistentDict(os.path.join(self.path,METADATA_INFO_FILE))
         self.executable = os.path.join(self.path,self.kim_code)
@@ -609,7 +609,7 @@ class TestResult(KIMObject):
                     raise PipelineResultsError, "Could not understand the format of the results: {}".format(results)
 
             #also move all of the files
-            ### FIXME FIXME added these two lines, they're dumb
+            ### added these two lines, they're dumb
             self.results.update(incoming_results)
             incoming_results = self.results
 

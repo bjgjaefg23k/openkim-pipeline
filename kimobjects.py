@@ -462,7 +462,7 @@ class VerificationTest(Test):
     makeable = True
     subject_type = Test
     result_leader = "VR"
-    runner_name = "VERIFICATION_TEST"
+    runner_name = "VERIFICATION_TEST_NAME"
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Test, with a kim_code """
@@ -494,7 +494,7 @@ class VerificationModel(Test):
     makeable = True
     subject_type = Model
     result_leader = "VR"
-    runner_name = "VERIFICATION_MODEL"
+    runner_name = "VERIFICATION_MODEL_NAME"
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Test, with a kim_code """

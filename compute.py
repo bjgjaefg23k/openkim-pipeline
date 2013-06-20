@@ -111,7 +111,8 @@ class Computation(object):
         logger.info("running %r with %r",self.runner,self.subject)
 
         executable = self.runner_temp.executable
-        timeblock = "LIBC_FATAL_STDERR_=1 /usr/bin/time --format={\\\"usertime\\\":%U,\\\"memmax\\\":%M,\\\"memavg\\\":%K} "
+        libc_redirect = "LIBC_FATAL_STDERR_=1 "
+        timeblock = "/usr/bin/time --format={\\\"usertime\\\":%U,\\\"memmax\\\":%M,\\\"memavg\\\":%K} "
 
         # run the runner in its own directory
         with self.runner_temp.in_dir():
@@ -121,24 +122,24 @@ class Computation(object):
                 start_time = time.time()
 
                 logger.info("launching run...")
-                process = Command(timeblock+executable,stdin=kim_stdin_file,
+                process = Command(libc_redirect+timeblock+executable,stdin=kim_stdin_file,
                         stdout=stdout_file,stderr=stderr_file)
 
                 try:
                     self.retcode = process.run(timeout=RUNNER_TIMEOUT)
                 except PipelineTimeout:
                     logger.error("runner %r timed out",self.runner)
-                    raise PipelineTimeout, "your executable timed out"
+                    raise PipelineTimeout, "your executable timed out at %r hours" % (RUNNER_TIMEOUT / 3600)
 
                 end_time = time.time()
 
         # It seems the runner didn't finish
         if process.poll() is None:
             process.kill()
-            raise KIMRuntimeError, "your executable didn't terminate nicely"
+            raise KIMRuntimeError, "Your test did not respond to timeout request and did not exit"
 
         self.runtime = end_time - start_time
-        logger.info("run completed in %r seconds" % self.runtime)
+        logger.info("Run completed in %r seconds" % self.runtime)
         if self.retcode != 0:
             logger.error("Runner returned error code %r, %r" % (self.retcode, os.strerror(self.retcode)) )
             raise KIMRuntimeError("Executable %r returned error code %r" % (self.runner_temp, self.retcode))
@@ -285,7 +286,7 @@ def tail(f, n=5):
         lines = [""]
     return "".join(lines)
 
-def last_output_lines(kimobj, files, n=10):
+def last_output_lines(kimobj, files, n=20):
     with kimobj.in_dir():
         tails = [ tail(f, n) for f in files ]
     return tails
