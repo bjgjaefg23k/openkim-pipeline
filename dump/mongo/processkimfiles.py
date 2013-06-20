@@ -1,4 +1,13 @@
+from ConfigParser import ConfigParser
 
+def configtojson(flname):
+    c = ConfigParser()
+    c.optionxform = str
+    c.read(flname)
+    data = {}
+    for section in c.sections():
+        data.update(dict(c.items(section)))
+    return data
 
 
 def eatfile(flname):

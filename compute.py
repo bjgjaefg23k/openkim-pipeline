@@ -186,7 +186,9 @@ class Computation(object):
 
         logger.debug("Added metadata:\n{}".format(simplejson.dumps(info_dict,indent=4)))
 
-        renderedyaml = self.runner_temp.template.render(**data)
+        #safeify data, escape the strings
+        safe_data = { k:v.encode('string_escape') for k,v in data.iteritems() if isinstance(v,str) }
+        renderedyaml = self.runner_temp.template.render(**safe_data)
         logger.debug("Manipulated template:\n{}".format(renderedyaml))
         logger.debug("Writing output.")
         with self.runner_temp.in_dir(), open(RESULT_FILE,'w') as f:
