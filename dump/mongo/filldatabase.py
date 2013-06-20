@@ -4,48 +4,60 @@ import yaml
 import json
 from logger import logging
 logger = logging.getLogger('pipeline').getChild('mongofill')
+from processkimfiles import eatfile, configtojson
 
 client = pymongo.MongoClient()
 db = client.test_database
 
 #tests = db.tests
 #tests.insert(post)
-REPO_DIR = os.path.abspath("../openkim-repository/")
+REPO_DIR = os.path.abspath("/home/vagrant/openkim-repository/")
 
-test_results = db.test_results
-test_results.drop()
-logger.info("Filling with test results")
-for folder in os.listdir(os.path.join(REPO_DIR,"tr/")):
-    logger.info("On %s ", folder)
-    with open(os.path.join(REPO_DIR,"tr",folder,folder)) as f:
-        yaml_docs = yaml.load_all(f)
+# results = db.results
+# results.drop()
+# logger.info("Filling with test results")
+# leaders = ('tr','vr')
+# for leader in leaders:
+#     for folder in os.listdir(os.path.join(REPO_DIR,leader)):
+#         logger.info("On %s ", folder)
+#         path = os.path.join(REPO_DIR,leader,folder)
+#         info = configtojson(os.path.join(path,'kimspec.ini'))
+#         info['path'] = os.path.join(leader,folder)
+#         with open(os.path.join(path,'results.yaml')) as f:
+#             yaml_docs = yaml.load_all(f)
+#             try:
+#                 for prop in yaml_docs:
+#                     z = info.copy()
+#                     z.update(prop)
+#                     results.insert(z)
+#             except:
+#                 logger.error("Error on document in %r", path)
+#                 pass
 
-        info = next(yaml_docs)
+# errors = db.errors
+# errors.drop()
+# logger.info("Filling with errors results")
+# leaders = ('er',)
+# for leader in leaders:
+#     for folder in os.listdir(os.path.join(REPO_DIR,leader)):
+#         logger.info("On %s ", folder)
+#         path = os.path.join(REPO_DIR,leader,folder)
+#         info = configtojson(os.path.join(path,'kimspec.ini'))
+#         info['path'] = os.path.join(leader,folder)
+#         errors.insert(info)
 
-        for prop in yaml_docs:
-            z = info.copy()
-            z.update(prop)
-            test_results.insert(z)
-
-from processkimfiles import eatfile
-tests = db.tests
-tests.drop()
+objs = db.objs
+objs.drop()
 logger.info("Filling with tests")
-for folder in os.listdir(os.path.join(REPO_DIR,"te/")):
-    logger.info("On %s ", folder)
-    test = {}
-    test['kimid'] = folder
-    test['dotkim'] = eatfile(os.path.join(REPO_DIR,"te",folder,folder+".kim"))
-    tests.insert(test)
-
-
-models = db.models
-models.drop()
-logger.info("Filling with tests")
-for folder in os.listdir(os.path.join(REPO_DIR,"mo/")):
-    logger.info("On %s ", folder)
-    model = {}
-    model['kimid'] = folder
-    model['dotkim'] = eatfile(os.path.join(REPO_DIR,"mo",folder,folder+".kim"))
-    models.insert(model)
+leaders = ('te','vt','vm','mo','md','td')
+for leader in leaders:
+    for folder in os.listdir(os.path.join(REPO_DIR,leader)):
+        if folder.startswith("Make"):
+            continue
+        logger.info("On %s ", folder)
+        path = os.path.join(REPO_DIR,leader,folder,"kimspec.ini")
+        info = configtojson(path)
+        info['kimid'] = folder
+        info['path'] = os.path.join(leader,folder)
+        objs.insert(info)
 
