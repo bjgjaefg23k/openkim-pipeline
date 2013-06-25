@@ -5,10 +5,12 @@ from compute import Computation
 import sys
 from config import *
 from logger import logging
+from pipeline import Director
 logger = logging.getLogger("pipeline").getChild("development")
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:
+        d = Director()
         testname = sys.argv[1]
         name,leader,num,version = database.parse_kim_code(testname)
         if leader == "TE":
@@ -16,7 +18,7 @@ if __name__ == "__main__":
             if len(list(test.models)) > 0:
                 for model in test.models:
                     logger.info("Running combination <%r, %r" % (test, model))
-                    Computation(test, model).run()
+                    Computation(test, model, d.get_result_code()).run()
             else:
                 logger.info("No matches found for your test")
         if leader == "TD":
@@ -25,7 +27,7 @@ if __name__ == "__main__":
                 for t in test.tests:
                     for m in t.models:
                         logger.info("Running combination <%r, %r" % (t, m))
-                        Computation(t, m).run()
+                        Computation(t, m, d.get_result_code()).run()
             else:
                 logger.info("No matches found for your test driver")
         if leader == "MO":
@@ -33,7 +35,7 @@ if __name__ == "__main__":
             if len(list(model.tests)) > 0:
                 for t in model.tests:
                     logger.info("Running combination <%r, %r" % (t, model))
-                    Computation(t, model).run()
+                    Computation(t, model, d.get_result_code()).run()
             else:
                 logger.info("No matches found for your test driver")
         if leader == "MD":
@@ -42,7 +44,7 @@ if __name__ == "__main__":
                 for m in driver.models:
                     for t in m.tests:
                         logger.info("Running combination <%r, %r" % (t, m))
-                        Computation(t, m).run()
+                        Computation(t, m, d.get_result_code()).run()
             else:
                 logger.info("No matches found for your test driver")
     
