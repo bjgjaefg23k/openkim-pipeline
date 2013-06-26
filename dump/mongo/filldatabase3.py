@@ -67,6 +67,7 @@ def kimcode_to_dict(kimcode):
                 foo['driver'] = rmbadkeys(kimcode_to_dict(modeldriver))
         except:
             pass
+
     foo.update(spec)
     return foo
 
@@ -76,6 +77,33 @@ def uuid_to_dict(leader,uuid):
             'type': leader,
             '_id' : uuid }
     spec = configtojson(os.path.join(REPO_DIR,leader,uuid,'kimspec.ini'))
+
+    #Extend runner and subject
+    runner = None
+    subject = None
+    if leader == 'tr' or leader=='er':
+        # IF wer are a TR get the test and model documents (cleaned up)
+        runner = rmbadkeys(kimcode_to_dict(spec['kimspec']['TEST_NAME']))
+        subject = rmbadkeys(kimcode_to_dict(spec['kimspec']['MODEL_NAME']))
+    elif leader == 'vr':
+        # IF we are a vr, get either the verification_Test or
+        # verification_model and test or model
+        runner_code = spec['kimspec'].get('VERIFICATION_TEST',None)
+        if not runner_code:
+            runner_code = spec['kimspec'].get('VERIFICATION_MODEL',None)
+        if runner_code:
+            runner = rmbadkeys(kimcode_to_dict(runner_code))
+
+        subject_code = spec['kimspec'].get('TEST_NAME',None)
+        if not subject_code:
+            subject_code = spec['kimspec'].get('MODEL_NAME',None)
+        if subject_code:
+            subject = rmbadkeys(kimcode_to_dict(subject_code))
+    if runner:
+        foo['runner'] = runner
+    if subject:
+        foo['subject'] = subject
+
     foo.update(spec)
     return foo
 
