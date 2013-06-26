@@ -145,30 +145,27 @@ class Computation(object):
             raise KIMRuntimeError("Executable %r returned error code %r" % (self.runner_temp, self.retcode))
 
     def process_output(self, extrainfo=None):
-        """ Template the run results into the proper YAML
-        """
+        """ Template the run results into the proper YAML """
         with self.runner_temp.in_dir(), open(STDOUT_FILE) as stdout_file:
-            stdout = stdout_file.read()
+            stdout = stdout_file.readlines()
 
         # Try to find the first valid bit of json looking backwards in the output.
         logger.debug('Searching for JSON output...')
         data = None
-        for data_string in itertools.ifilter(line_filter, reversed(stdout.splitlines())):
+        for data_string in itertools.ifilter(line_filter, reversed(stdout)):
             try:
                 data = simplejson.loads(data_string)
-                if isinstance(data, dict):
-                    break
-                else:
-                    data = None
             except simplejson.JSONDecodeError:
                 continue
+            else:
+                break
 
-        if data is None:
+        if data is None or not isinstance(data, dict):
             # We couldn't find any valid JSON
             logger.exception("We didn't get JSON back!")
             raise PipelineTemplateError, "Test didn't return JSON!"
 
-        logger.debug('Found JSON:\n{}'.format(simplejson.dumps(data,indent=4)))
+        # we found our data, let's store it
         self.results = data
 
         # Add metadata
@@ -187,15 +184,27 @@ class Computation(object):
 
         logger.debug("Added metadata:\n{}".format(simplejson.dumps(info_dict,indent=4)))
 
-        #safeify data, escape the strings
-        safe_data = { k:v.encode('string_escape') for k,v in data.iteritems() if isinstance(v,str) }
+        # sanitize strings by encoding backslashes -> newlines break YAML
+        safe_data = sanitize(data)
         renderedyaml = self.runner_temp.template.render(**safe_data)
-        logger.debug("Manipulated template:\n{}".format(renderedyaml))
         logger.debug("Writing output.")
         with self.runner_temp.in_dir(), open(RESULT_FILE,'w') as f:
             f.write(renderedyaml)
 
-        logger.debug("caching profile information")
+        # now, let's check whether that was actual a valid test result
+        logger.debug("Checking the output YAML for validity")
+        with self.runner_temp.in_dir(), open(RESULT_FILE, 'r') as f:
+            docs = yaml.safe_load_all(f)
+            try:
+                # for-loop to reduce memory load 
+                for doc in docs:
+                    pass
+            except Exception as e:
+                logger.error("Templated %r did not render valid YAML." % TEMPLATE_FILE)
+                raise PipelineTemplateError("Improperly formatted YAML after templating")
+        logger.debug("Made it through YAML read, everything looks good")
+
+        logger.debug("Caching profile information")
         self.info_dict = info_dict
 
         logger.debug("Copying kim.log")
@@ -209,6 +218,7 @@ class Computation(object):
             self.result_path = os.path.join("er", self.result_code)
             self.full_result_path = os.path.join(KIM_REPOSITORY_DIR, self.result_path)
 
+        # create the kimspec.ini file for the test results
         logger.debug("Create kimspec.ini file")
         config = ConfigParser.ConfigParser()
         config.optionxform = str
@@ -225,21 +235,23 @@ class Computation(object):
         with self.runner_temp.in_dir(), open(os.path.join(OUTPUT_DIR,CONFIG_FILE),'w') as f:
             config.write(f)
 
-        if not self.result_code:
-            logger.info("No TR code provided, leaving in %s", os.path.join(self.runner_temp.path, OUTPUT_DIR))
-            return
-
-        mesg = "Result" if not error else "Error"
-        logger.debug("%s path = %s", mesg, self.full_result_path)
+        logger.debug("Result path = %s", self.full_result_path)
         outputdir = os.path.join(self.runner_temp.path,OUTPUT_DIR)
 
+        # short circuit moving over the result tree if we have not trcode
+        if not self.result_code:
+            logger.info("No TR code provided, leaving in %s", outputdir)
+            return
+
+        # copy over the entire tree if it is done
         logger.info("Copying the contents of %s to %s", outputdir, self.full_result_path)
         try:
             shutil.rmtree(self.full_result_path)
         except OSError:
             pass
         finally:
-            shutil.copytree(os.path.join(self.runner_temp.path,OUTPUT_DIR), self.full_result_path)
+            shutil.copytree(outputdir, self.full_result_path)
+
 
     def run(self, extrainfo=None):
         """
@@ -295,3 +307,14 @@ def append_newline(string):
     if len(string) > 0 and string[-1] != '\n':
         string += "\n"
     return string
+
+def sanitize(obj):
+    out = obj 
+    if isinstance(obj, str):
+        out = obj.encode('string_escape')
+    if isinstance(obj, dict):
+        out = {k:sanitize(v) for k,v in obj.iteritems()}
+    if isinstance(obj, list):
+        out = [sanitize(t) for t in obj]
+    return out
+
