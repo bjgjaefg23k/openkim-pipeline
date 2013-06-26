@@ -87,8 +87,8 @@ def doc_to_dict(doc,leader,uuid):
 
     if leader == 'tr':
         # IF wer are a TR get the test and model documents (cleaned up)
-        runner = rmbadkeys(result_obj_doc['kimspec']['TEST_NAME'])
-        subject = rmbadkeys(result_obj_doc['kimspec']['MODEL_NAME'])
+        runner = rmbadkeys(kimcode_to_dict(result_obj_doc['kimspec']['TEST_NAME']))
+        subject = rmbadkeys(kimcode_to_dict(result_obj_doc['kimspec']['MODEL_NAME']))
     elif leader == 'vr':
         # IF we are a vr, get either the verification_Test or
         # verification_model and test or model
