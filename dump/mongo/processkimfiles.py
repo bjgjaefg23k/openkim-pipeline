@@ -6,9 +6,8 @@ def configtojson(flname):
     c.read(flname)
     data = {}
     for section in c.sections():
-        data.update(dict(c.items(section)))
+        data[section] = dict(c.items(section))
     return data
-
 
 def eatfile(flname):
     out = {}
