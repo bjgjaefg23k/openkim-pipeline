@@ -15,11 +15,7 @@ import beanstalkc as bean
 import time, simplejson
 from subprocess import Popen
 from threading import Thread
-
-if PIPELINE_GATEWAY:
-    from gevent_zeromq import zmq
-else:
-    import zmq
+import zmq
 
 def open_ports(port=BEAN_PORT, rx=PORT_RX, tx=PORT_TX, user=GLOBAL_USER, 
         addr=GLOBAL_HOST, ip=GLOBAL_IP):
@@ -90,8 +86,14 @@ class Communicator(Thread):
         self.sock_rx = self.con.socket(zmq.SUB)
         self.sock_rx.setsockopt(zmq.SUBSCRIBE, "")
         if PIPELINE_GATEWAY:
-            self.sock_tx.bind("tcp://127.0.0.1:"+str(self.port_tx))
-            self.sock_rx.bind("tcp://127.0.0.1:"+str(self.port_rx))
+            try:
+                self.sock_tx.bind("tcp://127.0.0.1:"+str(self.port_tx))
+                self.sock_rx.bind("tcp://127.0.0.1:"+str(self.port_rx))
+            except zmq.ZMQError:
+                logger.info("Address is already bound, switching to connect...")
+                # we are already bound to the address, so just connect
+                self.sock_tx.connect("tcp://127.0.0.1:"+str(self.port_tx))
+                self.sock_rx.connect("tcp://127.0.0.1:"+str(self.port_rx))
         else:
             self.sock_tx.connect("tcp://127.0.0.1:"+str(self.port_tx))
             self.sock_rx.connect("tcp://127.0.0.1:"+str(self.port_rx))
