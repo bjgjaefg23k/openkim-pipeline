@@ -58,9 +58,9 @@ GLOBAL_KEY  = "/persistent/id_rsa"
 
 WEBSITE_ROOT    = "/"
 if PIPELINE_DEBUG:
-    GATEWAY_ROOT = "/repository_dbg/"
+    GATEWAY_ROOT = "/storage/repository_dbg/"
 else:
-    GATEWAY_ROOT = "/repository/"
+    GATEWAY_ROOT = "/storage/repository/"
 
 RSYNC_USER  = "pipeline"
 RSYNC_HOST  = "pipeline.openkim.org"
@@ -73,12 +73,14 @@ if PIPELINE_DEBUG:
     BEAN_PORT = 14174
     PORT_TX   = 14173
     PORT_RX   = 14172
+    MONGODB   = "database"
     GATEWAY_PORT_JOBS = 1111
     GATEWAY_PORT_LOGS = 1112
 else:
     BEAN_PORT = 14177
     PORT_TX   = 14176
     PORT_RX   = 14175
+    MONGODB   = "database_dbg"
     GATEWAY_PORT_JOBS = 1113
     GATEWAY_PORT_LOGS = 1114
 

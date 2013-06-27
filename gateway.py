@@ -5,7 +5,7 @@ from logger import logging
 logger = logging.getLogger("pipeline").getChild("gateway")
 
 import simplejson, re, time, os, time
-import pymongo
+from mongodb import db, insert_one_result
 
 regex = r"(?:([_a-zA-Z][_a-zA-Z0-9]*?)__)?([A-Z]{2})_([0-9]{10,12})(?:_([0-9]{3}))?"
 RSYNC_FLAGS = "-rtpgoDOL -uzRhEc --progress --stats"
@@ -38,6 +38,12 @@ class Gateway(object):
                 try:
                     if not PIPELINE_DEBUG:
                         rsync_tools.rsync_write_results(debug=self.debug)
+
+                    kimcode = simplejson.loads(request.body)['jobid']
+                    tries = ['tr', 'vr', 'er']
+                    for leader in tries:
+                        if os.path.exists(os.path.join(RSYNC_LOCAL_ROOT, leader, kimcode)):
+                            insert_one_result(leader, kimcode)
                 except Exception as e:
                     logger.error("%r" % e)
                 self.bean.send_msg(TUBE_WEB_RESULTS, request.body)
@@ -159,10 +165,6 @@ class Poller(network.Communicator):
 
 if __name__ == "__main__":
     import sys
-
-    global db
-    client = pymongo.MongoClient()
-    db = client['database']
 
     comm = WebCommunicator()
     comm.connect()
