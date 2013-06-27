@@ -1,6 +1,7 @@
 import pymongo
-import os
+import os, re
 import yaml
+from ConfigParser import ConfigParser
 
 from config import *
 from logger import logging
@@ -23,10 +24,15 @@ def parse_kim_code(kim_code):
     return re.match(RE_KIMID,kim_code).groups()
 
 def drop_tables():
-    db['obj'].drop()
-    db['tr'].drop()
-    db['vr'].drop()
-    db['er'].drop()
+    check = raw_input("Are you sure? [y/n] ")
+    if check == "y":
+        db['obj'].drop()
+        db['tr'].drop()
+        db['vr'].drop()
+        db['er'].drop()
+        db['log'].drop()
+        db['job'].drop()
+        db['agent'].drop()
 
 BADKEYS = { "kimspec", "profiling" }
 def rmbadkeys(dd):

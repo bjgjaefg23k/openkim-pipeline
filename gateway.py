@@ -33,7 +33,7 @@ class Gateway(object):
                 except Exception as e:
                     logger.error("%r" % e)
                 self.bean.send_msg(TUBE_UPDATES, request.body)
-            elif tube == TUBE_RESULTS:
+            elif tube == TUBE_RESULTS or tube == TUBE_ERRORS:
                 logger.debug("processing %r" % request.body)
                 try:
                     if not PIPELINE_DEBUG:
@@ -141,7 +141,7 @@ class WebCommunicator(network.Communicator):
                     save_agent(message[1][0], message[1][1])
 
                 # else treat like the job queue
-                elif message[0] == "jobs":
+                else:
                     dic = s2d(message[1])
                     trimmed = save_job(message[0], dic)
                     self.sock_jobs.send(simplejson.dumps({dic['jobid']: trimmed}))

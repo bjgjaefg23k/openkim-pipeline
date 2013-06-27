@@ -73,14 +73,14 @@ if PIPELINE_DEBUG:
     BEAN_PORT = 14174
     PORT_TX   = 14173
     PORT_RX   = 14172
-    MONGODB   = "database"
+    MONGODB   = "database_dbg"
     GATEWAY_PORT_JOBS = 1111
     GATEWAY_PORT_LOGS = 1112
 else:
     BEAN_PORT = 14177
     PORT_TX   = 14176
     PORT_RX   = 14175
-    MONGODB   = "database_dbg"
+    MONGODB   = "database"
     GATEWAY_PORT_JOBS = 1113
     GATEWAY_PORT_LOGS = 1114
 

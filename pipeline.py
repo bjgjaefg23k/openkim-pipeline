@@ -406,17 +406,22 @@ class Worker(Agent):
                 self.logger.info("Running (%r,%r)", runner, subject)
                 comp = compute.Computation(runner, subject, result_code=jobmsg.jobid)
 
+                errormsg = False
                 try:
                     comp.run()
                 except Exception as e:
                     self.logger.exception("Errors occured, moving to er/")
-                    self.job_message(jobmsg, errors=e, tube=TUBE_ERRORS)
+                    errormsg = True 
                 else:
                     self.logger.debug("Sending result message back")
-                    self.job_message(jobmsg, tube=TUBE_RESULTS)
+                    errormsg = False
                 finally:
                     self.logger.info("Rsyncing results %r", jobmsg.jobid)
-                    rsync_tools.worker_write(comp.result_path)
+                    rsync_tools.worker_write(comp.result_path) 
+                    if errormsg:
+                        self.job_message(jobmsg, errors=e, tube=TUBE_ERRORS)
+                    else:
+                        self.job_message(jobmsg, tube=TUBE_RESULTS)
 
                 job.delete()
 

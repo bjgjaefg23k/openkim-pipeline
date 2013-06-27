@@ -20,9 +20,9 @@ RSYNC_PATH = RSYNC_ADDRESS+":"+RSYNC_REMOTE_ROOT
 RSYNC_LOG_FILE_FLAG = "--log-file={}/rsync.log".format(KIM_LOG_DIR)
 RSYNC_LOG_PIPE_FLAG = " >> {} 2>&1".format(KIM_LOG_DIR+"/rsync_stdout.log")
 
-READ_PENDING  = os.path.join(RSYNC_PATH, "/read/pending/./")
-READ_APPROVED = os.path.join(RSYNC_PATH, "/read/approved/./")
-WRITE_RESULTS = os.path.join(RSYNC_PATH, "/write/results/./")
+READ_PENDING  = os.path.join(RSYNC_PATH, "/./")#, "/read/pending/./")
+READ_APPROVED = os.path.join(RSYNC_PATH, "/./")#, "/read/approved/./")
+WRITE_RESULTS = os.path.join(RSYNC_PATH, "/./")#, "/write/results/./")
 
 #================================
 # rsync wrappers
@@ -113,13 +113,14 @@ def full_test_sync():
 
 def rsync_read_full():
     # first, read everything from the /read directory, except all mentions of tr/
-    rsync_command(["read/submitted/", "read/approved/"], read=True)
-    rsync_command(["write/results/"], read=True)
+    #rsync_command(["read/submitted/", "read/approved/"], read=True)
+    #rsync_command(["write/results/"], read=True)
+    rsync_command(["/"], read=True)
 
 def rsync_write_results(debug=False):
     # write the results back to the webserver in the appropriate place
-    rsync_command(["write/results/tr/", "write/results/vr/"], read=False)
-
+    #rsync_command(["write/results/tr/", "write/results/vr/"], read=False)
+    rsync_command(["/tr/"], read=False)
 
 #=================================
 # director methods
