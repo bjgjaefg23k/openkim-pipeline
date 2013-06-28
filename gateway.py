@@ -6,6 +6,7 @@ logger = logging.getLogger("pipeline").getChild("gateway")
 
 import simplejson, re, time, os, time
 from mongodb import db, insert_one_result
+from threading import Thread
 
 regex = r"(?:([_a-zA-Z][_a-zA-Z0-9]*?)__)?([A-Z]{2})_([0-9]{10,12})(?:_([0-9]{3}))?"
 RSYNC_FLAGS = "-rtpgoDOL -uzRhEc --progress --stats"
@@ -93,11 +94,10 @@ def save_log(log):
     return log
 
 def save_agent(uuid, obj):
-    if not db.agent.find_one({"data.uuid": uuid}):
-        db.agent.insert({"data.uuid": info})
+    if not db.agent.find_one({"uuid": uuid}):
+        db.agent.insert(obj)
     else:
-        db.agent.update({"data.uuid": uuid}, {"$set": obj})
-    agents[uuid] = obj
+        db.agent.update({"uuid": uuid}, {"$set": obj})
 
 def trimjob(job):
     keys = ['jobid', 'tube', 'test', 'model']
@@ -129,6 +129,7 @@ class WebCommunicator(network.Communicator):
         while 1:
             try:
                 message = s2d(self.sock_rx.recv())
+
                 # if it comes in on the 'logs' tube, send to the deque
                 if message[0] == "logs":
                     templog = message[1]['message']
@@ -138,7 +139,10 @@ class WebCommunicator(network.Communicator):
                 # if it is a reply to a request, treat it as
                 # obj[1] is uuid | obj[2] is the message
                 elif message[0] == "reply":
-                    save_agent(message[1][0], message[1][1])
+                    uuid = message[1][0]
+                    modified = message[1][1]
+                    modified.update({"uuid": uuid})
+                    save_agent(uuid, modified)
 
                 # else treat like the job queue
                 else:
@@ -150,13 +154,11 @@ class WebCommunicator(network.Communicator):
                 raise
 
 
-class Poller(network.Communicator):
-    def __init__(self):
+class Poller(Thread):
+    def __init__(self, sock_tx):
         super(Poller, self).__init__()
-
-    def connect(self):
-        super(Poller, self).connect()
-        self.sock_rx.close()
+        self.daemon = True
+        self.sock_tx = sock_tx
 
     def run(self):
         while 1:
@@ -166,12 +168,13 @@ class Poller(network.Communicator):
 if __name__ == "__main__":
     import sys
 
+    logger.info("Starting communicator")
     comm = WebCommunicator()
     comm.connect()
     comm.start()
 
-    poll = Poller()
-    poll.connect()
+    logger.info("Starting polling thread")
+    poll = Poller(comm.sock_tx)
     poll.start()
 
     gate = Gateway()

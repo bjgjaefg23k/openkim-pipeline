@@ -150,7 +150,6 @@ class Agent(object):
             check_call("makekim",shell=True)
         except CalledProcessError as e:
             self.logger.error("could not makekim")
-            self.job_message(job, errors="could not makekim!", tube=TUBE_ERRORS)
 
             raise RuntimeError, "our makekim failed!"
             return 1
@@ -406,15 +405,14 @@ class Worker(Agent):
                 self.logger.info("Running (%r,%r)", runner, subject)
                 comp = compute.Computation(runner, subject, result_code=jobmsg.jobid)
 
-                errormsg = False
+                errormsg = None
                 try:
                     comp.run()
                 except Exception as e:
+                    errormsg = e
                     self.logger.exception("Errors occured, moving to er/")
-                    errormsg = True 
                 else:
                     self.logger.debug("Sending result message back")
-                    errormsg = False
                 finally:
                     self.logger.info("Rsyncing results %r", jobmsg.jobid)
                     rsync_tools.worker_write(comp.result_path) 
