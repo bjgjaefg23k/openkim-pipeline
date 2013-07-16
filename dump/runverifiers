@@ -3,10 +3,13 @@ import compute
 import kimobjects
 from config import *
 from logger import logging
+from pipeline import Director
 logger = logging.getLogger("pipeline")
 
+d = Director()
+
 def run_verifiers(kimobj):
-   
+
     if isinstance(kimobj, kimobjects.Test):
         verifiers = list(kimobjects.VerificationTest.all())
     elif isinstance(kimobj, kimobjects.Model):
@@ -16,29 +19,17 @@ def run_verifiers(kimobj):
 
     allpassed = []
     for v in verifiers:
-        comp = compute.Computation(v, kimobj)
+        comp = compute.Computation(v, kimobj, d.get_result_code())
         try:
             comp.run()
             passed = comp.results['pass']
         except Exception as e:
             passed = False
-        allpassed.append(passed) 
+        allpassed.append(passed)
     return [v.kim_code for v in verifiers],allpassed
 
-if __name__ == "__main__":
-    import sys
-    if len(sys.argv) > 1:
-        name = sys.argv[1]
-
-    try:
-        t = kimobjects.Test(name)
-    except Exception as e:
-        try:
-            t = kimobjects.Model(name)
-        except Exception as e:
-            raise AssertionError("Could not make test or model")
-    v,p = run_verifiers(t)
-
+for test in kimobjects.Test.all():
+    v,p = run_verifiers(test)
     logger.info("==================================================")
     logger.info("Verification check report:")
     logger.info("==================================================")
@@ -49,6 +40,18 @@ if __name__ == "__main__":
                 logger.info(tv+"  " + " "*(maxlen-len(tv))+ ":\t PASS")
             else:
                 logger.info(tv+"  " + " "*(maxlen-len(tv))+ ":\t ERROR")
-    else:
-        logger.info("ERROR: No verification checks found")
+
+for model in kimobjects.Model.all():
+    v,p = run_verifiers(model)
+    logger.info("==================================================")
+    logger.info("Verification check report:")
+    logger.info("==================================================")
+    if len(list(v)) > 0:
+        maxlen = max([len(s) for s in v])
+        for tv, tp in zip(v,p):
+            if tp == True:
+                logger.info(tv+"  " + " "*(maxlen-len(tv))+ ":\t PASS")
+            else:
+                logger.info(tv+"  " + " "*(maxlen-len(tv))+ ":\t ERROR")
+
 

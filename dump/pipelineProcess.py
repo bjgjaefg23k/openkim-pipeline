@@ -17,11 +17,12 @@ tunnel to the remote host.  It then connects to the beanstalkd
 across this tunnel.
 """
 from subprocess import check_call, CalledProcessError
-from multiprocessing import cpu_count, Process, Lock
+from multiprocessing import cpu_count, Process, Lock, Queue
+# from threading import Thread, Lock
 import sys
 import time
 import simplejson
-import uuid
+import traceback
 
 from config import *
 import network
@@ -34,7 +35,12 @@ import kimapi
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("pipeline")
 
+PIPELINE_WAIT    = 1
+PIPELINE_TIMEOUT = 60
+PIPELINE_MSGSIZE = 2**20
+PIPELINE_JOB_TIMEOUT = 3600*24
 buildlock = Lock()
+loglock = Lock()
 
 def getboxinfo():
     os.system("cd /home/vagrant/openkim-pipeline; git log -n 1 | grep commit | sed s/commit\ // > /persistent/setuphash")
@@ -82,23 +88,28 @@ def pingpongHandler(header, message, agent):
 # Agent is the base class for Director, Worker, Site
 # handles basic networking and message responding (so it is not duplicated)
 #==================================================================
-class Agent(object):
+class Agent(Process):
     def __init__(self, name='worker', num=0):
-        self.boxinfo  = getboxinfo()
+        super(Agent,self).__init__(None,name=name)
 
+        self.boxinfo  = getboxinfo()
         self.job = None
         self.name = name
         self.num = num
         self.uuid = self.boxinfo['uuid']+":"+str(self.num)
+
+        # self.comm   = network.Communicator()
+        # self.bean   = network.BeanstalkConnection()
         self.logger = logger.getChild("%s-%i" % (self.name, num))
+
         self.data = {"job": self.job, "data": self.boxinfo}
 
     def connect(self):
         # start up the 2-way comm too
-        self.comm = network.Communicator()
-        self.bean = network.BeanstalkConnection()
-
-        self.logger.info("Bringing up RX/TX")
+        with loglock:
+            self.logger.info("Bringing up RX/TX")
+        self.comm   = network.Communicator()
+        self.bean   = network.BeanstalkConnection()
         self.comm.connect()
         self.comm.addHandler(func=pingpongHandler, args=(self,))
         self.comm.start()
@@ -106,9 +117,11 @@ class Agent(object):
         #attach the beanstalk logger
         network.addNetworkHandler(self.comm, self.boxinfo)
 
-        self.logger.info("Connecting to beanstalkd")
+        with loglock:
+            self.logger.info("Connecting to beanstalkd")
         self.bean.connect()
-        self.logger.info("%s ready" % self.name.title())
+        with loglock:
+            self.logger.info("%s ready" % self.name.title())
 
     def disconnect(self):
         self.bean.disconnect()
@@ -121,21 +134,19 @@ class Agent(object):
                 self.job_message(self.jobmsg, errors="Caught SIGINT and killed", tube=TUBE_ERRORS)
         self.disconnect()
 
-    def job_message(self, jobmsg, errors=None, tube=TUBE_RESULTS):
+    def job_message(self, jobmsg, errors=None, results=None, tube=TUBE_RESULTS):
         """ Send back a job message """
-        jobmsg.results = None
-        jobmsg.errors = "%r" % errors
+        jobmsg.results = results
+        jobmsg.errors = errors
         jobmsg.update(self.boxinfo)
-
-        if len(jobmsg.errors) > PIPELINE_MSGSIZE:
-            jobmsg.errors = "too long"
-
         msg = simplejson.dumps(jobmsg)
+
         self.bean.send_msg(tube, msg)
         self.comm.send_msg(tube, msg)
 
     def make_object(self, kimid):
-        self.logger.debug("Building the source for %r", kimid)
+        with loglock:
+            self.logger.debug("Building the source for %r", kimid)
         kimobj = kimobjects.KIMObject(kimid)
         with kimobj.in_dir():
             try:
@@ -145,11 +156,14 @@ class Agent(object):
             return 0
 
     def make_all(self):
-        self.logger.debug("Building everything...")
+        with loglock:
+            self.logger.debug("Building everything...")
         try:
             check_call("makekim",shell=True)
         except CalledProcessError as e:
-            self.logger.error("could not makekim")
+            with loglock:
+                self.logger.error("could not makekim")
+            self.job_message(job, errors="could not makekim!", tube=TUBE_ERRORS)
 
             raise RuntimeError, "our makekim failed!"
             return 1
@@ -166,6 +180,12 @@ class Director(Agent):
         super(Director, self).__init__(name="director", num=num)
 
     def run(self):
+        """ connect and grab the job thread """
+        self.connect()
+        self.bean.watch(TUBE_UPDATES)
+        self.run_job()
+
+    def run_job(self):
         """
         Endless loop that waits for updates on the tube TUBE_UPDATES
 
@@ -179,10 +199,6 @@ class Director(Agent):
                 run after verification or update
 
         """
-        # connect and grab the job thread
-        self.connect()
-        self.bean.watch(TUBE_UPDATES)
-
         while True:
             self.logger.info("Director Waiting for message...")
             request = self.bean.reserve()
@@ -196,10 +212,11 @@ class Director(Agent):
             if request.stats()['tube'] == TUBE_UPDATES:
                 # update the repository,send it out as a job to compute
                 try:
-                    rsync_tools.director_approved_read()
+                    rsync_tools.director_full_approved_read()
                     self.push_jobs(simplejson.loads(request.body))
                 except Exception as e:
-                    self.logger.exception("Director had an error on update")
+                    tb = traceback.format_exc()
+                    self.logger.error("Director had an error on update: {}\n {}".format(e, tb))
 
             request.delete()
             self.job = None
@@ -219,18 +236,26 @@ class Director(Agent):
 
         name,leader,num,version = database.parse_kim_code(kimid)
 
+        # try to build the kimid before sending jobs
+        # if self.make_object(kimid) == 0:
+        #     rsync_tools.director_build_write(kimid)
+        # else:
+        #     self.logger.error("Could not build %r", kimid)
+        #     self.bsd.use(TUBE_ERRORS)
+        #     self.bsd.put(simplejson.dumps({"error": "Could not build %r" % kimid}))
+        #     return
+
         self.make_all()
 
-        checkmatch = False
         if leader=="VT":
             # for every test launch
             test = kimobjects.VerificationTest(kimid)
-            models = list(kimobjects.Test.all())
+            models = kimobjects.Test.all()
             tests = [test]*ll(models)
         elif leader=="VM":
             #for all of the models, run a job
             test = kimobjects.VerificationModel(kimid)
-            models = list(kimobjects.Model.all())
+            models = kimobjects.Model.all()
             tests = [test]*ll(models)
         else:
             if status == "approved":
@@ -274,17 +299,23 @@ class Director(Agent):
                     self.logger.error("Tried to update an invalid KIM ID!: %r",kimid)
                 checkmatch = True
             if status == "pending":
-                rsync_tools.director_pending_read(kimid)
-                self.make_all()
-
                 if leader=="TE":
+                    # a pending test
+                    rsync_tools.director_test_verification_read(kimid)
+                    self.make_all()
+
                     # run against all test verifications
                     tests = list(kimobjects.VertificationTest.all())
                     models = [kimobjects.Test(kimid, search=False)]*ll(tests)
                 elif leader=="MO":
+                    # a pending model
+                    rsync_tools.director_model_verification_read(kimid)
+                    self.make_all()
+
                     # run against all model verifications
                     tests = list(kimobjects.VertificationModel.all())
                     models = [kimobjects.Model(kimid, search=False)]*ll(tests)
+
                 elif leader=="TD":
                     # a pending test driver
                     pass
@@ -321,7 +352,10 @@ class Director(Agent):
                 if md:
                     TR_ids += (md.kim_code,)
 
-            trid = self.get_result_code()
+            if test.kim_code_leader == "VT" or test.kim_code_leader == "VM":
+                trid = self.get_vr_id()
+            else:
+                trid = self.get_tr_id()
             self.logger.info("Submitting job <%s, %s, %s> priority %i" % (test, model, trid, priority))
 
             if not ready:
@@ -337,8 +371,11 @@ class Director(Agent):
 
         return depids
 
-    def get_result_code(self):
-        return str(uuid.uuid1( uuid.UUID(self.boxinfo['uuid']).int >> 80 ))
+    def get_tr_id(self):
+        return kimobjects.new_test_result_id()
+
+    def get_vr_id(self):
+        return kimobjects.new_verification_result_id()
 
 
 #==================================================================
@@ -353,10 +390,14 @@ class Worker(Agent):
         """ Start to listen, tunnels should be open and ready """
         self.connect()
         self.bean.watch(TUBE_JOBS)
+        self.run_job()
 
+
+    def run_job(self):
         """ Endless loop that awaits jobs to run """
         while True:
-            self.logger.info("Waiting for jobs...")
+            with loglock:
+                self.logger.info("Waiting for jobs...")
             job = self.bean.reserve()
             self.job = job
 
@@ -369,64 +410,121 @@ class Worker(Agent):
             # update the repository, attempt to run the job and return the results to the director
             try:
                 jobmsg = Message(string=job.body)
-                pending = True if jobmsg == "pending" else False
             except simplejson.JSONDecodeError:
                 # message is not JSON decodeable
-                self.logger.error("Did not recieve valid JSON, {}".format(job.body))
+                with loglock:
+                    self.logger.error("Did not recieve valid JSON, {}".format(job.body))
                 job.delete()
                 continue
             except KeyError:
                 # message does not have the right keys
-                self.logger.error("Did not recieve a valid message, missing key: {}".format(job.body))
+                with loglock:
+                    self.logger.error("Did not recieve a valid message, missing key: {}".format(job.body))
                 job.delete()
                 continue
 
             self.jobmsg = jobmsg
+            # check to see if this is a verifier or an actual test
             try:
                 name,leader,num,version = database.parse_kim_code(jobmsg.job[0])
             except InvalidKIMID as e:
                 # we were not given a valid kimid
-                self.logger.error("Could not parse {} as a valid KIMID".format(jobmsg.job[0]))
+                with loglock:
+                    self.logger.error("Could not parse {} as a valid KIMID".format(jobmsg.job[0]))
                 self.job_message(jobmsg, errors=e, tube=TUBE_ERRORS)
                 job.delete()
                 continue
 
-            try:
-                # check to see if this is a verifier or an actual test
-                with buildlock:
-                    self.logger.info("Rsyncing from repo %r", jobmsg.job+jobmsg.depends)
-                    rsync_tools.worker_read(*jobmsg.job, depends=jobmsg.depends, pending=pending)
-                    self.make_all()
-
-                runner_kcode, subject_kcode = jobmsg.job
-                runner  = kimobjects.kim_obj(runner_kcode)
-                subject = kimobjects.kim_obj(subject_kcode)
-
-                self.logger.info("Running (%r,%r)", runner, subject)
-                comp = compute.Computation(runner, subject, result_code=jobmsg.jobid)
-
-                errormsg = None
+            if leader == "VT" or leader == "VM":
                 try:
-                    comp.run()
-                except Exception as e:
-                    errormsg = e
-                    self.logger.exception("Errors occured, moving to er/")
-                else:
-                    self.logger.debug("Sending result message back")
-                finally:
-                    self.logger.info("Rsyncing results %r", jobmsg.jobid)
-                    rsync_tools.worker_write(comp.result_path) 
-                    if errormsg:
-                        self.job_message(jobmsg, errors=e, tube=TUBE_ERRORS)
+                    with buildlock:
+                        with loglock:
+                            self.logger.info("rsyncing to repo %r", jobmsg.job+jobmsg.depends)
+                        rsync_tools.worker_verification_read(*jobmsg.job, depends=jobmsg.depends)
+                        self.make_all()
+
+                    verifier_kcode, subject_kcode = jobmsg.job
+                    verifier = kimobjects.Verifier(verifier_kcode)
+                    subject  = kimobjects.Subject(subject_kcode)
+
+                    with loglock:
+                        self.logger.info("Running (%r,%r)",verifier,subject)
+                    comp = compute.Computation(verifier, subject)
+                    comp.run(jobmsg.jobid)
+
+                    result = kimobjects.Result(jobmsg.jobid).results
+                    with loglock:
+                        self.logger.info("rsyncing results %r", jobmsg.jobid)
+                    rsync_tools.worker_verification_write(jobmsg.jobid)
+                    with loglock:
+                        self.logger.info("sending result message back")
+                    self.job_message(jobmsg, results=result, tube=TUBE_RESULTS)
+                    job.delete()
+
+                # could be that a dependency has not been met.
+                # put it back on the queue to wait
+                except PipelineDataMissing as e:
+                    if job.stats()['age'] < 5*PIPELINE_JOB_TIMEOUT:
+                        with loglock:
+                            self.logger.error("Run failed, missing data.  Returning to queue... (%r)" % e)
+                        job.release(delay=PIPELINE_JOB_TIMEOUT)
                     else:
-                        self.job_message(jobmsg, tube=TUBE_RESULTS)
+                        with loglock:
+                            self.logger.error("Run failed, missing data. Lifetime has expired, deleting (%r)" % e)
+                        job.delete()
 
-                job.delete()
+                # another problem has occurred.  just remove the job
+                # and send the error back along the error queue
+                except Exception as e:
+                    with loglock:
+                        self.logger.error("Run failed, deleting... %r" % e)
+                    self.job_message(jobmsg, errors=e, tube=TUBE_ERRORS)
+                    job.delete()
+            else:
+                try:
+                    with buildlock:
+                        with loglock:
+                            self.logger.info("rsyncing to repo %r %r", jobmsg.job,jobmsg.depends)
+                        rsync_tools.worker_test_result_read(*jobmsg.job, depends=jobmsg.depends)
+                        self.make_all()
 
-            except Exception as e:
-                self.logger.exception("Failed to initalize run, deleting... %r" % e)
-                self.job_message(jobmsg, errors=e, tube=TUBE_ERRORS)
-                job.delete()
+                    test_kcode, model_kcode = jobmsg.job
+                    test = kimobjects.Test(test_kcode)
+                    model = kimobjects.Model(model_kcode)
+
+                    with loglock:
+                        self.logger.info("Running (%r,%r)",test,model)
+                    comp = compute.Computation(test, model)
+                    comp.run(jobmsg.jobid)
+
+                    result = kimobjects.Result(jobmsg.jobid).results
+                    with loglock:
+                        self.logger.info("rsyncing results %r", jobmsg.jobid)
+                    rsync_tools.worker_test_result_write(jobmsg.jobid)
+                    with loglock:
+                        self.logger.info("sending result message back")
+                    self.job_message(jobmsg, results=result, tube=TUBE_RESULTS)
+                    job.delete()
+
+                # could be that a dependency has not been met.
+                # put it back on the queue to wait
+                except PipelineDataMissing as e:
+                    if job.stats()['age'] < 5*PIPELINE_JOB_TIMEOUT:
+                        with loglock:
+                            self.logger.error("Run failed, missing data.  Returning to queue... (%r)" % e)
+                        job.release(delay=PIPELINE_JOB_TIMEOUT)
+                    else:
+                        with loglock:
+                            self.logger.error("Run failed, missing data. Lifetime has expired, deleting (%r)" % e)
+                        job.delete()
+
+                # another problem has occurred.  just remove the job
+                # and send the error back along the error queue
+                except Exception as e:
+                    with loglock:
+                        self.logger.error("Run failed, deleting... %r" % e)
+                    self.job_message(jobmsg, errors="%r"%e, tube=TUBE_ERRORS)
+                    job.delete()
 
             self.job = None
             self.jobsmsg = None
@@ -462,7 +560,7 @@ class APIAgent(Agent):
 pipe = {}
 procs = {}
 def signal_handler(): #signal, frame):
-    logger.info("Sending signal to flush, wait 1 sec...")
+    print "Sending signal to flush, wait 1 sec..."
     for p in pipe.values():
         p.exit_safe()
     for p in procs.values():
@@ -471,16 +569,22 @@ def signal_handler(): #signal, frame):
 
 network.open_ports(BEAN_PORT, PORT_RX, PORT_TX, GLOBAL_USER, GLOBAL_HOST, GLOBAL_IP)
 
+
+def run_worker(q):
+    worker = q.get()
+    q.run()
+
 if __name__ == "__main__":
     import sys
+    import time
     if PIPELINE_REMOTE:
-        logger.info("REMOTE MODE: ON")
+        print "REMOTE MODE: ON"
 
     if PIPELINE_DEBUG:
-        logger.info("DEBUG MODE: ON")
+        print "DEBUG MODE: ON"
 
     if PIPELINE_GATEWAY:
-        logger.info("GATEWAY MODE: ON")
+        print "GATEWAY MODE: ON"
 
 
     if len(sys.argv) > 1:
@@ -493,18 +597,24 @@ if __name__ == "__main__":
         # number of worker threads
         elif sys.argv[1] == "worker":
             thrds = cpu_count()
-            for i in range(thrds):
+            print "thrds=", thrds
+            thrds = 3
+            for i in xrange(thrds):
                 pipe[i] = Worker(num=i)
-                procs[i] = Process(target=Worker.run, args=(pipe[i],), name='worker-%i'%i)
-                #procs[i].daemon = True
-                procs[i].start()
+                pipe[i].daemon = True
+                pipe[i].start()
 
-            try:
-                while True:
-                    for i in range(thrds):
-                        procs[i].join(timeout=1.0)
-            except (KeyboardInterrupt, SystemExit):
-                signal_handler()
+            print "after creation"
+            # try:
+            #     while True:
+            #         print "looping.."
+            #         for i in xrange(thrds):
+            #             pipe[i].join(timeout=1.0)
+            # except (KeyboardInterrupt, SystemExit):
+            #     signal_handler()
+            while True:
+                print "wait..."
+                time.sleep(1)
 
         # site is a one off for testing
         elif sys.argv[1] == "site":
@@ -517,4 +627,6 @@ if __name__ == "__main__":
             obj.run()
 
     else:
-        logger.info("Specify {worker|director|site}")
+        print "Specify {worker|director|site}"
+
+    print "Bottom"

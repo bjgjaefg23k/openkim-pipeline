@@ -8,102 +8,105 @@ By convention the constants are all in UPPER_CASE_WITH_UNDERSCORES,
 and this module is imported in star from at the top of all of the scripts::
 
     from config import *
-
-doing so, we'll have access to all of the constants as well as the logger which ought to be
-made a child of eary::
-
-    logger = logger.getChild("<child name>")
-
 """
-
 import os
 
-#==============================
+# Setting up global truths - provide these with environment variables!
+PIPELINE_REMOTE    = False  # are we even connected remotely
+PIPELINE_GATEWAY   = False  # are we running as the gateway
+PIPELINE_DEBUG     = False  # which pipeline to use - production or debug
+PIPELINE_DEBUG_VBS = False  # do we want all information to print
+
+if os.environ.has_key("PIPELINE_REMOTE"):
+    PIPELINE_REMOTE = True
+
+if os.environ.has_key("PIPELINE_DEBUG"):
+    PIPELINE_DEBUG = True
+
+if os.environ.has_key("PIPELINE_GATEWAY"):
+    PIPELINE_GATEWAY = True
+
+#===============================
 # KIM FLAGS
 #===============================
-PIPELINE_DEBUG = False
-if os.environ.has_key("PIPELINE_DEBUG"):
-    if os.environ["PIPELINE_DEBUG"] == "1":
-        PIPELINE_DEBUG = True
-        print "DEBUG MODE: ON"
+HOME               = os.path.expanduser('~')
+KIM_REPOSITORY_DIR = os.path.join(HOME,"openkim-repository")
+KIM_PIPELINE_DIR   = os.path.abspath(os.path.dirname(__file__))
+KIM_LOG_DIR        = os.path.join(KIM_PIPELINE_DIR, "logs")
+KIM_API_DIR        = os.path.join(HOME,"openkim-api")
+KIM_API_LIB_DIR    = os.path.join(KIM_API_DIR,"KIM_API")
+KIM_API_CHECK_MATCH_UTIL = os.path.join(KIM_API_LIB_DIR,"openkim-api-descriptor-file-match")
 
-#get the repository dir from the symlink
-KIM_REPOSITORY_DIR = os.environ["KIM_REPOSITORY_DIR"]
-KIM_PIPELINE_DIR = os.path.abspath(os.path.dirname(__file__))
+OUTPUT_DIR      = "output"
+INPUT_FILE      = "pipeline.stdin"
+TEMPLATE_FILE   = "pipeline.yaml"
+CONFIG_FILE     = "kimspec.ini"
+TEMP_INPUT_FILE = os.path.join(OUTPUT_DIR,"pipeline.processed.stdin")
+STDOUT_FILE     = os.path.join(OUTPUT_DIR,"pipeline.stdout")
+STDERR_FILE     = os.path.join(OUTPUT_DIR,"pipeline.stderr")
+KIMLOG_FILE     = os.path.join(OUTPUT_DIR,"kim.log")
+RESULT_FILE     = os.path.join(OUTPUT_DIR,"results.yaml")
 
-METADATA_INFO_FILE = "metadata.json"
-PIPELINE_INFO_FILE = "pipelineinfo.json"
-INPUT_FILE = "pipeline.in"
-OUTPUT_FILE = "pipeline.out"
-STDOUT_FILE = "pipeline.stdout"
-STDERR_FILE = "pipeline.stderr"
-TEMP_INPUT_FILE = "pipeline.in.tmp"
-KIMLOG_FILE = "kim.log"
-
-#============================
+#==============================
 # Settings for remote access
-#============================
-if PIPELINE_DEBUG == True:
-    GLOBAL_PORT = 14174
-    PORT_TX     = 14173
-    PORT_RX     = 14172
-    RSYNC_DIR   = "/repository_dbg/"
-else:
-    GLOBAL_PORT = 14177
-    PORT_TX     = 14176
-    PORT_RX     = 14175
-    RSYNC_DIR   = "/repository/"
-    
+#==============================
 GLOBAL_IP   = "127.0.0.1"
+GLOBAL_TOUT = 1
 GLOBAL_USER = "pipeline"
 GLOBAL_HOST = "pipeline.openkim.org"
+GLOBAL_KEY  = "/persistent/id_rsa"
+
+WEBSITE_ROOT    = "/"
+if PIPELINE_DEBUG:
+    GATEWAY_ROOT = "/storage/repository_dbg/"
+else:
+    GATEWAY_ROOT = "/storage/repository/"
 
 RSYNC_USER  = "pipeline"
 RSYNC_HOST  = "pipeline.openkim.org"
-RSYNC_TEST_MODE = False
+RSYNC_ADDRESS     = RSYNC_USER+"@"+RSYNC_HOST
+RSYNC_LOCAL_ROOT  = KIM_REPOSITORY_DIR
+RSYNC_REMOTE_ROOT = GATEWAY_ROOT
+RSYNC_EXCLUDE_FILE= KIM_PIPELINE_DIR+"/.rsync-exclude"
+
+if PIPELINE_DEBUG:
+    BEAN_PORT = 14174
+    PORT_TX   = 14173
+    PORT_RX   = 14172
+    MONGODB   = "database_dbg"
+    GATEWAY_PORT_JOBS = 1111
+    GATEWAY_PORT_LOGS = 1112
+else:
+    BEAN_PORT = 14177
+    PORT_TX   = 14176
+    PORT_RX   = 14175
+    MONGODB   = "database"
+    GATEWAY_PORT_JOBS = 1113
+    GATEWAY_PORT_LOGS = 1114
+
+if PIPELINE_GATEWAY:
+    PORT_TX, PORT_RX = PORT_RX, PORT_TX  # swap RX, TX
+    RSYNC_LOCAL_ROOT  = GATEWAY_ROOT
+    RSYNC_REMOTE_ROOT = WEBSITE_ROOT
+    GLOBAL_KEY = "/home/ubuntu/id_ecdsa_pipeline"
+
+TUBE_WEB_UPDATES = "web_updates"
+TUBE_WEB_RESULTS = "web_results"
+TUBE_UPDATES     = "updates"
+TUBE_RESULTS     = "results"
+TUBE_JOBS        = "jobs"
+TUBE_ERRORS      = "errors"
+TUBE_LOGS        = "logs"
+
+PIPELINE_WAIT    = 1
+PIPELINE_TIMEOUT = 60
+PIPELINE_MSGSIZE = 2**16
+PIPELINE_JOB_TIMEOUT = 3600*24
 
 #============================
 # Runner Internals
 #============================
 RUNNER_TIMEOUT = 60*60*24*5 # sec-min-hr-days
-
-#=============================
-# Logging stuff
-#=============================
-import logging, logging.handlers
-
-logger = logging.getLogger("pipeline")
-logger.setLevel(logging.DEBUG)
-
-#formatter
-log_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-
-LOG_DIR = os.path.join(KIM_PIPELINE_DIR,"logs")
-
-#create a rotating file handler
-rotfile_handler = logging.handlers.RotatingFileHandler(os.path.join(LOG_DIR,
-        "pipeline.log"),mode='a',
-        backupCount=5,maxBytes=10*1024*1024)
-rotfile_handler.setLevel(logging.DEBUG)
-rotfile_handler.setFormatter(log_formatter)
-logger.addHandler(rotfile_handler)
-
-import pygmentlog
-class PygmentHandler(logging.StreamHandler):
-    """ A beanstalk logging handler """
-    def __init__(self):
-        super(PygmentHandler,self).__init__()
-
-    def emit(self,record):
-        """ Send the message """
-        err_message = self.format(record)
-        pygmentlog.pygmentize(err_message)
-
-#create a console logger
-console_handler = PygmentHandler()
-console_handler.setLevel(logging.INFO)
-console_handler.setFormatter(log_formatter)
-logger.addHandler(console_handler)
 
 #====================================
 # KIM ERRORS
@@ -131,3 +134,21 @@ class PipelineSearchError(Exception):
 
 class PipelineTemplateError(Exception):
     """ some kind of templating format is wrong, doesn't conform to our templating directives """
+
+class PipelineQueryError(Exception):
+    """ there was an error while attempting a remote query """
+
+class PipelineRuntimeError(Exception):
+    """ we had any number of errors while running """
+    def __init__(self, e, extra=""):
+        self._e = e
+        self.extra = extra
+
+    def __getattr__(self, name):
+        return getattr(self._e, name)
+
+    def __str__(self):
+        if isinstance(self._e, PipelineRuntimeError):
+            return str(self._e)
+        else:
+            return '%s: %s\n\n%s' % (self._e.__class__.__name__, str(self._e), self.extra)

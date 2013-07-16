@@ -1,0 +1,11 @@
+#!/bin/bash
+
+cd /home/ubuntu/openkim-pipeline
+BEAN_PORT=`python -c "from config import *; print BEAN_PORT"`
+BEAN_PORT_DBG=`env PYTHON_DEBUG=1 python -c "from config import *; print BEAN_PORT"`
+
+cd /home/ubuntu
+mkdir -p beanlog
+mkdir -p beanlog_dbg
+screen -dm -S beanstalkd     beanstalkd -l 127.0.0.1 -p $BEAN_PORT -z 10000000 -b beanlog -f 0
+screen -dm -S beanstalkd_dbg beanstalkd -l 127.0.0.1 -p $BEAN_PORT_DBG -z 10000000 -b beanlog_dbg -f 0

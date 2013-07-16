@@ -3,20 +3,19 @@
 
 import os
 import sys
-from pipeline import Director
+from network import BeanstalkConnection 
 import beanstalkc as bean
 
-d = Director()
-d.connect_to_daemon()
-bsd = d.bsd
+beanc = BeanstalkConnection()
+beanc.connect()
 
 usual_channels = ["errors","results","logs"]
-full_channels = ["web_updates", "jobs","results","updates","errors","logs","gtw_results","gtw_jobs", "gtw_errors", "gtw_running", "gtw_logs"]
+full_channels = ["web_updates", "jobs","results","updates","errors","logs"]
 
 def dump_channel(channel):
     print "dumping channel:", channel
     try:
-        stats = bsd.stats_tube(channel)
+        stats = beanc.bsd.stats_tube(channel)
     except bean.CommandFailed:
         print "No tube: ", channel
         return
@@ -25,8 +24,8 @@ def dump_channel(channel):
 
     with open(os.path.join('/home/vagrant/openkim-pipeline/logs',channel),'a') as fl:
         for i in xrange(job_number):
-            bsd.watch(channel)
-            j = bsd.reserve()
+            beanc.bsd.watch(channel)
+            j = beanc.bsd.reserve()
             fl.write(j.body)
             print "dumping message: ", j.body
             fl.write('\n')

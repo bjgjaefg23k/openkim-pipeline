@@ -7,59 +7,16 @@ Currently these calls mostly glob on the database, could be replaced by somethin
 
 """
 from config import *
-logger = logger.getChild("database")
 import re, os, glob, operator
-import models
-import random
+
+from logger import logging
+logger = logging.getLogger("pipeline").getChild("database")
 
 #-------------------------------------------------
 # Helper routines (probably move)
 #-------------------------------------------------
-
 #KIMID matcher  ( optional name             __) (prefix  ) ( number  )( opt version )
-RE_KIMID    = r"(?:([_a-zA-Z][_a-zA-Z0-9]*?)__)?([A-Z]{2})_([0-9]{10,12})(?:_([0-9]{3}))?"
-#FIXME : right now I let the numbers be between 10 and 12 because we have some that are screwed up
-
-
-def new_test_result_id(number=None):
-    """ Generate or get a new test result id, currently make them up, eventually request them from the website """
-    if number:
-        version = get_new_version(None,"TR",number)
-        return format_kim_code(None,"TR",number,version)
-    else:
-        kim_code =  new_tr_kimid()
-        logger.info("Generated new TR kim_code: %r", kim_code)
-        return kim_code
-
-def new_verification_result_id(number=None):
-    """ Generate or get a new verification result id, currently make them up, eventually request them from the website """
-    if number:
-        version = get_new_version(None,"VR",number)
-        return format_kim_code(None,"VR",number,version)
-    else:
-        kim_code =  new_vr_kimid()
-        logger.info("Generated new VR kim_code: %r", kim_code)
-        return kim_code
-
-def randint():
-    """ Return a random kim integer """
-    return random.randint(0,1e12)
-
-def new_tr_kimid():
-    """ Generate a new Test Result kimid """
-    existing = set( result.kim_code for result in models.TestResult.all() )
-    kim_code = format_kim_code(None,"TR","{:012d}".format(randint()),"000")
-    while kim_code in existing:
-        kim_code = format_kim_code(None,"TR","{:012d}".format(randint()),"000")
-    return kim_code
-
-def new_vr_kimid():
-    """ Generate a new Test Result kimid """
-    existing = set( result.kim_code for result in models.VerificationResult.all() )
-    kim_code = format_kim_code(None,"VR","{:012d}".format(randint()),"000")
-    while kim_code in existing:
-        kim_code = format_kim_code(None,"VR","{:012d}".format(randint()),"000")
-    return kim_code
+RE_KIMID    = r"(?:([_a-zA-Z][_a-zA-Z0-9]*?)__)?([A-Z]{2})_([0-9]{12})(?:_([0-9]{3}))?"
 
 def parse_kim_code(kim_code):
     """ Parse a kim code into it's pieces,
@@ -140,7 +97,6 @@ def format_kim_code(name,leader,num,version):
 #--------------------------------
 # some list generators 
 #--------------------------------
-
 def test_model_to_priority(test,model):
     """ method to assign priorities to test model pairs, currently empty 
 
@@ -149,3 +105,4 @@ def test_model_to_priority(test,model):
         implements priorities
     """
     return 1
+

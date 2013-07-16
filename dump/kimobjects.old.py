@@ -1,5 +1,5 @@
 """
-.. module:: models
+@@.. module:: models
     :synopsis: Holds the python object models for kim objects
 
 .. moduleauthor:: Alex Alemi <alexalemi@gmail.com>
@@ -24,9 +24,10 @@ classes, all of which inherit from ``KIMObject`` and aim to know how to handle t
 """
 
 from config import *
-logger = logger.getChild("models")
+from logger import logging
+logger = logging.getLogger("pipeline").getChild("kimobjects")
 
-from persistentdict import PersistentDict
+from persistent import PersistentDict
 from contextlib import contextmanager
 import template
 import database
@@ -34,14 +35,16 @@ import shutil
 import subprocess
 import re
 import dircache
-import simplejson
-import kimapi
+import simplejson, yaml
+import uuid
+from jsonschema import validate
+from template import template_environment
 
 #------------------------------------------------
 # Base KIMObject
 #------------------------------------------------
 
-class KIMObject(object):
+class KIMObject(simplejson.JSONEncoder):
     """ The base KIMObject that all things inherit from
 
     Attributes:
@@ -73,7 +76,7 @@ class KIMObject(object):
     #whether or not objects of this type are makeable
     makeable = False
 
-    def __init__(self,kim_code,search=True):
+    def __init__(self,kim_code,search=True,subdir=None):
         """ Initialize a KIMObject given the kim_code, where partial kim codes are promoted if possible,
             if search is False, then don't look for existing ones
 
@@ -87,6 +90,11 @@ class KIMObject(object):
                 search (bool)
                     Whether or not to search the directory structure for the fullest match,
                     false is useful when creating new KIMObjects to avoid hitting a PipelineSearchError
+                dirpath (str)
+                    In order to point to a directory that does not follow that pattern
+                    /home/vagrant/openkim-repository/{mo,md,te...}/KIM_CODE/KIM_CODE 
+                    can provide the folder of 
+                    /home/vagrant/openkim-repository/{mo,md,te...}/SUBDIR/KIM_CODE 
         """
         logger.debug("Initializing a new KIMObject: %r", kim_code)
         name, leader, num, version = database.parse_kim_code(kim_code)
@@ -100,6 +108,7 @@ class KIMObject(object):
         self.kim_code_leader = leader
         self.kim_code_number = num
         self.kim_code_version = version
+        self.kim_code_id = leader+"_"+num+"_"+version
 
         if not search:
             self.kim_code = kim_code
@@ -127,8 +136,10 @@ class KIMObject(object):
             self.kim_code = database.format_kim_code(name,leader,num,version)
 
         self.parent_dir = os.path.join(KIM_REPOSITORY_DIR, self.kim_code_leader.lower())
-        self.path = os.path.join( self.parent_dir ,self.kim_code)
-        self.info = PersistentDict(os.path.join(self.path,METADATA_INFO_FILE))
+        if subdir is not None:
+            self.path = os.path.join(self.parent_dir, subdir)
+        else:
+            self.path = os.path.join(self.parent_dir, self.kim_code)
 
     def __str__(self):
         """ the string representation is the full kim_code """
@@ -238,9 +249,13 @@ class KIMObject(object):
         logger.warning("REMOVING the kim object %r", self)
         shutil.rmtree(self.path)
 
-#---------------------------------------------
+    def default(self, obj):
+        """ the simplejson encoder for all KIMObjects """
+        return self.kim_code
+
+#=============================================
 # Actual KIM Models
-#---------------------------------------------
+#=============================================
 
 
 #---------------------------------------------
@@ -272,9 +287,9 @@ class Test(KIMObject):
         """ Initialize the Test, with a kim_code """
         super(Test,self).__init__(kim_code,*args,**kwargs)
         self.executable = os.path.join(self.path,self.kim_code)
-        self.outfile_path = os.path.join(self.path,OUTPUT_FILE)
+        # self.outfile_path = os.path.join(self.path,OUTPUT_FILE)
         self.infile_path = os.path.join(self.path,INPUT_FILE)
-        self.out_dict = self._outfile_to_dict()
+        # self.out_dict = self._outfile_to_dict()
 
     def __call__(self,*args,**kwargs):
         """ Calling a test object executes its executable in its own directory
@@ -292,10 +307,10 @@ class Test(KIMObject):
         """ return a file object for the INPUT_FILE """
         return open(self.infile_path)
 
-    @property
-    def outfile(self):
-        """ return a file object for the OUTPUT_FILE """
-        return open(self.outfile_path)
+    # @property
+    # def outfile(self):
+    #     """ return a file object for the OUTPUT_FILE """
+    #     return open(self.outfile_path)
 
     def dependency_check(self, model=None):
         """ Ask template.py to do a dependency check
@@ -336,30 +351,56 @@ class Test(KIMObject):
         except StopIteration:
             raise PipelineDataMissing, "Could not find a TestResult for ({}, {})".format(self,model)
 
-    def _outfile_to_dict(self):
-        """ Convert the output file to a dict """
-        outdata = open(self.outfile_path).read()
-        lines = outdata.splitlines()
-        data = {}
-        for line in lines:
-            front,back = line.split(":")
-            data.update({ front.strip() : back.strip() })
-        return data
+    # def _outfile_to_dict(self):
+    #     """ Convert the output file to a dict """
+    #     outdata = open(self.outfile_path).read()
+    #     lines = outdata.splitlines()
+    #     data = {}
+    #     for line in lines:
+    #         front,back = line.split(":")
+    #         data.update({ front.strip() : back.strip() })
+    #     return data
 
     def processed_infile(self,model):
         """ Process the input file, with template, and return a file object to the result """
-        template.process(self.infile,model.kim_code,self.kim_code)
+        template.process(self.infile,model,self)
         return open(os.path.join(self.path,TEMP_INPUT_FILE))
 
+    @property
+    def template(self):
+        return template_environment.get_template(os.path.join(self.path, TEMPLATE_FILE))
+
     def modelname_processed_infile(self, model):
-        template.process(self.infile, model.kim_code, self.kim_code, modelonly=True)
+        template.process(self.infile, model, self, modelonly=True)
         return open(os.path.join(self.path, TEMP_INPUT_FILE))
 
     @property
     def models(self):
         """ Returns a generator of valid matched models """
-        return (model for model in Model.all() if kimapi.valid_match(self,model) )
+        return (model for model in Model.all() if database.valid_match(self,model) )
 
+    @contextmanager
+    def move_to_tmp_dir(self, tmpid=None, *args, **kwargs):
+        storage = [self.path, self.info, self.executable, self.infile_path]
+
+        tmpid = tmpid or unicode(uuid.uuid4())
+        tmpath = self.path+"_"+tmpid
+
+        if not os.path.isdir(tmpath):
+            shutil.copytree(self.path, tmpath, *args, **kwargs)
+        else:
+            raise IOError("Temporary file already exists %r" % tmpath)
+
+        # - should be a better way of creating the object we want
+        self.path = tmpath    
+        self.info = PersistentDict(os.path.join(self.path,METADATA_INFO_FILE))
+        self.executable = os.path.join(self.path,self.kim_code)
+        self.infile_path = os.path.join(self.path,INPUT_FILE)
+
+        yield
+
+        shutil.rmtree(tmpath)
+        self.path, self.info, self.executable, self.infile_path = storage   
 
 #--------------------------------------
 # Model
@@ -397,7 +438,88 @@ class Model(KIMObject):
     @property
     def tests(self):
         """ Return a generator of the valid matching tests that match this model """
-        return ( test for test in Test.all() if kimapi.valid_match(test,self) )
+        return ( test for test in Test.all() if database.valid_match(test,self) )
+
+#------------------------------------------
+# Primitive
+#------------------------------------------
+
+
+class Primitive(PersistentDict):
+    """ A KIM Primitive """
+
+    def __init__(self, name, *args, **kwargs):
+        """ Initialize the primitive by name """
+        self.name = name
+        self.path = os.path.join(KIM_SCHEMAS_DIR,name+'.json')
+        super(Primitive,self).__init__(self.path,flag='r',*args,**kwargs)
+
+    def __repr__(self):
+        return "{}({})".format(self.__class__.__name__, self.name)
+
+    def __str__(self):
+        return simplejson.dumps(self,indent=4)
+
+#---------------------------------------------
+# Schema
+#---------------------------------------------
+
+class Schema(PersistentDict):
+    """ A KIM Schema """
+    def __init__(self, name, *args, **kwargs):
+        """ Initialize the schema by name """
+        self.name = name
+        self.path = os.path.join(KIM_SCHEMAS_DIR,name+'.json')
+        super(Schema,self).__init__(self.path,flag='r',*args,**kwargs)
+
+    def __repr__(self):
+        return "{}({})".format(self.__class__.__name__,self.name)
+
+    def __str__(self):
+        return simplejson.dumps(self,indent=4)
+
+
+#------------------------------------------
+# Property
+#------------------------------------------
+
+class Property(KIMObject):
+    """ A kim property, a KIMObject with,
+
+        Settings:
+            required_leader = "PR"
+            makeable = False
+    """
+    required_leader = "PR"
+    makeable = False
+
+    def __init__(self,kim_code,*args,**kwargs):
+        """ Initialize the Property, with a kim_code """
+        super(Property,self).__init__(kim_code,*args,**kwargs)
+        self.data = PersistentDict(os.path.join(self.path,self.kim_code + '.json'))
+
+    def sync(self):
+        self.info.sync()
+        self.data.sync()
+
+    @property
+    def results(self):
+        """ Return a generator of results that compute this property """
+        return ( tr for tr in TestResult.all() if self in tr.properties )
+
+    @property
+    def references(self):
+        """ Return a generator of references that reference this property """
+        return ( rd for rd in ReferenceDatum.all() if self == rd.property )
+
+    @property
+    def tags(self):
+        """ Return a generator of all the tags used by the test writers to refer to this property """
+        return set( value for key,value in result.test._reversed_out_dict.iteritems() if Property(key)==self for result in self.results )
+
+    def validate(self):
+        """ Validate the Property against the property schema """
+        return validate(self.data, Schema(self.data['validation_schema']))
 
 
 #-------------------------------------
@@ -415,7 +537,7 @@ class TestResult(KIMObject):
             results
                 A persistent dict for the results file in the objects directory
             test
-                The test that generated the test result from self.results["_testname"] or None
+                The test that generated the test result from self.results["test-extended-id"] or None
             model
                 The model for the test results or None
 
@@ -426,7 +548,7 @@ class TestResult(KIMObject):
             try to access its elements directly, i.e.::
 
                 tr = TestResult("TR_000000000000_000")
-                tr["_testname"] == tr.results["_testname"]
+                tr["test-extended-id"] == tr.results["test-extended-id"]
     """
     required_leader = "TR"
     makeable = False
@@ -470,7 +592,7 @@ class TestResult(KIMObject):
             #If this TR doesn't exist and we have search off, create it
             self.create_dir()
 
-        self.results = PersistentDict(os.path.join(self.path,self.kim_code),format='json')
+        self.results = PersistentDict(os.path.join(self.path,self.kim_code),format='yaml')
         #if we recieved a json string, write it out
         if results:
             logger.debug("Recieved results, writing out to %r", self.kim_code)
@@ -487,7 +609,11 @@ class TestResult(KIMObject):
                     raise PipelineResultsError, "Could not understand the format of the results: {}".format(results)
 
             #also move all of the files
-            testname = incoming_results["_testname"]
+            ### added these two lines, they're dumb
+            self.results.update(incoming_results)
+            incoming_results = self.results
+
+            testname = incoming_results["test-extended-id"]
 
             files = template.files_from_results(incoming_results)
             if files:
@@ -502,11 +628,11 @@ class TestResult(KIMObject):
             logger.info("Results created in %r", self.kim_code)
 
         try:
-            self.test = Test(self.results["_testname"])
+            self.test = Test(self.results["test-extended-id"])
         except KeyError:
             self.test = None
         try:
-            self.model = Model(self.results["_modelname"])
+            self.model = Model(self.results["model-extended-id"])
         except KeyError:
             self.model = None
 
@@ -558,7 +684,16 @@ class TestResult(KIMObject):
 
             This magic allows the result object to behave like its result dictionary magically
         """
+        self.info = PersistentDict(os.path.join(self.path,METADATA_INFO_FILE))
         return self.results.__getattribute__(attr)
+
+    @property
+    def keys(self):
+        return self.results.keys()
+
+    @property
+    def values(self):
+        return self.results.values()
 
     @classmethod
     def test_result_exists(cls,test,model):
@@ -642,49 +777,6 @@ class ModelDriver(KIMObject):
         return ( model for model in Model.all() if self==model.model_driver )
 
 
-#------------------------------------------
-# Property
-#------------------------------------------
-
-class Property(KIMObject):
-    """ A kim property, a KIMObject with,
-
-        Settings:
-            required_leader = "PR"
-            makeable = False
-    """
-    required_leader = "PR"
-    makeable = False
-
-    def __init__(self,kim_code,*args,**kwargs):
-        """ Initialize the Property, with a kim_code """
-        super(Property,self).__init__(kim_code,*args,**kwargs)
-
-    @property
-    def results(self):
-        """ Return a generator of results that compute this property """
-        return ( tr for tr in TestResult.all() if self in tr.properties )
-
-    @property
-    def data(self):
-        """ Return the data in this thing
-
-            .. todo::
-                Empty Property data!!
-        """
-        return None
-
-    @property
-    def references(self):
-        """ Return a generator of references that reference this property """
-        return ( rd for rd in ReferenceDatum.all() if self == rd.property )
-
-    @property
-    def tags(self):
-        """ Return a generator of all the tags used by the test writers to refer to this property """
-        return set( value for key,value in result.test._reversed_out_dict.iteritems() if Property(key)==self for result in self.results )
-
-
 
 #------------------------------------------
 # VerificationTest(Check)
@@ -715,9 +807,9 @@ class VerificationTest(KIMObject):
         """ Initialize the Test, with a kim_code """
         super(VerificationTest,self).__init__(kim_code,*args,**kwargs)
         self.executable = os.path.join(self.path,self.kim_code)
-        self.outfile_path = os.path.join(self.path,OUTPUT_FILE)
+        # self.outfile_path = os.path.join(self.path,OUTPUT_FILE)
         self.infile_path = os.path.join(self.path,INPUT_FILE)
-        self.out_dict = self._outfile_to_dict()
+        # self.out_dict = self._outfile_to_dict()
 
     def __call__(self,*args,**kwargs):
         """ Calling a test object executes its executable in its own directory
@@ -735,10 +827,10 @@ class VerificationTest(KIMObject):
         """ return a file object for the INPUT_FILE """
         return open(self.infile_path)
 
-    @property
-    def outfile(self):
-        """ return a file object for the OUTPUT_FILE """
-        return open(self.outfile_path)
+    # @property
+    # def outfile(self):
+    #     """ return a file object for the OUTPUT_FILE """
+    #     return open(self.outfile_path)
 
     def dependency_check(self):
         """ Ask template.py to do a dependency check
@@ -772,19 +864,19 @@ class VerificationTest(KIMObject):
         except StopIteration:
             raise PipelineDataMissing, "Could not find a VerificationResult for ({}, {})".format(self,subject)
 
-    def _outfile_to_dict(self):
-        """ Convert the output file to a dict """
-        outdata = open(self.outfile_path).read()
-        lines = outdata.splitlines()
-        data = {}
-        for line in lines:
-            front,back = line.split(":")
-            data.update({ front.strip() : back.strip() })
-        return data
+    # def _outfile_to_dict(self):
+    #     """ Convert the output file to a dict """
+    #     outdata = open(self.outfile_path).read()
+    #     lines = outdata.splitlines()
+    #     data = {}
+    #     for line in lines:
+    #         front,back = line.split(":")
+    #         data.update({ front.strip() : back.strip() })
+    #     return data
 
     def processed_infile(self,test):
         """ Process the input file, with template, and return a file object to the result """
-        template.process(self.infile,test.kim_code,self.kim_code)
+        template.process(self.infile,test,self)
         return open(os.path.join(self.path,TEMP_INPUT_FILE))
 
     @property
@@ -822,9 +914,9 @@ class VerificationModel(KIMObject):
         """ Initialize the Test, with a kim_code """
         super(VerificationModel,self).__init__(kim_code,*args,**kwargs)
         self.executable = os.path.join(self.path,self.kim_code)
-        self.outfile_path = os.path.join(self.path,OUTPUT_FILE)
+        # self.outfile_path = os.path.join(self.path,OUTPUT_FILE)
         self.infile_path = os.path.join(self.path,INPUT_FILE)
-        self.out_dict = self._outfile_to_dict()
+        # self.out_dict = self._outfile_to_dict()
 
     def __call__(self,*args,**kwargs):
         """ Calling a test object executes its executable in its own directory
@@ -842,10 +934,10 @@ class VerificationModel(KIMObject):
         """ return a file object for the INPUT_FILE """
         return open(self.infile_path)
 
-    @property
-    def outfile(self):
-        """ return a file object for the OUTPUT_FILE """
-        return open(self.outfile_path)
+    # @property
+    # def outfile(self):
+    #     """ return a file object for the OUTPUT_FILE """
+    #     return open(self.outfile_path)
 
     def dependency_check(self):
         """ Ask template.py to do a dependency check
@@ -879,19 +971,19 @@ class VerificationModel(KIMObject):
         except StopIteration:
             raise PipelineDataMissing, "Could not find a VerificationResult for ({}, {})".format(self,subject)
 
-    def _outfile_to_dict(self):
-        """ Convert the output file to a dict """
-        outdata = open(self.outfile_path).read()
-        lines = outdata.splitlines()
-        data = {}
-        for line in lines:
-            front,back = line.split(":")
-            data.update({ front.strip() : back.strip() })
-        return data
+    # def _outfile_to_dict(self):
+    #     """ Convert the output file to a dict """
+    #     outdata = open(self.outfile_path).read()
+    #     lines = outdata.splitlines()
+    #     data = {}
+    #     for line in lines:
+    #         front,back = line.split(":")
+    #         data.update({ front.strip() : back.strip() })
+    #     return data
 
     def processed_infile(self,model):
         """ Process the input file, with template, and return a file object to the result """
-        template.process(self.infile,model.kim_code,self.kim_code)
+        template.process(self.infile,model,self)
         return open(os.path.join(self.path,TEMP_INPUT_FILE))
 
     @property
@@ -931,7 +1023,7 @@ class VerificationResult(KIMObject):
             results
                 A persistent dict for the results file in the objects directory
             verifier
-                The verification that generated the test result from self.results["_testname"] or None
+                The verification that generated the test result from self.results["testname"] or None
             subject
                 The subject of the verification results or None
 
@@ -1095,7 +1187,6 @@ class VerificationResult(KIMObject):
 #------------------------------------------
 # ReferenceDatum
 #------------------------------------------
-
 class ReferenceDatum(KIMObject):
     """ a piece of reference data, a KIMObject with:
 
@@ -1118,7 +1209,6 @@ class ReferenceDatum(KIMObject):
 #------------------------------------------
 # VirtualMachine
 #------------------------------------------
-
 class VirtualMachine(KIMObject):
     """ for a virtual machine, a KIMObject with:
 
@@ -1133,14 +1223,25 @@ class VirtualMachine(KIMObject):
         """ Initialize a VirtualMachine with a kim_code """
         super(VirtualMachine,self).__init__(kim_code,*args,**kwargs)
 
-
+#--------------------------------------------
+# Helper code
+#--------------------------------------------
 # two letter codes to the associated class
-code_to_model = {"TE": Test, "MO": Model, "TD": TestDriver, "TR": TestResult , "VT": VerificationTest, "VM": VerificationModel, "VR": VerificationResult, "RD": ReferenceDatum, "PR": Property , "VM": VirtualMachine, "MD": ModelDriver }
+code_to_model = {"TE": Test, "MO": Model, "TD": TestDriver, "TR": TestResult ,
+    "VT": VerificationTest, "VM": VerificationModel, "VR": VerificationResult,
+    "RD": ReferenceDatum, "PR": Property , "VM": VirtualMachine, "MD": ModelDriver }
 
-def kim_obj(kim_code):
+def kim_obj(kim_code, *args, **kwargs):
     """ Just given a kim_code try to make the right object, i.e. try to make a TE code a Test, etc. """
     name,leader,num,version = database.parse_kim_code(kim_code)
     cls = code_to_model.get(leader, KIMObject)
-    return cls(kim_code)
+    return cls(kim_code, *args, **kwargs)
 
+class KIMData(object):
+    """ A simple wrapper to getting data """
+    def __getitem__(self, item):
+        if len(item) == 2:
+            return code_to_model[item.upper()].all()
+        else:
+            return kim_obj(item)
 

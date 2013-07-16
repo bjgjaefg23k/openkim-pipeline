@@ -1,0 +1,228 @@
+Some ideas for the API
+
+types of responses:
+    kimobject - for a thing with a kim code
+    file - for a file
+    jsoninfo - for a json dictionary somewhere
+    collection - a collection of things, eventually with support
+        for filtering and maps and the like
+
+/api/
+    NOTE: really /api/v0/ which is symlinked to /api/
+        This will allow new versions of the api to grow, while keeping the old
+        api available.
+    - default collection of all kim things ever # I think?
+
+#    /tests/ - collection of all tests
+#    /models/ - collection of all models
+#    /results/ - collection of all testresults
+#    /test_drivers/ - ...
+#    /model_drivers/ - ...
+#    /primitives/ - ...
+#    /properties/ - ...
+#    /reference_data/ - ...
+#    /test_verifications/ - ...
+#    /model_verifications/ - ...
+#    /verification_results/ - ...
+#
+#    /{KIM_CODE}/
+#    /{KIM_NAME}/
+#        NOTE: This is true for ANY kim object, inherited for tests, models, etc
+#        - returns kimobject({KIM_CODE})
+#
+#        /name/ - returns json of name
+#        /leader/ - returns first two characters
+#        /kim_code/ - returns kim code
+#        /code/ - returns inner code
+#        /version/ - gives version
+#        /path/ - get path in repo
+#        /is_latest_version/ - returns boolean of whether this is the latest thing or not
+#        /latest_version/ - returns kimobject of the latest version in database
+#        /files/ - collection of files in directory
+#        /metadata/ - jsoninfo of metadata
+
+    /{SHORT_KIM_NAME}/
+        - try to find associated kim_code and return kimobject(KIM_CODE)
+        if no version, get latest version
+    
+    /TE_???/
+        - returns test object
+        has methods of kimobject
+        /dependencies/ - collection of kimobjects that are this tests dependencies
+        /test_driver/ - kimobject of test driver  NOTE: (is there always only one?)
+        /results/ - collection of testresult objects computed from test
+        /models/ - collection of matching models
+        /properties/ - collection of properties computed by test
+        /primitives/ - unique set of all primitives of all properties as collection
+    
+    /MO-???/
+        - returns model object
+        has methods of kimobject
+        /model_driver/ - returns model driver object
+        /results/ - collection of testresult objects computed from test
+        /tests/ - collection of matching tests
+
+    /primitives/
+        return collection of primitives
+        /prim_name/
+            - returns primitive as json info
+            /properites/ - collection of properties using primitive
+            /results/ - collection of all results with primitive
+                (possibly keyed into the result already at the primitive)
+            /reference_data/ - collection of all reference data with primitive
+            /tests/ - all tests supplying primitive
+            /info/ -returns jsoninfo of the actual primitive
+                    this will allow keying in
+    /schemas/
+        -collection of jsoninfos
+        /schemas/name/ - get particular schema as jsoninfo
+
+    /PR_????/
+        -returns property object
+        /info/ - jsoninfo of property
+        /primitives/ - collection of primitives
+        /reference_data/ - collection of reference data using property
+        /results/ - collection of testresult objects using property
+        
+    /TR_???/
+        - returns testresult object
+        /info/ - jsoninfo of result
+        # /files/ - collection of files in directory - INHERITED
+        /@FILEs/ - collection of @FILE directive files
+        /test/ - kimobject of test
+        /model/ - kimobject of model
+        /properties/ - collection of properties
+        /primitives/ - unique set of all primitives in collection
+
+
+    /TD_???/
+        - returns testdriver object
+        /tests/ - collection of test objects
+        /models/ - unique set of all models that match with a test that is derived from test driver as collection
+        /results/ - set of all test results derived from tests derived from model
+        /properties/ - set of all properties of all tests derived from testdriver as collection
+        /primitives/ - set of all primitives of all tests derived from testdriver as collection
+
+    /MD_???/
+        -returns modeldriver object
+        /models/ - collection of derived models
+        /tests/ - collection of all matching tests for all models derived from MD as collection
+        /results/ - collection of all results computed from all models derived from MD as collection
+
+    /VT_???/
+        - returns verificationtest object
+        has methods of kimobject
+        /dependencies/ - collection of kimobjects that are this tests dependencies
+        /checks/ - collection of verificationresult objects computed from verificationtest
+        /passed/ - collection of tests that passed
+        /failed/ - collection of tests that failed
+        /warning/ - collection of tests that received a warning
+        /nowarning/ - collection of tests that did not receive a warning
+
+    /VM_???/
+        - returns verificationmodel object
+        has methods of kimobject
+        /dependencies/ - collection of kimobjects that are this tests dependencies
+        /checks/ - collection of verificationresult objects computed from verificationmodel
+        /passed/ - collection of models that passed
+        /failed/ - collection of models that failed
+        /warning/ - collection of models that received a warning
+        /nowarning/ - collection of models that did not receive a warning
+
+    /VR_???/
+        - return verificationresult object
+        /info/ - jsoninfo of result
+        /subject/ - kimobject of {test,model} with which it ran
+        /verifier/ - {VT,VM} that ran the verification check
+
+    /RD_???/
+        - return referencedata jsoninfo object
+        /property/ - property object
+        /primitives/ - collection of primitives reported
+        /results/ - collection of results that hopefully are related somehow (NOTE: this is probably difficult)
+        /tests/ - collection of tests that proport to say something about this (NOTE: probably hard)
+
+#============================
+# methods for objects
+
+@collection/
+    by default return [str(x) for x in self]
+
+    /(? expr )/
+        where expr is a valid python base expression, and
+        { }s get mapped to api calls on each of the objects in the collection
+            e.g.
+            /te/(? {/info/species} == 'Fe' and {/info/name}.contains('fcc') )/
+                with return collection(x for x in self if x.api(/info/species) == 'Fe' and x.api(/info/name).contains('fcc') )
+        return collection( x for x in self if expr )
+
+    /next/
+        return next(self)
+
+    /length/
+        returns length of collection
+    # if not recognized above, i.e. doesn't start with (? or next:
+    # try to map it through the collection
+    /expr/
+        return collection( x.api(expr) for x in self )
+
+    # a,b = itertools.tee(self)
+    # return ( x.api(expr1), y.api(expr2) for x in a for y in b if cond )
+
+    There must be a freezing expression which says when to 
+    /a:b:c/
+        return collection( collection(x.api(a), x.api(b), x.api(c))  for x in self )
+        #WARNING: might break everything!, but might be awesome!
+
+    /a|b|c/
+        iterA, iterB, iterC = itertools.tee(self,3)
+        return collection( collection( x.api(a) for x in iterA), collection(x.api(b) for x in iterB), collection(x.api(c)) for x in iterC )
+        
+
+    # :expr
+    #     zips together the collection created by expr
+    #         e.g.
+    #         /te/(?{/info/species}=="Fe"):/models/(?{/info/species}=="Fe")
+                # with return collection( zip(a,b) for a in self for b in api(expr) )
+
+
+@jsoninfo/
+    by default return pretty formatted string
+
+    /keys/ - collection of key strings
+    /values/ - collection of values
+    /items/ - collection of (key,value) pairs
+
+    #if we fall through, try
+    /key/ - return jsoninfo(self[key])
+
+
+@file/
+    by default return str(file)
+    /name/ - return filename
+    /download/ - return blob
+    /size/ - return filesize
+    /path/ - return path
+    /access_time/ - return atime
+    /modified_time/ - return mtime
+    /created_time/ - return ctime
+    /tar/ - return file(tar(self))
+    /gz/ - return file(gz(self))
+    /bz2/ - return file(bz2(self))
+    /zip/ - return file(zip(self))
+
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+
+
