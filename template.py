@@ -17,6 +17,7 @@ from logger import logging
 logger = logging.getLogger("pipeline").getChild("template")
 import kimobjects
 import database
+import kimquery
 
 import jinja2, simplejson
 from functools import partial
@@ -48,12 +49,12 @@ template_environment.filters['json'] = partial(simplejson.dumps,indent=4)
 #--------------------------------------------
 # DATA directive handlers
 #--------------------------------------------
-def data_from_match(match):
+def data_from_match(match,query_version=kimquery.query_mongo):
     """ Get the data from a re match """
     groups = match.groups()
     part, query = groups
     try:
-        data = kimquery.query(querydata=query)
+        data = query_version(query)
     except PipelineQueryError as e:
         logger.error("Error executing query %r" % query)
         raise e
