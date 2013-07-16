@@ -5,6 +5,5 @@ logs/*
 kim.log
 *.swp
 docs/_build
-stupid.py
-stupid.txt
+stupid.*
 .ropeproject
