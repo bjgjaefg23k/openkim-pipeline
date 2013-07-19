@@ -33,9 +33,9 @@ def open_ports(port=BEAN_PORT, rx=PORT_RX, tx=PORT_TX, user=GLOBAL_USER,
         bsd.close()
     except bean.SocketError:
         st  = ""
-        st += "screen -dm ssh -i /persistent/id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "  
+        st += "screen -dm ssh -i {} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "  
         st +=                 "-L{}:{}:{}   -L{}:{}:{}  -L{}:{}:{}  {}@{}"
-        ssh = Popen(st.format(port,ip,port,  rx,ip,rx,  tx,ip,tx,   user,addr), shell=True)
+        ssh = Popen(st.format(CONF["FILE_IDRSA"], port,ip,port,  rx,ip,rx,  tx,ip,tx,   user,addr), shell=True)
         logger.info("Waiting to open ports via ssh tunnels")
         time.sleep(1)
 

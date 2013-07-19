@@ -5,6 +5,7 @@ import os
 import sys
 from network import BeanstalkConnection 
 import beanstalkc as bean
+from config import *
 
 beanc = BeanstalkConnection()
 beanc.connect()
@@ -22,7 +23,7 @@ def dump_channel(channel):
 
     job_number = stats['current-jobs-ready']
 
-    with open(os.path.join('/home/vagrant/openkim-pipeline/logs',channel),'a') as fl:
+    with open(os.path.join(KIM_LOG_DIR,channel),'a') as fl:
         for i in xrange(job_number):
             beanc.bsd.watch(channel)
             j = beanc.bsd.reserve()

@@ -1,6 +1,7 @@
 #!/bin/sh
+. /pipeline/environment
 
-cd /home/vagrant
+cd $HOMEDIR
 wget --timeout=30 http://pipeline.openkim.org/packages/repository -O ./repository.tar.gz
 tar zxvf repository.tar.gz
 

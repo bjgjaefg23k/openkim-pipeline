@@ -33,8 +33,6 @@ def query_datomic(querydata, queryrules="", keys=None):
         return result
     return arr
 
-from bson.json_util import dumps, loads
-
 def query_mongo(query, url=""):
     # set up the globals for how to interact with the website
     url = url or 'http://pipeline.openkim.org/api'

@@ -1,4 +1,4 @@
 #!/bin/bash
-export PIPELINE_REMOTE=1
-python /home/vagrant/openkim-pipeline/pipeline.py "$@"
+. /pipeline/environment
+python $PIPELINEDIR/pipeline.py "$@"
 
