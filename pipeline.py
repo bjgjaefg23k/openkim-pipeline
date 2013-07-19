@@ -54,14 +54,17 @@ def getboxinfo():
         except Exception as e:
             info[thing] = None
 
+    info['cpucount'] = cpu_count()
+    info['setuphash'] = Popen("cd "+CONF["PIPELINEDIR"]+"; git log -n 1 | grep commit | sed s/commit\ //", 
+        stdout=PIPE, shell=True).communicate()[0]
+
     try:
-        info['cpucount'] = cpu_count()
-        info['setuphash'] = Popen("cd "+CONF["PIPELINEDIR"]+"; git log -n 1 | grep commit | sed s/commit\ //", 
-                stdout=PIPE, shell=True).communicate()[0]
+        info['ipaddr'] = urllib.urlopen("http://pipeline.openkim.org/ip").read()
+    except IOError as e:
+        logger.error("pipeline.openkim.org could not be reached for ip")
+        info['ipaddr'] = None
 
-        with urllib.urlopen("http://pipeline.openkim.org/ip") as f:
-            info['ipaddr'] = f.read()
-
+    try:
         with open(CONF["FILE_BENCHMARK"]) as f:
             content = f.read()
             lps = re.search(r"([0-9\.]+\slps)", content)
@@ -69,7 +72,11 @@ def getboxinfo():
 
             info['benchmark_dry'] = lps.groups()[0] if lps else None
             info['benchmark_whet'] = MWIPS.groups()[0] if MWIPS else None
+    except Exception as e:
+        logger.error("Benchmark has not been completed")
+        info['benchmark_dry'] = info['benchmark_whet'] = None
 
+    try:
         with open("/proc/cpuinfo") as f:
             model = re.search(r"(model name)\s:\s(.*)\n", f.read())
             info['cpu'] = model.groups()[1] if model else None
@@ -77,8 +84,9 @@ def getboxinfo():
         with open("/proc/meminfo") as f:
             mem = re.search(r"(MemTotal:)\s*(.*)\n", f.read())
             info['mem'] = mem.groups()[1] if mem else None
-    except Exception as e:
-        logger.error("Missing some boxinfo, moving on...")
+    except:
+        logger.error("CPU and RAM info could not be found")
+        info['cpu'] = info['mem'] = None
 
     return info
 

@@ -25,7 +25,6 @@ def read_environment(filename):
         search = re.search(r"(\$[A-Za-z0-9]+)", val) 
         if search:
             for rpl in search.groups():
-                print val, rpl, conf[rpl[1:]]
                 val = val.replace(rpl, conf[rpl[1:]])
         conf[var] = val
     return conf
