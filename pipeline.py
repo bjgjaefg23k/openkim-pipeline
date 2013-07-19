@@ -446,7 +446,7 @@ class Worker(Agent):
 
                 errormsg = None
                 try:
-                    comp.run()
+                    comp.run(extrainfo=self.boxinfo)
                 except Exception as e:
                     errormsg = e
                     self.logger.exception("Errors occured, moving to er/")
