@@ -16,7 +16,7 @@ Any of the classes below rely on a secure public key to open an ssh
 tunnel to the remote host.  It then connects to the beanstalkd
 across this tunnel.
 """
-from subprocess import check_call, CalledProcessError
+from subprocess import check_call, CalledProcessError, Popen, PIPE
 from multiprocessing import cpu_count, Process, Lock
 import sys
 import time
@@ -37,18 +37,49 @@ logger = logging.getLogger("pipeline").getChild("pipeline")
 buildlock = Lock()
 
 def getboxinfo():
-    os.system("cd /home/openkim/openkim-pipeline; git log -n 1 | grep commit | sed s/commit\ // > /persistent/setuphash")
+    """ 
+    we need to gather information from two sources, the /pipeline/environment
+    file and various of resources, so we split into things and temps or 
+    /pipeline/environment and various bash calls
+    """
+    import urllib
+    import re
+    things = ['pipeline_sitename', 'pipeline_username', 'boxtype',
+            'vmversion', 'setupargs', 'gitbranch', 'githost', 'gitname', 'uuid']
 
     info = {}
-    things = ['pipeline_sitename', 'pipeline_username', 'boxtype',
-            'vmversion', 'setupargs', 'gitbranch', 'githost', 'gitname']
-    temp = ['ipaddr', 'setuphash', 'uuid', 'benchmark']
-
     for thing in things:
         try:
-            info[thing] = open(os.path.join('/persistent',thing)).read().strip()
+            info[thing] = CONF[thing.upper()]
         except Exception as e:
             info[thing] = None
+
+    try:
+        info['cpucount'] = cpu_count()
+        info['setuphash'] = Popen("cd "+CONF["PIPELINEDIR"]+"; git log -n 1 | grep commit | sed s/commit\ //", 
+                stdout=PIPE, shell=True).communicate()[0]
+
+        with urllib.urlopen("http://pipeline.openkim.org/ip") as f:
+            info['ipaddr'] = f.read()
+
+        with open(CONF["FILE_BENCHMARK"]) as f:
+            content = f.read()
+            lps = re.search(r"([0-9\.]+\slps)", content)
+            MWIPS = re.search(r"([0-9\.]+\sMWIPS)", content)
+
+            info['benchmark_dry'] = lps.groups()[0] if lps else None
+            info['benchmark_whet'] = MWIPS.groups()[0] if MWIPS else None
+
+        with open("/proc/cpuinfo") as f:
+            model = re.search(r"(model name)\s:\s(.*)\n", f.read())
+            info['cpu'] = model.groups()[1] if model else None
+
+        with open("/proc/meminfo") as f:
+            mem = re.search(r"(MemTotal:)\s*(.*)\n", f.read())
+            info['mem'] = mem.groups()[1] if mem else None
+    except Exception as e:
+        logger.error("Missing some boxinfo, moving on...")
+
     return info
 
 class Message(dict):

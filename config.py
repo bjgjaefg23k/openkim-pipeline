@@ -31,7 +31,7 @@ def read_environment(filename):
     return conf
 
 ENVIRONMENT_FILE = "/pipeline/environment"
-conf = read_environment(ENVIRONMENT_FILE)
+CONF = read_environment(ENVIRONMENT_FILE)
 
 # Setting up global truths - provide these with environment variables!
 PIPELINE_REMOTE    = False  # are we even connected remotely
@@ -76,7 +76,7 @@ GLOBAL_IP   = "127.0.0.1"
 GLOBAL_TOUT = 1
 GLOBAL_USER = "pipeline"
 GLOBAL_HOST = "pipeline.openkim.org"
-GLOBAL_KEY  = conf["FILE_IDRSA"]
+GLOBAL_KEY  = CONF["FILE_IDRSA"]
 
 WEBSITE_ROOT    = "/"
 if PIPELINE_DEBUG:
