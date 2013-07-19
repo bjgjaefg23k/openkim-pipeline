@@ -37,12 +37,12 @@ logger = logging.getLogger("pipeline").getChild("pipeline")
 buildlock = Lock()
 
 def getboxinfo():
-    os.system("cd /home/vagrant/openkim-pipeline; git log -n 1 | grep commit | sed s/commit\ // > /persistent/setuphash")
+    os.system("cd /home/openkim/openkim-pipeline; git log -n 1 | grep commit | sed s/commit\ // > /persistent/setuphash")
 
     info = {}
-    things = ['sitename', 'username', 'boxtype',
-            'ipaddr', 'vmversion', 'setuphash', 'uuid',
-            'gitargs', 'gitbranch', 'githost']
+    things = ['pipeline_sitename', 'pipeline_username', 'boxtype',
+            'vmversion', 'setupargs', 'gitbranch', 'githost', 'gitname']
+    temp = ['ipaddr', 'setuphash', 'uuid', 'benchmark']
 
     for thing in things:
         try:

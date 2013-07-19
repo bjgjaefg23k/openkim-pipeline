@@ -1,7 +1,7 @@
 import os, sys, shutil
 from subprocess import check_call
 
-API = "/home/vagrant/openkim-api"
+API = "/home/openkim/openkim-api"
 CODE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 REPO2 = CODE_DIR + "/tests/repo"
 

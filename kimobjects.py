@@ -85,9 +85,9 @@ class KIMObject(simplejson.JSONEncoder):
                     false is useful when creating new KIMObjects to avoid hitting a PipelineSearchError
                 dirpath (str)
                     In order to point to a directory that does not follow that pattern
-                    /home/vagrant/openkim-repository/{mo,md,te...}/KIM_CODE/KIM_CODE
+                    /home/openkim/openkim-repository/{mo,md,te...}/KIM_CODE/KIM_CODE
                     can provide the folder of
-                    /home/vagrant/openkim-repository/{mo,md,te...}/SUBDIR/KIM_CODE
+                    /home/openkim/openkim-repository/{mo,md,te...}/SUBDIR/KIM_CODE
         """
         logger.debug("Initializing a new KIMObject: %r", kim_code)
         name, leader, num, version = database.parse_kim_code(kim_code)

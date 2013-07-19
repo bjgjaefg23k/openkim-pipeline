@@ -11,6 +11,28 @@ and this module is imported in star from at the top of all of the scripts::
 """
 import os
 
+#======================================
+# the environment parser
+#======================================
+def read_environment(filename):
+    import re
+    conf = {}
+    lines = open(filename).readlines()
+    for line in lines:
+        if line[0] == "#" or len(line) <= 1:
+            continue
+        var, val = line.strip().split("=")
+        search = re.search(r"(\$[A-Za-z0-9]+)", val) 
+        if search:
+            for rpl in search.groups():
+                print val, rpl, conf[rpl[1:]]
+                val = val.replace(rpl, conf[rpl[1:]])
+        conf[var] = val
+    return conf
+
+ENVIRONMENT_FILE = "/pipeline/environment"
+conf = read_environment(ENVIRONMENT_FILE)
+
 # Setting up global truths - provide these with environment variables!
 PIPELINE_REMOTE    = False  # are we even connected remotely
 PIPELINE_GATEWAY   = False  # are we running as the gateway
@@ -54,7 +76,7 @@ GLOBAL_IP   = "127.0.0.1"
 GLOBAL_TOUT = 1
 GLOBAL_USER = "pipeline"
 GLOBAL_HOST = "pipeline.openkim.org"
-GLOBAL_KEY  = "/persistent/id_rsa"
+GLOBAL_KEY  = conf["FILE_IDRSA"]
 
 WEBSITE_ROOT    = "/"
 if PIPELINE_DEBUG:
@@ -152,3 +174,6 @@ class PipelineRuntimeError(Exception):
             return str(self._e)
         else:
             return '%s: %s\n\n%s' % (self._e.__class__.__name__, str(self._e), self.extra)
+
+
+

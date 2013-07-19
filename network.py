@@ -17,6 +17,15 @@ from subprocess import Popen
 from threading import Thread
 import zmq
 
+# switch this over to provy / fabric framework 
+# ssh -f (run in the background) -N (only port forwarding) pipeline
+# and using .ssh/config
+
+# also, need to create a generate_configuration which makes
+# temporary configuration files for each pipeline agent instance
+# e.g. boxinfo.json (need to merge most of /persistent) and
+# now sshconfig 
+
 def open_ports(port=BEAN_PORT, rx=PORT_RX, tx=PORT_TX, user=GLOBAL_USER, 
         addr=GLOBAL_HOST, ip=GLOBAL_IP):
     try:
