@@ -19,10 +19,10 @@ def read_environment(filename):
     conf = {}
     lines = open(filename).readlines()
     for line in lines:
-        if line[0] == "#" or len(line) <= 1:
+        if not re.match(r"^[A-Za-z0-9\_]+\=.", line):
             continue
         var, val = line.strip().split("=")
-        search = re.search(r"(\$[A-Za-z0-9]+)", val) 
+        search = re.search(r"(\$[A-Za-z0-9\_]+)", val) 
         if search:
             for rpl in search.groups():
                 val = val.replace(rpl, conf[rpl[1:]])
