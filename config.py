@@ -10,12 +10,12 @@ and this module is imported in star from at the top of all of the scripts::
     from config import *
 """
 import os
+import re
 
 #======================================
 # the environment parser
 #======================================
 def read_environment(filename):
-    import re
     conf = {}
     lines = open(filename).readlines()
     for line in lines:
@@ -31,6 +31,7 @@ def read_environment(filename):
 
 ENVIRONMENT_FILE = "/pipeline/environment"
 CONF = read_environment(ENVIRONMENT_FILE)
+CONF.update(read_environment(CONF["FILE_CONF_EXTRA"]))
 
 # Setting up global truths - provide these with environment variables!
 PIPELINE_REMOTE    = False  # are we even connected remotely
