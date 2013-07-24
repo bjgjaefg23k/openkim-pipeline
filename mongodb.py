@@ -1,5 +1,6 @@
 import pymongo
 import os, re
+import datetime
 import yaml
 from ConfigParser import ConfigParser
 
@@ -33,12 +34,15 @@ def drop_tables():
         db['log'].drop()
         db['job'].drop()
         db['agent'].drop()
+        db['data'].drop()
 
 BADKEYS = { "kimspec", "profiling" }
 def rmbadkeys(dd):
     return { k:v for k,v in dd.iteritems() if k not in BADKEYS }
 
 def kimcode_to_dict(kimcode):
+    dirpath = os.path.join(RSYNC_LOCAL_ROOT, leader, kimcode)
+
     name,leader,num,version = parse_kim_code(kimcode)
     leader = leader.lower()
     foo = { "name": name, "type": leader.lower(),
@@ -47,6 +51,7 @@ def kimcode_to_dict(kimcode):
             "kimcode": kimcode,
             "path" : os.path.join(leader.lower(),kimcode),
             "approved" : True,
+            "created_at" : datetime.datetime.fromtimestamp( os.path.getctime( dirpath )),
             '_id' : kimcode,
             }
     if foo['type'] in ('te','mo','md','vt','vm'):
@@ -59,7 +64,7 @@ def kimcode_to_dict(kimcode):
         foo['driver'] = True
     else:
         foo['driver'] = False
-    specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,"kimspec.ini")
+    specpath = os.path.join(dirpath,"kimspec.ini")
     spec = configtojson(specpath)
     if foo['type'] == 'te':
         try:
@@ -80,11 +85,14 @@ def kimcode_to_dict(kimcode):
     return foo
 
 def uuid_to_dict(leader,uuid):
+    dirpath = os.path.join(RSYNC_LOCAL_ROOT,leader,uuid)
     foo = {'uuid': uuid ,
             'path': os.path.join(leader.lower(),uuid),
             'type': leader,
+            'created_at' : datetime.datetime.fromtimestamp( os.path.getctime( dirpath )),
             '_id' : uuid }
-    spec = configtojson(os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,'kimspec.ini'))
+
+    spec = configtojson(os.path.join(dirpath,'kimspec.ini'))
 
     #Extend runner and subject
     runner = None
@@ -157,7 +165,7 @@ def insert_one_object(kimcode):
         db.obj.insert(info)
     except:
         logger.error("Already have %s", kimcode)
-    
+
 def insert_objs():
     logger.info("Filling with objects")
     leaders = ('te','vt','vm','mo','md','td')
@@ -174,18 +182,36 @@ def insert_one_result(leader, kimcode):
         resultobj = db.obj.insert(info)
     except:
         logger.error("Aready have %s", kimcode)
-        return  
+        return
     try:
         with open(os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,'results.yaml')) as f:
             yaml_docs = yaml.load_all(f)
             for doc in yaml_docs:
                 stuff = doc_to_dict(doc,leader,kimcode)
-                db[leader].insert(stuff)
+                db.data.insert(stuff)
     except:
         logger.info("Could not read document for %s/%s", leader, kimcode)
         stuff = doc_to_dict({}, leader, kimcode)
-        db[leader].insert(stuff)
+        db.data.insert(stuff)
 
+def insert_one_reference_data(leader, kimcode):
+    logger.info("Inserting reference data %s ", kimcode)
+    info = uuid_to_dict(leader, kimcode)
+    try:
+        resultobj = db.obj.insert(info)
+    except:
+        logger.error("Aready have %s", kimcode)
+        return
+    try:
+        with open(os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,kimcode+'.yaml')) as f:
+            yaml_docs = yaml.load_all(f)
+            for doc in yaml_docs:
+                stuff = doc_to_dict(doc,leader,kimcode)
+                db.data.insert(stuff)
+    except:
+        logger.info("Could not read document for %s/%s", leader, kimcode)
+        stuff = doc_to_dict({}, leader, kimcode)
+        db.data.insert(stuff)
 
 def insert_results():
     logger.info("Filling with test results")
@@ -193,6 +219,13 @@ def insert_results():
     for leader in leaders:
         for i, folder in enumerate(os.listdir(os.path.join(RSYNC_LOCAL_ROOT,leader))):
             insert_one_result(leader, folder)
+
+def insert_reference_data():
+    logger.info("Filling with reference data")
+    leaders = ('rd',)
+    for leader in leaders:
+        for i, folder in enumerate(os.listdir(os.path.join(RSYNC_LOCAL_ROOT,leader))):
+            insert_one_reference_data(leader, folder)
 
 def insert_all():
     insert_objs()
