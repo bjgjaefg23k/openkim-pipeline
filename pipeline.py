@@ -508,8 +508,6 @@ def signal_handler(): #signal, frame):
         p.join(timeout=1)
     sys.exit(1)
 
-network.open_ports(BEAN_PORT, PORT_RX, PORT_TX, GLOBAL_USER, GLOBAL_HOST, GLOBAL_IP)
-
 if __name__ == "__main__":
     import sys
     if PIPELINE_REMOTE:
@@ -521,6 +519,7 @@ if __name__ == "__main__":
     if PIPELINE_GATEWAY:
         logger.info("GATEWAY MODE: ON")
 
+    network.open_ports(BEAN_PORT, PORT_RX, PORT_TX, GLOBAL_USER, GLOBAL_HOST, GLOBAL_IP)
 
     if len(sys.argv) > 1:
         # directors are not multithreaded for build safety
