@@ -215,7 +215,7 @@ class Computation(object):
 
         with self.runner_temp.in_dir(), open(RESULT_FILE, 'w') as f:
             logger.debug("Writing unit converted version")
-            yaml.safe_dump_all(newdocs,f)
+            yaml.safe_dump_all(newdocs,f,default_flow_style=False, explicit_start=True)
 
 
         logger.debug("Made it through YAML read, everything looks good")
