@@ -13,6 +13,7 @@ import yaml
 import shutil
 from contextlib import contextmanager
 import ConfigParser
+import kimunits
 
 from config import *
 import kimobjects
@@ -187,6 +188,7 @@ class Computation(object):
         # sanitize strings by encoding backslashes -> newlines break YAML
         safe_data = sanitize(data)
         renderedyaml = self.runner_temp.template.render(**safe_data)
+
         logger.debug("Writing output.")
         with self.runner_temp.in_dir(), open(RESULT_FILE,'w') as f:
             f.write(renderedyaml)
@@ -195,13 +197,27 @@ class Computation(object):
         logger.debug("Checking the output YAML for validity")
         with self.runner_temp.in_dir(), open(RESULT_FILE, 'r') as f:
             docs = yaml.safe_load_all(f)
+            newdocs = []
             try:
-                # for-loop to reduce memory load 
+                # for-loop to reduce memory load
                 for doc in docs:
-                    pass
+                    # insert units business
+                    logger.debug("Attempting to add unit conversions...")
+                    try:
+                        newdoc = kimunits.add_si_units(doc)
+                        newdocs.append(newdoc)
+                    except kimunits.UnitConversion as e:
+                        logger.error("Error in Unit Conversion")
+                        raise PipelineTemplateError("Error in unit conversions")
             except Exception as e:
                 logger.error("Templated %r did not render valid YAML." % TEMPLATE_FILE)
                 raise PipelineTemplateError("Improperly formatted YAML after templating")
+
+        with self.runner_temp.in_dir(), open(RESULT_FILE, 'w') as f:
+            logger.debug("Writing unit converted version")
+            yaml.safe_dump_all(newdocs,f)
+
+
         logger.debug("Made it through YAML read, everything looks good")
 
         logger.debug("Caching profile information")
@@ -309,7 +325,7 @@ def append_newline(string):
     return string
 
 def sanitize(obj):
-    out = obj 
+    out = obj
     if isinstance(obj, str):
         out = obj.encode('string_escape')
     if isinstance(obj, dict):

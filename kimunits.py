@@ -5,6 +5,11 @@ VERSION = 0.3
 import subprocess
 import re
 import warnings
+warnings.simplefilter("ignore")
+
+from logger import logging
+logger = logging.getLogger("pipeline").getChild("kimunits")
+logger.setLevel(logging.DEBUG)
 
 class UnitConversion(Exception):
     """ Class for unit conversion errors """
@@ -119,6 +124,7 @@ convert = convert_udunits2
 def convert_list( x , from_unit, to_unit=None, convert=convert):
     """ Thread conversion over a list, or list of lists """
     # Need a list for scoping reasons
+    logger.debug("Attempting to convert <%r> from <%r> to <%r>.", x, from_unit, to_unit)
     known_out = [None]
     def convert_inner( x ):
         if isinstance(x, (list,tuple)):
@@ -132,6 +138,7 @@ def convert_list( x , from_unit, to_unit=None, convert=convert):
                 known_out[0] = out[1]
                 return float(out[0])
     output = convert_inner( x )
+    logger.debug("Obtained %r <%r> = %r <%r>.", x, from_unit, output, known_out[0])
     return ( output, known_out[0] )
 
 
