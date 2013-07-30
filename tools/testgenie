@@ -24,7 +24,9 @@ For convenience, if the --random-kimnums flag is given, the templating dictionar
 also contain a random 12 digit integer for use as the center of a kimcode.
 
 Note also, that the script expects the path for the test-generator and
-global-variable files to be one directory up from the test template folder.
+global-variable files to be one directory up from the test template folder.  By default
+'TEST_DRIVER_NAME' will be the same as <source> and 'version' will be 0, or whatever is specified
+with the command line argument
 
 Program outputs a list of all generated test folders, this is useful to catch in
 order to remove the folders later if necessary. e.g.
@@ -174,8 +176,9 @@ parser.add_argument('--quiet', action="store_true",
 # parser.add_argument('--verify', action="store_true",
 #         help="Run verification tests on generated tests only works if not a dry-run")
 
-parser.add_argument('--version','-v', action='version',
-        version='%(prog)s {}'.format(VERSION))
+parser.add_argument("--version", type=int,
+        default=0,
+        help="parameter to pass as 'version' to global dictionary")
 
 args = vars(parser.parse_args())
 
@@ -197,7 +200,9 @@ try:
 except Exception:
     tdpath = args['source']
 
-global_vars = {}
+global_vars = {"TEST_DRIVER_NAME": args['source']}
+global_vars['version'] = "{:03d}".format(args['version'])
+
 #Get global vars
 if args['global_variables']:
     global_path = args['global_variables']
@@ -205,7 +210,7 @@ if args['global_variables']:
         with open(os.path.abspath(os.path.join(tdpath,'..',global_path))) as f:
             global_vars = json.loads(f.read())
     except Exception:
-        global_vars = json.loads(f.read())
+        global_vars = json.loads(global_path)
 
 #generate tests
 gentests = []
