@@ -2,9 +2,10 @@
 """
 testgenie - A simple templating kim test creation tool
 
-In order to use the testgenie, you need to specify a folder that serves as a
-template for your test, as well as a file containing json dictionaries that
-will be passed in to generate all of your tests.
+In order to use the testgenie, you need to specify a folder (default:
+test_template in the TD directory) that serves as a template for your test, as
+well as a file containing json dictionaries that will be passed in to generate
+all of your tests.
 
 Test generation takes place in steps.
 
@@ -25,6 +26,16 @@ also contain a random 12 digit integer for use as the center of a kimcode.
 Note also, that the script expects the path for the test-generator and
 global-variable files to be one directory up from the test template folder.
 
+Program outputs a list of all generated test folders, this is useful to catch in
+order to remove the folders later if necessary. e.g.
+  testgenie TDNAME > generated_tests
+
+Then they can be removed
+  cat generated_tests | xargs rm -r
+
+Or you can verify them all
+  cut -d / -f 6 generated_tests | xargs -n 1 pipeline_verify
+
 """
 
 import argparse
@@ -44,6 +55,7 @@ import re
 import random
 import json
 import kimobjects
+import sys
 
 TEDIR = os.path.join(KIM_REPOSITORY_DIR,"te")
 
@@ -87,29 +99,34 @@ def maketest(folder, variable_dict, dest=TEDIR,dry_run=False):
 
     #make tmp directory
     tmp_test_dir = os.path.join(tempdir, test_name)
-    os.mkdir(tmp_test_dir)
+    shutil.copytree(folder,tmp_test_dir)
     logger.info("BUILDING: %r @ %r", test_name, tmp_test_dir)
     logger.debug("Variable_dict: %r", variable_dict)
 
-    #process all of the files
-    for fl in os.listdir(folder):
-        logger.debug("processing %r", fl)
-        with open(os.path.join(folder,fl)) as f:
-            contents = f.read()
-        #copy original mode so we can chmod at end
-        original_mode = os.stat(os.path.join(folder,fl)).st_mode
-        filename = fl
-        filename_search = FILENAME_REGEX.search(contents)
-        if filename_search:
-            filename_template = FILENAME_REGEX.search(contents).group(1)
-            filename = jinja2.Template(filename_template).render(**variable_dict)
-        logger.debug("new filename: %r", filename)
-        template = jinja2.Template(contents)
-        new_contents = template.render(**variable_dict)
-        with open(os.path.join(tmp_test_dir,filename),'w') as g:
-            g.write(new_contents)
-        #set mode
-        os.chmod(os.path.join(tmp_test_dir,filename), original_mode)
+    for (basepath, folders, files) in os.walk(tmp_test_dir):
+        for fl in files:
+            logger.debug("processing %r", fl)
+            filepath = os.path.join(basepath,fl)
+            with open(filepath) as f:
+                contents = f.read()
+            #copy original mode so we can chmod at end
+            original_mode = os.stat(filepath).st_mode
+            filename = fl
+            filename_search = FILENAME_REGEX.search(contents)
+            if filename_search:
+                filename_template = FILENAME_REGEX.search(contents).group(1)
+                filename = jinja2.Template(filename_template).render(**variable_dict)
+            logger.debug("new filename: %r", filename)
+            template = jinja2.Template(contents)
+            new_contents = template.render(**variable_dict)
+
+            newfilepath = os.path.join(basepath, filename)
+            os.remove(filepath)
+
+            with open(newfilepath,'w') as g:
+                g.write(new_contents)
+            #set mode
+            os.chmod(newfilepath, original_mode)
 
     if not dry_run:
         #now move to its home
@@ -117,6 +134,10 @@ def maketest(folder, variable_dict, dest=TEDIR,dry_run=False):
         shutil.move(tmp_test_dir, os.path.join(dest,test_name))
         #cleanup
         shutil.rmtree(tempdir)
+
+        return os.path.join(dest, test_name)
+
+    return tempdir
 
 ##############################
 # Setup argparse
@@ -151,14 +172,12 @@ parser.add_argument('--quiet', action="store_true",
         help="Hide all logging messages")
 
 # parser.add_argument('--verify', action="store_true",
-#         help="Run verification tests on generated tests")
+#         help="Run verification tests on generated tests only works if not a dry-run")
 
 parser.add_argument('--version','-v', action='version',
         version='%(prog)s {}'.format(VERSION))
 
 args = vars(parser.parse_args())
-
-print args
 
 #Set verbosity level
 if args['verbose']:
@@ -174,7 +193,7 @@ generator_file = args['generator_file']
 
 #find test-template directory
 try:
-    tdpath = os.path.join(kimobjects.TestDriver(args['source']).path,'test-generator')
+    tdpath = os.path.join(kimobjects.TestDriver(args['source']).path,'test_template')
 except Exception:
     tdpath = args['source']
 
@@ -183,20 +202,23 @@ global_vars = {}
 if args['global_variables']:
     global_path = args['global_variables']
     try:
-        with open(os.path.join(tdpath,'..',global_path)) as f:
+        with open(os.path.abspath(os.path.join(tdpath,'..',global_path))) as f:
             global_vars = json.loads(f.read())
     except Exception:
         global_vars = json.loads(f.read())
 
 #generate tests
-with open(os.path.join(tdpath,'..',generator_file)) as f:
+gentests = []
+with open(os.path.abspath(os.path.join(tdpath,'..',generator_file))) as f:
     for line in f:
         variable_dict = global_vars.copy()
         variable_dict.update(json.loads(line))
         if random_codes:
             #supply kimnum
             variable_dict['kimnum'] = "%012d" % random.randint(0,1e12-1)
-        maketest(tdpath, variable_dict = variable_dict, dest=dest, dry_run=dry_run, )
+        newtestpath =  maketest(tdpath, variable_dict = variable_dict, dest=dest, dry_run=dry_run, )
+        gentests.append(newtestpath)
+        print newtestpath
 
 
 

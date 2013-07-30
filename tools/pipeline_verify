@@ -35,7 +35,7 @@ if __name__ == "__main__":
         try:
             t = kimobjects.Model(name)
         except Exception as e:
-            raise AssertionError("Could not make test or model")
+            raise AssertionError("Could not make test or model object")
     v,p = run_verifiers(t)
 
     logger.info("==================================================")
