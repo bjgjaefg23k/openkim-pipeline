@@ -1,0 +1,203 @@
+#! /usr/bin/env python
+"""
+testgenie - A simple templating kim test creation tool
+
+In order to use the testgenie, you need to specify a folder that serves as a
+template for your test, as well as a file containing json dictionaries that
+will be passed in to generate all of your tests.
+
+Test generation takes place in steps.
+
+  1. Grab the dictionary defined in a line of the test_generator.json file
+  2. Add all global variables, if any defined.
+  3. Process the kimspec.ini file as a jinja template with those variables defined.
+  4. Add all of the variables defined in the kimspec to the local dictionary
+  5. Set the folder name from the TEST_NAME attribute in the kimspec file
+  6. For each remaining file, first check if a:
+        {# FILENAME = desired_file_name_with_{{ variables }} #}
+      directives exist to fix the filename
+  6. Process the rest of the file as a jinja template.
+  7. Move folders to the given destination (or test dir in repository by default)
+
+For convenience, if the --random-kimnums flag is given, the templating dictionaries will
+also contain a random 12 digit integer for use as the center of a kimcode.
+
+Note also, that the script expects the path for the test-generator and
+global-variable files to be one directory up from the test template folder.
+
+"""
+
+import argparse
+VERSION = 0.1
+
+from logger import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("testgenie")
+
+from config import *
+import os
+import ConfigParser
+import jinja2
+import tempfile
+import shutil
+import re
+import random
+import json
+import kimobjects
+
+TEDIR = os.path.join(KIM_REPOSITORY_DIR,"te")
+
+###############################
+# testfactory
+###############################
+
+"""
+Based on a set of templates,
+create lots of tests
+"""
+
+FILENAME_REGEX = re.compile(r"""
+    FILENAME    #magic word
+    \s*         # whitespace
+    =           # equal character
+    \s*         # whitespace
+    (\S+)       # name
+    """, re.VERBOSE)
+
+def maketest(folder, variable_dict, dest=TEDIR,dry_run=False):
+    """ Make a test given the input folder """
+    tempdir = tempfile.mkdtemp()
+    # First parse the kimspec file
+    with open(os.path.join(folder,'kimspec.ini')) as f:
+        kimspec_template = jinja2.Template(f.read())
+        kimspec = kimspec_template.render(**variable_dict)
+    tmp_kimspec = os.path.join(tempdir,'kimspec.ini')
+    with open(tmp_kimspec,'w') as f:
+        f.write(kimspec)
+
+    #extend variable_dict with everything defined in kimspec
+    config = ConfigParser.ConfigParser()
+    config.optionxform = str
+    config.read(tmp_kimspec)
+    for section in config.sections():
+        variable_dict.update(config.items(section))
+
+    # test name from kimspec
+    test_name = variable_dict['TEST_NAME']
+
+    #make tmp directory
+    tmp_test_dir = os.path.join(tempdir, test_name)
+    os.mkdir(tmp_test_dir)
+    logger.info("BUILDING: %r @ %r", test_name, tmp_test_dir)
+    logger.debug("Variable_dict: %r", variable_dict)
+
+    #process all of the files
+    for fl in os.listdir(folder):
+        logger.debug("processing %r", fl)
+        with open(os.path.join(folder,fl)) as f:
+            contents = f.read()
+        #copy original mode so we can chmod at end
+        original_mode = os.stat(os.path.join(folder,fl)).st_mode
+        filename = fl
+        filename_search = FILENAME_REGEX.search(contents)
+        if filename_search:
+            filename_template = FILENAME_REGEX.search(contents).group(1)
+            filename = jinja2.Template(filename_template).render(**variable_dict)
+        logger.debug("new filename: %r", filename)
+        template = jinja2.Template(contents)
+        new_contents = template.render(**variable_dict)
+        with open(os.path.join(tmp_test_dir,filename),'w') as g:
+            g.write(new_contents)
+        #set mode
+        os.chmod(os.path.join(tmp_test_dir,filename), original_mode)
+
+    if not dry_run:
+        #now move to its home
+        logger.info("Moving to %r", os.path.join(dest,test_name))
+        shutil.move(tmp_test_dir, os.path.join(dest,test_name))
+        #cleanup
+        shutil.rmtree(tempdir)
+
+##############################
+# Setup argparse
+##############################
+
+parser = argparse.ArgumentParser(description="KIM test generation genie",
+        epilog=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,)
+parser.add_argument('source', type=str,
+        help="kimcode for test driver, or complete path to test-gen folder")
+parser.add_argument('--generator-file', type=str,
+        default='test_generator.json',
+        help="generator file [default: test_generator.json]")
+
+parser.add_argument('--global-variables', type=str,
+        help="Additional json of global variables, as file or string")
+
+parser.add_argument('--dry-run', action='store_true',
+        help="Don't write the tests out, just show what would be generated")
+
+parser.add_argument('--destination', type=str,
+        default=TEDIR,
+        help="destination folder for tests [default: {}]".format(TEDIR))
+
+parser.add_argument('--random-kimnums', action="store_true",
+        help="Use randomly generated kimid numbers, provided as 'kimnum' field")
+
+parser.add_argument('--verbose', action="store_true",
+        help="Show debugging messages")
+
+parser.add_argument('--quiet', action="store_true",
+        help="Hide all logging messages")
+
+# parser.add_argument('--verify', action="store_true",
+#         help="Run verification tests on generated tests")
+
+parser.add_argument('--version','-v', action='version',
+        version='%(prog)s {}'.format(VERSION))
+
+args = vars(parser.parse_args())
+
+print args
+
+#Set verbosity level
+if args['verbose']:
+    logger.setLevel(logging.DEBUG)
+if args['quiet']:
+    logger.setLevel(logging.ERROR)
+
+#Destination directory
+dest = args['destination']
+dry_run = args['dry_run']
+random_codes = args['random_kimnums']
+generator_file = args['generator_file']
+
+#find test-template directory
+try:
+    tdpath = os.path.join(kimobjects.TestDriver(args['source']).path,'test-generator')
+except Exception:
+    tdpath = args['source']
+
+global_vars = {}
+#Get global vars
+if args['global_variables']:
+    global_path = args['global_variables']
+    try:
+        with open(os.path.join(tdpath,'..',global_path)) as f:
+            global_vars = json.loads(f.read())
+    except Exception:
+        global_vars = json.loads(f.read())
+
+#generate tests
+with open(os.path.join(tdpath,'..',generator_file)) as f:
+    for line in f:
+        variable_dict = global_vars.copy()
+        variable_dict.update(json.loads(line))
+        if random_codes:
+            #supply kimnum
+            variable_dict['kimnum'] = "%012d" % random.randint(0,1e12-1)
+        maketest(tdpath, variable_dict = variable_dict, dest=dest, dry_run=dry_run, )
+
+
+
+

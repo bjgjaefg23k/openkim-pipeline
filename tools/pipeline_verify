@@ -6,7 +6,6 @@ from logger import logging
 logger = logging.getLogger("pipeline")
 
 def run_verifiers(kimobj):
-   
     if isinstance(kimobj, kimobjects.Test):
         verifiers = list(kimobjects.VerificationTest.all())
     elif isinstance(kimobj, kimobjects.Model):
@@ -22,7 +21,7 @@ def run_verifiers(kimobj):
             passed = comp.results['pass']
         except Exception as e:
             passed = False
-        allpassed.append(passed) 
+        allpassed.append(passed)
     return [v.kim_code for v in verifiers],allpassed
 
 if __name__ == "__main__":
