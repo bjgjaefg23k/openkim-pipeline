@@ -126,11 +126,18 @@ def convert_list( x , from_unit, to_unit=None, convert=convert):
     # Need a list for scoping reasons
     logger.debug("Attempting to convert <%r> from <%r> to <%r>.", x, from_unit, to_unit)
     known_out = [None]
+
+    # Constant shortcut
+    if from_unit in ( 1, 1.0, '1' ):
+        known_out[0] = '1'
+
     def convert_inner( x ):
         if isinstance(x, (list,tuple)):
             return type(x)( convert_inner(z ) for z in x )
         else:
-            if known_out[0]:
+            if known_out[0] == '1':
+                return float(x)
+            elif known_out[0]:
                 out = convert( x, from_unit, to_unit, suppress_unit=True )
                 return out
             else:
