@@ -1,0 +1,94 @@
+#_get_all(){
+#    . /pipeline/environment
+#    folders=$1
+#    objs=()
+#    for folder in ${folders}; 
+#    do
+#        #objs+=$(for i in `ls -d $REPODIR/${folder}/* | xargs -n 1 basename`; do echo ${i}; done)
+#        objs+=$(ls -d $REPODIR/${folder}/* | xargs -n 1 basename)
+#    done
+#    echo $objs
+#}
+
+_get_all(){
+    . /pipeline/environment
+    for i in `ls -d $REPODIR/${folder}/* | xargs -n 1 basename`; do echo ${i}; done
+}
+
+_pipeline() 
+{
+    . /pipeline/environment
+    local cur prev opts base
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    # The basic options we'll complete.
+    opts="director worker site"
+
+    # Complete the arguments to some of the basic commands.
+    case "${prev}" in
+        site)
+            local objs=$(for i in `ls -d $REPODIR/{te,td,mo,md}/* | xargs -n 1 basename`; do echo ${i}; done)
+            COMPREPLY=( $(compgen -W "${objs}" -- ${cur}) )
+            return 0
+            ;;
+        *)
+            ;;
+    esac
+
+    COMPREPLY=($(compgen -W "${opts}" -- ${cur}))  
+    return 0
+}
+complete -F _pipeline pipeline
+
+
+_complete_all() 
+{
+    . /pipeline/environment
+    local cur prev opts base
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    # Complete the arguments to some of the basic commands.
+    case "${prev}" in
+        *)
+            local objs=$(for i in `ls -d $REPODIR/{te,td,mo,md}/* | xargs -n 1 basename`; do echo ${i}; done)
+            COMPREPLY=( $(compgen -W "${objs}" -- ${cur}) )
+            return 0
+            ;;
+        *)
+            ;;
+    esac
+
+    COMPREPLY=($(compgen -W "${opts}" -- ${cur}))  
+    return 0
+}
+complete -F _complete_all pipeline_runpair
+
+_complete_genie() 
+{
+    . /pipeline/environment
+    local cur prev opts base
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    # Complete the arguments to some of the basic commands.
+    case "${prev}" in
+        *)
+            local objs=$(for i in `ls -d $REPODIR/{td}/* | xargs -n 1 basename`; do echo ${i}; done)
+            COMPREPLY=( $(compgen -W "${objs}" -- ${cur}) )
+            return 0
+            ;;
+        *)
+            ;;
+    esac
+
+    COMPREPLY=($(compgen -W "${opts}" -- ${cur}))  
+    return 0
+}
+complete -F _complete_genie testgenie
+
+
