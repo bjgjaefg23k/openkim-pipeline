@@ -157,7 +157,7 @@ def insert_one_object(kimcode):
         db.obj.insert(info)
     except:
         logger.error("Already have %s", kimcode)
-    
+
 def insert_objs():
     logger.info("Filling with objects")
     leaders = ('te','vt','vm','mo','md','td')
@@ -174,17 +174,17 @@ def insert_one_result(leader, kimcode):
         resultobj = db.obj.insert(info)
     except:
         logger.error("Aready have %s", kimcode)
-        return  
+        return
     try:
         with open(os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,'results.yaml')) as f:
             yaml_docs = yaml.load_all(f)
             for doc in yaml_docs:
                 stuff = doc_to_dict(doc,leader,kimcode)
-                db[leader].insert(stuff)
+                db.data.insert(stuff)
     except:
         logger.info("Could not read document for %s/%s", leader, kimcode)
         stuff = doc_to_dict({}, leader, kimcode)
-        db[leader].insert(stuff)
+        db.data.insert(stuff)
 
 
 def insert_results():
