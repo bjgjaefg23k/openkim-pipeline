@@ -212,8 +212,9 @@ class KIMObject(simplejson.JSONEncoder):
         """ Try to build the thing, by executing ``make`` in its directory """
         if self.makeable:
             with self.in_dir():
-                logger.debug("Attempting to make %r: %r", self.__class__.__name__, self.kim_code)
-                subprocess.check_call('make')
+                with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
+                    logger.debug("Attempting to make %r: %r", self.__class__.__name__, self.kim_code)
+                    subprocess.check_call('make', stdout=log, stderr=log)
         else:
             logger.warning("%r:%r is not makeable", self.__class__.__name__, self.kim_code)
 

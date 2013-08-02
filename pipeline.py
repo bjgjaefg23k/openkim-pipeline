@@ -18,6 +18,7 @@ across this tunnel.
 """
 from subprocess import check_call, CalledProcessError, Popen, PIPE
 from multiprocessing import cpu_count, Process, Lock
+from contextlib import contextmanager
 import sys
 import time
 import simplejson
@@ -183,16 +184,40 @@ class Agent(object):
                 return 1
             return 0
 
+    @contextmanager
+    def in_api_dir(self):
+        cwd = os.getcwd()
+        os.chdir(KIM_API_DIR)
+        logger.debug("moved to dir: {}".format(self.path))
+
+        try:
+            yield
+        except Exception as e:
+            raise e
+        finally:
+            os.chdir(cwd)
+
     def make_all(self):
         self.logger.debug("Building everything...")
-        try:
-            check_call("makekim",shell=True)
-        except CalledProcessError as e:
-            self.logger.error("could not makekim")
+        with self.in_api_dir():
+            try:
+                with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
+                    check_call(["make"], shell=True, stdout=log, stderr=log)
+            except CalledProcessError as e:
+                self.logger.error("could not make kim")
+                raise RuntimeError, "Could not build entire repository"
+            return 0
 
-            raise RuntimeError, "our makekim failed!"
-            return 1
-        return 0
+    def make_api(self):
+        self.logger.debug("Building the API...")
+        with self.in_api_dir():
+            try:
+                with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
+                    check_call(["make", "openkim-api"], shell=True, stdout=log, stderr=log)
+            except CalledProcessError as e:
+                self.logger.error("Could not make KIM API")
+                raise RuntimeError, "Could not make KIM API"
+            return 0
 
 #==================================================================
 # director class for the pipeline
@@ -435,11 +460,18 @@ class Worker(Agent):
                 with buildlock:
                     self.logger.info("Rsyncing from repo %r", jobmsg.job+jobmsg.depends)
                     rsync_tools.worker_read(*jobmsg.job, depends=jobmsg.depends, pending=pending)
-                    self.make_all()
+                    self.make_api()
 
                 runner_kcode, subject_kcode = jobmsg.job
                 runner  = kimobjects.kim_obj(runner_kcode)
                 subject = kimobjects.kim_obj(subject_kcode)
+
+                with buildlock:
+                    for dep in jobmsg.depends:
+                        obj = kimobjects.kim_obj(dep)
+                        obj.make()
+                    runner.make()
+                    subject.make()
 
                 self.logger.info("Running (%r,%r)", runner, subject)
                 comp = compute.Computation(runner, subject, result_code=jobmsg.jobid)

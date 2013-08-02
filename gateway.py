@@ -20,7 +20,7 @@ class Gateway(object):
 
     def connect_to_daemon(self):
         self.bean.connect()
-        self.bean.watch(TUBE_WEB_UPDATES, TUBE_RESULTS)
+        self.bean.watch(TUBE_WEB_UPDATES, TUBE_RESULTS, TUBE_ERRORS)
 
     def process_messages(self):
         while 1:
