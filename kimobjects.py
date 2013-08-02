@@ -208,12 +208,17 @@ class KIMObject(simplejson.JSONEncoder):
         finally:
             os.chdir(cwd)
 
+    @property
+    def drivers(self):
+        return ()
+
     def make(self):
         """ Try to build the thing, by executing ``make`` in its directory """
         if self.makeable:
             with self.in_dir():
-                logger.debug("Attempting to make %r: %r", self.__class__.__name__, self.kim_code)
-                subprocess.check_call('make')
+                with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
+                    logger.debug("Attempting to make %r: %r", self.__class__.__name__, self.kim_code)
+                    subprocess.check_call('make', stdout=log, stderr=log)
         else:
             logger.warning("%r:%r is not makeable", self.__class__.__name__, self.kim_code)
 
@@ -376,6 +381,9 @@ class Model(Subject):
         """ Return a generator of the valid matching tests that match this model """
         return ( test for test in Test.all() if kimapi.valid_match(test,self) )
 
+    @property
+    def drivers(self):
+        return () if not self.model_driver else [self.model_driver]
 
 #=============================================
 # Runner Objs
@@ -436,6 +444,9 @@ class Test(Runner):
         """ Returns a generator of valid matched models """
         return self.subjects
 
+    @property
+    def drivers(self):
+        return self.test_drivers
 
 #------------------------------------------
 # VerificationTest(Check)

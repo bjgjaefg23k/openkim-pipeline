@@ -175,5 +175,6 @@ class PipelineRuntimeError(Exception):
         else:
             return '%s: %s\n\n%s' % (self._e.__class__.__name__, str(self._e), self.extra)
 
-
+    def __repr__(self):
+        return self.__str__()
 
