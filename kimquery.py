@@ -43,7 +43,6 @@ def query_mongo(query, url=""):
     request  = urllib2.Request(url, query, header)
     response = urllib2.urlopen(request)
     answer = response.read()
-    print answer
     response.close()
 
     if not answer:

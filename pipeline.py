@@ -18,6 +18,7 @@ across this tunnel.
 """
 from subprocess import check_call, CalledProcessError, Popen, PIPE
 from multiprocessing import cpu_count, Process, Lock
+from multiprocessing.managers import BaseManager
 from contextlib import contextmanager
 import sys
 import time
@@ -34,8 +35,6 @@ import kimapi
 
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("pipeline")
-
-buildlock = Lock()
 
 def getboxinfo():
     """ 
@@ -118,13 +117,33 @@ def pingpongHandler(header, message, agent):
     if header == "ping":
         agent.comm.send_msg("reply", [agent.uuid, agent.data])
 
+class BuilderBot(object):
+    def __init__(self):
+        self.mod_buildlocks = Lock()
+        self.buildlocks = {}
+
+    def lock_build(self, kimobj):
+        with self.mod_buildlocks:
+            if not self.buildlocks.get(kimobj.kim_code, None):
+                self.buildlocks[kimobj.kim_code] = Lock()
+            with self.buildlocks[kimobj.kim_code]:
+                kimobj.make()
+
+class BuilderManager(BaseManager):
+    pass
+
+BuilderManager.register('BuilderBot', BuilderBot, exposed = ['lock_build'])
+
 #==================================================================
 # Agent is the base class for Director, Worker, Site
 # handles basic networking and message responding (so it is not duplicated)
 #==================================================================
 class Agent(object):
-    def __init__(self, name='worker', num=0):
+    def __init__(self, name='worker', num=0, builder=None, rsynclock=None):
         self.boxinfo  = getboxinfo()
+
+        self.builder = builder
+        self.rsynclock = rsynclock
 
         self.job = None
         self.name = name
@@ -164,7 +183,7 @@ class Agent(object):
     def job_message(self, jobmsg, errors=None, tube=TUBE_RESULTS):
         """ Send back a job message """
         jobmsg.results = None
-        jobmsg.errors = "%r" % errors
+        jobmsg.errors = "%s" % errors
         jobmsg.update(self.boxinfo)
 
         if len(jobmsg.errors) > PIPELINE_MSGSIZE:
@@ -188,8 +207,6 @@ class Agent(object):
     def in_api_dir(self):
         cwd = os.getcwd()
         os.chdir(KIM_API_DIR)
-        logger.debug("moved to dir: {}".format(self.path))
-
         try:
             yield
         except Exception as e:
@@ -219,6 +236,7 @@ class Agent(object):
                 raise RuntimeError, "Could not make KIM API"
             return 0
 
+
 #==================================================================
 # director class for the pipeline
 #==================================================================
@@ -226,8 +244,8 @@ class Director(Agent):
     """ The Director object, knows to listen to incoming jobs, computes dependencies
     and passes them along to workers
     """
-    def __init__(self, num=0):
-        super(Director, self).__init__(name="director", num=num)
+    def __init__(self, num=0, *args, **kwargs):
+        super(Director, self).__init__(name="director", num=num, *args, **kwargs)
 
     def run(self):
         """
@@ -410,8 +428,8 @@ class Director(Agent):
 #==================================================================
 class Worker(Agent):
     """ Represents a worker, knows how to do jobs he is given, create results and rsync them back """
-    def __init__(self, num=0):
-        super(Worker, self).__init__(name='worker', num=num)
+    def __init__(self, num=0, *args, **kwargs):
+        super(Worker, self).__init__(name='worker', num=num, *args, **kwargs)
 
     def run(self):
         """ Start to listen, tunnels should be open and ready """
@@ -457,21 +475,21 @@ class Worker(Agent):
 
             try:
                 # check to see if this is a verifier or an actual test
-                with buildlock:
+                with self.rsynclock:
                     self.logger.info("Rsyncing from repo %r", jobmsg.job+jobmsg.depends)
                     rsync_tools.worker_read(*jobmsg.job, depends=jobmsg.depends, pending=pending)
-                    self.make_api()
 
                 runner_kcode, subject_kcode = jobmsg.job
                 runner  = kimobjects.kim_obj(runner_kcode)
                 subject = kimobjects.kim_obj(subject_kcode)
 
-                with buildlock:
-                    for dep in jobmsg.depends:
-                        obj = kimobjects.kim_obj(dep)
-                        obj.make()
-                    runner.make()
-                    subject.make()
+                for driver in runner.drivers:
+                    self.builder.lock_build(driver)
+                self.builder.lock_build(runner)
+
+                for driver in subject.drivers:
+                    self.builder.lock_build(driver)
+                self.builder.lock_build(subject)
 
                 self.logger.info("Running (%r,%r)", runner, subject)
                 comp = compute.Computation(runner, subject, result_code=jobmsg.jobid)
@@ -553,6 +571,11 @@ if __name__ == "__main__":
 
     network.open_ports(BEAN_PORT, PORT_RX, PORT_TX, GLOBAL_USER, GLOBAL_HOST, GLOBAL_IP)
 
+    manager = BuilderManager()
+    manager.start()
+    builder = manager.BuilderBot()
+    rsynclock = Lock()
+
     if len(sys.argv) > 1:
         # directors are not multithreaded for build safety
         if sys.argv[1] == "director":
@@ -564,10 +587,14 @@ if __name__ == "__main__":
         elif sys.argv[1] == "worker":
             thrds = cpu_count()
             for i in range(thrds):
-                pipe[i] = Worker(num=i)
+                pipe[i] = Worker(num=i, builder=builder, rsynclock=rsynclock)
                 procs[i] = Process(target=Worker.run, args=(pipe[i],), name='worker-%i'%i)
                 #procs[i].daemon = True
                 procs[i].start()
+
+                if i == 0:
+                    logger.info("Building KIM API as worker 0")
+                    pipe[i].make_api()
 
             try:
                 while True:
