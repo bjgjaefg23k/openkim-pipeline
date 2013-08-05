@@ -42,6 +42,7 @@ template_environment = jinja2.Environment(
         variable_end_string='>@',
         comment_start_string='@#',
         comment_end_string='#@',
+        undefined=jinja2.StrictUndefined,
         )
 
 template_environment.filters['json'] = partial(simplejson.dumps,indent=4)
