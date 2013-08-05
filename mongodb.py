@@ -1,6 +1,7 @@
 import pymongo
 import os, re
 import yaml
+import datetime
 from ConfigParser import ConfigParser
 
 from config import *
@@ -48,6 +49,7 @@ def kimcode_to_dict(kimcode):
             "path" : os.path.join(leader.lower(),kimcode),
             "approved" : True,
             '_id' : kimcode,
+            "created_on": datetime.datetime.utcnow(),
             }
     if foo['type'] in ('te','mo','md','vt','vm'):
         foo['makeable'] = True
@@ -83,7 +85,9 @@ def uuid_to_dict(leader,uuid):
     foo = {'uuid': uuid ,
             'path': os.path.join(leader.lower(),uuid),
             'type': leader,
-            '_id' : uuid }
+            '_id' : uuid ,
+            "created_on": datetime.datetime.utcnow(),
+            }
     spec = configtojson(os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,'kimspec.ini'))
 
     #Extend runner and subject
@@ -114,6 +118,7 @@ def uuid_to_dict(leader,uuid):
 
     foo.update(spec)
     return foo
+
 
 def doc_to_dict(doc,leader,uuid):
     foo = doc
@@ -197,4 +202,24 @@ def insert_results():
 def insert_all():
     insert_objs()
     insert_results()
+
+
+def create_indices():
+    """ Create the useful indices """
+    db.obj.create_index("uuid")
+    db.obj.create_index("kimcode")
+    db.obj.create_index("type")
+    db.obj.create_index("shortcode")
+    db.obj.create_index("version")
+    db.obj.create_index("driver.kimcode")
+    db.obj.create_index("created_on")
+
+    db.data.create_index("meta.type")
+    db.data.create_index("meta.created_on")
+    db.data.create_index("meta.runner.kimcode")
+    db.data.create_index("meta.subject.kimcode")
+    db.data.create_index("property")
+    db.data.create_index("kim-template-tags")
+    db.data.create_index("uuid")
+
 
