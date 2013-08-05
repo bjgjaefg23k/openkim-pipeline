@@ -1,23 +1,29 @@
 #!/bin/bash
 
-_get_all(){
+_getall(){
     . /pipeline/environment
     folders=$1
-    objs=()
-    for folder in ${folders}; 
-    do
-        #objs+=$(for i in `ls -d $REPODIR/${folder}/* | xargs -n 1 basename`; do echo ${i}; done)
-        objs+=$(ls -d $REPODIR/${folder}/* | xargs -n 1 basename)
+    part=$2
+    if [ -n "$part" ]; then
+        here=$(find ./ -maxdepth 1 -name "$part*" -printf "%f ")
+        if [ -n "$here" ]; then
+            echo "$here"
+            exit 0
+        fi
+    fi
+    
+    for folder in ${folders}; do
+        if [ ! -n "$part" ]; then
+            temp=$(find $REPODIR/$folder/* -maxdepth 1 -type d -printf "%f ")
+            echo $temp
+        else
+            temp=$(find $REPODIR/$folder/* -maxdepth 1 -type d -name "$part*" -printf "%f ")
+            echo $temp
+        fi
     done
-    echo $objs
 }
 
-_get_all(){
-    . /pipeline/environment
-    for i in `ls -d $REPODIR/${folder}/* | xargs -n 1 basename`; do echo ${i}; done
-}
-
-_pipeline() 
+_pipeline_complete() 
 {
     . /pipeline/environment
     local cur prev opts base
@@ -28,13 +34,10 @@ _pipeline()
     # The basic options we'll complete.
     opts="director worker site"
 
-    if [ ! -n "$cur" ]; then
-        cur="blank"
-    fi
     # Complete the arguments to some of the basic commands.
     case "${prev}" in
         site)
-            local objs=$(for i in `find $REPODIR/{te,td,mo,md}/* -type d -name $cur* -printf "%f\n"`; do echo ${i}; done)
+            local objs=$(_getall "te td mo md" "$cur") 
             COMPREPLY=( $(compgen -W "${objs}" -- ${cur}) )
             return 0
             ;;
@@ -45,24 +48,20 @@ _pipeline()
     COMPREPLY=($(compgen -W "${opts}" -- ${cur}))  
     return 0
 }
-complete -F _pipeline pipeline
 
-
-_complete_all() 
+_pipeline_complete_folders() 
 {
     . /pipeline/environment
     local cur prev opts base
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
+    FOLDERS=$1
 
-    if [ ! -n "$cur" ]; then
-        cur="blank"
-    fi
     # Complete the arguments to some of the basic commands.
     case "${prev}" in
         *)
-            local objs=$(for i in `find $REPODIR/{te,td,mo,md}/* -type d -name $cur* -printf "%f\n"`; do echo ${i}; done)
+            local objs=$(_getall "$FOLDERS" "$cur")
             COMPREPLY=( $(compgen -W "${objs}" -- ${cur}) )
             return 0
             ;;
@@ -73,36 +72,22 @@ _complete_all()
     COMPREPLY=($(compgen -W "${opts}" -- ${cur}))  
     return 0
 }
-complete -F _complete_all pipeline_runpair
-complete -F _complete_all pipeline_runmatches
-complete -F _complete_all pipeline_verify
-complete -F _complete_all pipeline_pullsingle
 
-_complete_genie() 
-{
-    . /pipeline/environment
-    local cur prev opts base
-    COMPREPLY=()
-    cur="${COMP_WORDS[COMP_CWORD]}"
-    prev="${COMP_WORDS[COMP_CWORD-1]}"
-
-    if [ ! -n "$cur" ]; then
-        cur="blank"
-    fi
-    # Complete the arguments to some of the basic commands.
-    case "${prev}" in
-        *)
-            local objs=$(for i in `find $REPODIR/td/* -type d -name $cur* -printf "%f\n"`; do echo ${i}; done)
-            COMPREPLY=( $(compgen -W "${objs}" -- ${cur}) )
-            return 0
-            ;;
-        *)
-            ;;
-    esac
-
-    COMPREPLY=($(compgen -W "${opts}" -- ${cur}))  
-    return 0
+_complete_pipeline(){
+    _pipeline_complete
 }
-complete -F _complete_genie testgenie
 
+_complete_pipeline_all(){
+    _pipeline_complete_folders "te td mo md"
+}
 
+_complete_pipeline_td(){
+    _pipeline_complete_folders "td"
+}
+
+complete -F _complete_pipeline     pipeline
+complete -F _complete_pipeline_all pipeline_runpair
+complete -F _complete_pipeline_all pipeline_runmatches
+complete -F _complete_pipeline_all pipeline_verify
+complete -F _complete_pipeline_all pipeline_pullsingle
+complete -F _complete_pipeline_td  testgenie
