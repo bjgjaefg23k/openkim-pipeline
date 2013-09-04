@@ -48,6 +48,25 @@ BADKEYS = { "kimspec", "profiling" }
 def rmbadkeys(dd):
     return { k:v for k,v in dd.iteritems() if k not in BADKEYS }
 
+def flatten(o):
+    if isinstance(o, dict):
+        out = {}
+        for key, value in o.iteritems():
+            c = flatten(value)
+            if isinstance(c, dict):
+                out.update({key + "." + subkey: subval for subkey, subval in c.iteritems()})
+            else:
+                out.update({key: c})
+        return out
+
+    elif hasattr(o, "__iter__"):
+        ll = [ flatten(item) for item in o ]
+        if len(ll) == 1:
+            return ll[0]
+        return ll
+    else:
+        return o
+
 def kimcode_to_dict(kimcode):
     name,leader,num,version = parse_kim_code(kimcode)
     leader = leader.lower()
@@ -58,7 +77,8 @@ def kimcode_to_dict(kimcode):
             "path" : os.path.join(leader.lower(),kimcode),
             "approved" : True,
             '_id' : kimcode,
-            "created_on": datetime.datetime.utcnow(),
+            "inserted_on": str(datetime.datetime.utcnow()),
+            "latest": True,
             }
     if foo['type'] in ('te','mo','md','vt','vm'):
         foo['makeable'] = True
@@ -75,12 +95,15 @@ def kimcode_to_dict(kimcode):
         try:
             specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,"kimspec.ini")
             spec = config_yaml(specpath)
+            spec.setdefault("created_on", str(datetime.datetime.fromtimestamp(os.path.getctime(specpath))))
         except:
             specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,"kimspec.yaml")
             spec = config_yaml(specpath)
+            spec.setdefault("created_on", str(datetime.datetime.fromtimestamp(os.path.getctime(specpath))))
     except IOError as e:
         specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,"kimspec.ini")
         spec = config_ini(specpath)
+        spec.setdefault("created_on", str(datetime.datetime.fromtimestamp(os.path.getctime(specpath))))
 
     if foo['type'] == 'te':
         try:
@@ -105,16 +128,24 @@ def uuid_to_dict(leader,uuid):
             'path': os.path.join(leader.lower(),uuid),
             'type': leader,
             '_id' : uuid ,
-            "created_on": datetime.datetime.utcnow(),
+            "inserted_on": str(datetime.datetime.utcnow()),
+            "latest": True,
             }
 
     try:
         try:
-            spec = config_yaml(os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,'kimspec.ini'))
+            specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,"kimspec.ini")
+            spec = config_yaml(specpath)
+            spec.setdefault("created_on", str(datetime.datetime.fromtimestamp(os.path.getctime(specpath))))
         except:
-            spec = config_yaml(os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,'kimspec.yaml'))
+            specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,"kimspec.yaml")
+            spec = config_yaml(specpath)
+            spec.setdefault("created_on", str(datetime.datetime.fromtimestamp(os.path.getctime(specpath))))
     except IOError as e:
-        spec = config_ini(os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,'kimspec.ini'))
+        specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,"kimspec.ini")
+        spec = config_ini(specpath)
+        spec.setdefault("created_on", str(datetime.datetime.fromtimestamp(os.path.getctime(specpath))))
+
 
     #Extend runner and subject
     runner = None
@@ -181,6 +212,14 @@ def doc_to_dict(doc,leader,uuid):
     foo['meta'] = meta
     return foo
 
+def deprecate_similar_objects(dbname, info, keys):
+    tinfo = flatten(info)
+    query = { key:info[key] for key in keys }
+    query.update({'created_on': {"$lt": info['created_on']}})
+    update = { "latest": False }
+    fields = { "latest": 1 }
+    db[dbname].find_and_modify(query=query, fields=fields, update=update, upsert=True)
+
 def insert_one_object(kimcode):
     logger.info("Inserting object %s", kimcode)
     info = kimcode_to_dict(kimcode)
@@ -189,17 +228,11 @@ def insert_one_object(kimcode):
     except:
         logger.error("Already have %s", kimcode)
 
-def insert_objs():
-    logger.info("Filling with objects")
-    leaders = ('te','vt','vm','mo','md','td')
-    for leader in leaders:
-        for i,folder in enumerate(os.listdir(os.path.join(RSYNC_LOCAL_ROOT,leader))):
-            if folder.startswith("Make"):
-                continue
-            insert_one_object(folder)
+    deprecate_similar_objects('obj', info, ['shortcode'])
 
 def insert_one_result(leader, kimcode):
     logger.info("Inserting result %s ", kimcode)
+    stuff = None
     info = uuid_to_dict(leader, kimcode)
     try:
         resultobj = db.obj.insert(info)
@@ -217,6 +250,8 @@ def insert_one_result(leader, kimcode):
         stuff = doc_to_dict({}, leader, kimcode)
         db.data.insert(stuff)
 
+    deprecate_similar_objects('obj', info, ['runner.kimcode', 'subject.kimcode'])
+    deprecate_similar_objects('data', stuff, ['meta.runner.kimcode', 'meta.subject.kimcode'])
 
 def insert_one_reference_data(leader, kimcode):
     logger.info("Inserting reference data %s ", kimcode)
@@ -237,6 +272,14 @@ def insert_one_reference_data(leader, kimcode):
         stuff = doc_to_dict({}, leader, kimcode)
         db.data.insert(stuff)
 
+def insert_objs():
+    logger.info("Filling with objects")
+    leaders = ('te','vt','vm','mo','md','td')
+    for leader in leaders:
+        for i,folder in enumerate(os.listdir(os.path.join(RSYNC_LOCAL_ROOT,leader))):
+            if folder.startswith("Make"):
+                continue
+            insert_one_object(folder)
 
 def insert_results():
     logger.info("Filling with test results")
