@@ -44,7 +44,7 @@ def drop_tables():
         db['job'].drop()
         db['agent'].drop()
 
-BADKEYS = { "kimspec", "profiling" }
+BADKEYS = { "kimspec", "profiling", "inserted_on", "latest" }
 def rmbadkeys(dd):
     return { k:v for k,v in dd.iteritems() if k not in BADKEYS }
 
@@ -61,8 +61,6 @@ def flatten(o):
 
     elif hasattr(o, "__iter__"):
         ll = [ flatten(item) for item in o ]
-        if len(ll) == 1:
-            return ll[0]
         return ll
     else:
         return o
@@ -134,15 +132,15 @@ def uuid_to_dict(leader,uuid):
 
     try:
         try:
-            specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,"kimspec.ini")
+            specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,"kimspec.ini")
             spec = config_yaml(specpath)
             spec.setdefault("created_on", str(datetime.datetime.fromtimestamp(os.path.getctime(specpath))))
         except:
-            specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,"kimspec.yaml")
+            specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,"kimspec.yaml")
             spec = config_yaml(specpath)
             spec.setdefault("created_on", str(datetime.datetime.fromtimestamp(os.path.getctime(specpath))))
     except IOError as e:
-        specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,"kimspec.ini")
+        specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,"kimspec.ini")
         spec = config_ini(specpath)
         spec.setdefault("created_on", str(datetime.datetime.fromtimestamp(os.path.getctime(specpath))))
 
@@ -210,25 +208,28 @@ def doc_to_dict(doc,leader,uuid):
     except:
         pass
     foo['meta'] = meta
+    foo['created_on'] = result_obj_doc['created_on']
+    foo['inserted_on'] = result_obj_doc['inserted_on']
+    foo['latest'] = True
     return foo
 
 def deprecate_similar_objects(dbname, info, keys):
     tinfo = flatten(info)
-    query = { key:info[key] for key in keys }
-    query.update({'created_on': {"$lt": info['created_on']}})
-    update = { "latest": False }
-    fields = { "latest": 1 }
-    db[dbname].find_and_modify(query=query, fields=fields, update=update, upsert=True)
+    query = { key:tinfo[key] for key in keys }
+    query.update({'created_on': {"$lt": tinfo['created_on']}})
+    update = { "$set": {"latest": False } }
+    status = db[dbname].update(spec=query, document=update, multi=True)
+    if status['n'] > 0:
+        logger.info("Updated %i existing documents to deprecated" % status['n'])
 
 def insert_one_object(kimcode):
     logger.info("Inserting object %s", kimcode)
     info = kimcode_to_dict(kimcode)
     try:
         db.obj.insert(info)
+        deprecate_similar_objects('obj', info, ['shortcode'])
     except:
         logger.error("Already have %s", kimcode)
-
-    deprecate_similar_objects('obj', info, ['shortcode'])
 
 def insert_one_result(leader, kimcode):
     logger.info("Inserting result %s ", kimcode)
@@ -236,6 +237,7 @@ def insert_one_result(leader, kimcode):
     info = uuid_to_dict(leader, kimcode)
     try:
         resultobj = db.obj.insert(info)
+        deprecate_similar_objects('obj', info, ['runner.kimcode', 'subject.kimcode'])
     except:
         logger.error("Aready have %s", kimcode)
         return
@@ -245,13 +247,12 @@ def insert_one_result(leader, kimcode):
             for doc in yaml_docs:
                 stuff = doc_to_dict(doc,leader,kimcode)
                 db.data.insert(stuff)
+        deprecate_similar_objects('data', stuff, ['meta.runner.kimcode', 'meta.subject.kimcode'])
     except:
         logger.info("Could not read document for %s/%s", leader, kimcode)
         stuff = doc_to_dict({}, leader, kimcode)
         db.data.insert(stuff)
-
-    deprecate_similar_objects('obj', info, ['runner.kimcode', 'subject.kimcode'])
-    deprecate_similar_objects('data', stuff, ['meta.runner.kimcode', 'meta.subject.kimcode'])
+        deprecate_similar_objects('data', stuff, ['meta.runner.kimcode', 'meta.subject.kimcode'])
 
 def insert_one_reference_data(leader, kimcode):
     logger.info("Inserting reference data %s ", kimcode)
