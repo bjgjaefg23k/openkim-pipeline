@@ -119,7 +119,7 @@ def convert_cfunits(from_value, from_unit, wanted_unit=None, suppress_unit=False
     return out
 
 #Set default behavior
-convert = convert_udunits2
+convert = convert_units
 
 def convert_list( x , from_unit, to_unit=None, convert=convert):
     """ Thread conversion over a list, or list of lists """

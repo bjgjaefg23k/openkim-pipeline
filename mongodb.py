@@ -11,7 +11,7 @@ logger = logging.getLogger('pipeline').getChild('mongodb')
 client = pymongo.MongoClient()
 db = client[MONGODB]
 
-def configtojson(flname):
+def config_ini(flname):
     c = ConfigParser()
     c.optionxform = str
     c.read(flname)
@@ -19,6 +19,15 @@ def configtojson(flname):
     for section in c.sections():
         data[section] = dict(c.items(section))
     return data
+
+def config_yaml(flname):
+    with open(flname) as f:
+        doc = yaml.load(f)
+        if isinstance(doc, dict) and not doc.has_key('kimspec'):
+            out = {}
+            out['kimspec'] = doc
+            return out
+        return doc
 
 def parse_kim_code(kim_code):
     RE_KIMID = r"(?:([_a-zA-Z][_a-zA-Z0-9]*?)__)?([A-Z]{2})_([0-9]{12})(?:_([0-9]{3}))?"
@@ -61,18 +70,28 @@ def kimcode_to_dict(kimcode):
         foo['driver'] = True
     else:
         foo['driver'] = False
-    specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,"kimspec.ini")
-    spec = configtojson(specpath)
+
+    try:
+        try:
+            specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,"kimspec.ini")
+            spec = config_yaml(specpath)
+        except:
+            specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,"kimspec.yaml")
+            spec = config_yaml(specpath)
+    except IOError as e:
+        specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,"kimspec.ini")
+        spec = config_ini(specpath)
+
     if foo['type'] == 'te':
         try:
-            testresult = spec['kimspec'].get('TEST_DRIVER_NAME')
+            testresult = spec.get('test-driver')
             if testresult:
                 foo['driver'] = rmbadkeys(kimcode_to_dict(testresult))
         except:
             pass
     if foo['type'] == 'mo':
         try:
-            modeldriver = spec['kimspec'].get('MODEL_DRIVER_NAME')
+            modeldriver = spec.get('model-driver')
             if modeldriver:
                 foo['driver'] = rmbadkeys(kimcode_to_dict(modeldriver))
         except:
@@ -88,7 +107,14 @@ def uuid_to_dict(leader,uuid):
             '_id' : uuid ,
             "created_on": datetime.datetime.utcnow(),
             }
-    spec = configtojson(os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,'kimspec.ini'))
+
+    try:
+        try:
+            spec = config_yaml(os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,'kimspec.ini'))
+        except:
+            spec = config_yaml(os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,'kimspec.yaml'))
+    except IOError as e:
+        spec = config_ini(os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,'kimspec.ini'))
 
     #Extend runner and subject
     runner = None
@@ -192,12 +218,40 @@ def insert_one_result(leader, kimcode):
         db.data.insert(stuff)
 
 
+def insert_one_reference_data(leader, kimcode):
+    logger.info("Inserting reference data %s ", kimcode)
+    info = uuid_to_dict(leader, kimcode)
+    try:
+        resultobj = db.obj.insert(info)
+    except:
+        logger.error("Aready have %s", kimcode)
+        return
+    try:
+        with open(os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,kimcode+'.yaml')) as f:
+            yaml_docs = yaml.load_all(f)
+            for doc in yaml_docs:
+                stuff = doc_to_dict(doc,leader,kimcode)
+                db.data.insert(stuff)
+    except:
+        logger.info("Could not read document for %s/%s", leader, kimcode)
+        stuff = doc_to_dict({}, leader, kimcode)
+        db.data.insert(stuff)
+
+
 def insert_results():
     logger.info("Filling with test results")
     leaders = ('tr','vr','er')
     for leader in leaders:
         for i, folder in enumerate(os.listdir(os.path.join(RSYNC_LOCAL_ROOT,leader))):
             insert_one_result(leader, folder)
+
+def insert_reference_data():
+    logger.info("Filling with reference data")
+    leaders = ('rd',)
+    for leader in leaders:
+        for i, folder in enumerate(os.listdir(os.path.join(RSYNC_LOCAL_ROOT,leader))):
+            insert_one_reference_data(leader, folder)
+
 
 def insert_all():
     insert_objs()
@@ -206,20 +260,20 @@ def insert_all():
 
 def create_indices():
     """ Create the useful indices """
-    db.obj.create_index("uuid")
-    db.obj.create_index("kimcode")
-    db.obj.create_index("type")
-    db.obj.create_index("shortcode")
-    db.obj.create_index("version")
-    db.obj.create_index("driver.kimcode")
-    db.obj.create_index("created_on")
+    db.obj.ensure_index("uuid")
+    db.obj.ensure_index("kimcode")
+    db.obj.ensure_index("type")
+    db.obj.ensure_index("shortcode")
+    db.obj.ensure_index("version")
+    db.obj.ensure_index("driver.kimcode")
+    db.obj.ensure_index("ensured_on")
 
-    db.data.create_index("meta.type")
-    db.data.create_index("meta.created_on")
-    db.data.create_index("meta.runner.kimcode")
-    db.data.create_index("meta.subject.kimcode")
-    db.data.create_index("property")
-    db.data.create_index("kim-template-tags")
-    db.data.create_index("uuid")
+    db.data.ensure_index("meta.type")
+    db.data.ensure_index("meta.ensured_on")
+    db.data.ensure_index("meta.runner.kimcode")
+    db.data.ensure_index("meta.subject.kimcode")
+    db.data.ensure_index("property")
+    db.data.ensure_index("kim-template-tags")
+    db.data.ensure_index("uuid")
 
 

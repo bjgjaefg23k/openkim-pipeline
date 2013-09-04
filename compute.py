@@ -235,21 +235,18 @@ class Computation(object):
             self.full_result_path = os.path.join(KIM_REPOSITORY_DIR, self.result_path)
 
         # create the kimspec.ini file for the test results
-        logger.debug("Create kimspec.ini file")
-        config = ConfigParser.ConfigParser()
-        config.optionxform = str
-        config.add_section('kimspec')
+        logger.debug("Create %s file" % CONFIG_FILE)
+        config = {}
+        config['kimspec'] = {}
         if self.result_code:
-            config.set('kimspec','UUID',self.result_code)
-        config.set('kimspec',self.runner.runner_name,self.runner.kim_code)
-        config.set('kimspec',self.subject.subject_name,self.subject.kim_code)
+            config['kimspec']['UUID'] = self.result_code
+        config['kimspec'][self.runner.runner_name] = self.runner.kim_code
+        config['kimspec'][self.subject.subject_name] = self.subject.kim_code
         if self.info_dict:
-            config.add_section('profiling')
-            for key,value in self.info_dict.iteritems():
-                config.set('profiling',key,value)
+            config['profiling'] = self.info_dict
 
         with self.runner_temp.in_dir(), open(os.path.join(OUTPUT_DIR,CONFIG_FILE),'w') as f:
-            config.write(f)
+            yaml.dump(config, f)
 
         logger.debug("Result path = %s", self.full_result_path)
         outputdir = os.path.join(self.runner_temp.path,OUTPUT_DIR)
