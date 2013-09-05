@@ -7,6 +7,8 @@ logger = logging.getLogger("pipeline").getChild("gateway")
 import simplejson, re, time, os, time
 from mongodb import db, insert_one_result
 from threading import Thread
+from datetime import datetime
+from bson.json_util import dumps
 
 regex = r"(?:([_a-zA-Z][_a-zA-Z0-9]*?)__)?([A-Z]{2})_([0-9]{10,12})(?:_([0-9]{3}))?"
 RSYNC_FLAGS = "-rtpgoDOL -uzRhEc --progress --stats"
@@ -89,9 +91,15 @@ def save_job(tube, dic):
         db.job.update({"jobid": dic['jobid']}, {"$set": info})
     return trimjob(info)
 
-def save_log(log):
-    db.log.insert({"log": log})
-    return log
+def save_log(full):
+    log = full.get('message', None)
+    uuid = full.get('uuid', None)
+    cid = full.get('cid', None)
+
+    trimmed = {"log": log, 'uuid': uuid, 'cid': cid, 'date': str(datetime.utcnow())}
+    db.log.insert(trimmed)
+    trimmed.pop('_id')
+    return trimmed
 
 def save_agent(uuid, obj):
     if not db.agent.find_one({"uuid": uuid}):
@@ -132,9 +140,8 @@ class WebCommunicator(network.Communicator):
 
                 # if it comes in on the 'logs' tube, send to the deque
                 if message[0] == "logs":
-                    templog = message[1]['message']
-                    trimmed = save_log(templog)
-                    self.sock_logs.send(trimmed)
+                    trimmed = save_log(message[1])
+                    self.sock_logs.send(dumps(trimmed))
 
                 # if it is a reply to a request, treat it as
                 # obj[1] is uuid | obj[2] is the message

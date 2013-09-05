@@ -151,6 +151,7 @@ class Agent(object):
         self.uuid = self.boxinfo['uuid']+":"+str(self.num)
         self.logger = logger.getChild("%s-%i" % (self.name, num))
         self.data = {"job": self.job, "data": self.boxinfo}
+        self.boxinfo['cid'] = self.num
 
     def connect(self):
         # start up the 2-way comm too
