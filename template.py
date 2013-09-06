@@ -53,7 +53,8 @@ template_environment.filters['json'] = partial(simplejson.dumps,indent=4)
 def data_from_match(match,query_version=kimquery.query_mongo):
     """ Get the data from a re match """
     groups = match.groups()
-    part, query = groups
+    part, queryraw = groups
+    query = simplejson.loads(queryraw)
     try:
         data = query_version(query)
     except PipelineQueryError as e:

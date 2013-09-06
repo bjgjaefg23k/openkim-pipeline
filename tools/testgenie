@@ -11,7 +11,7 @@ Test generation takes place in steps.
 
   1. Grab the dictionary defined in a line of the test_generator.json file
   2. Add all global variables, if any defined.
-  3. Process the kimspec.ini file as a jinja template with those variables defined.
+  3. Process the kimspec.yaml file as a jinja template with those variables defined.
   4. Add all of the variables defined in the kimspec to the local dictionary
   5. Set the folder name from the TEST_NAME attribute in the kimspec file
   6. For each remaining file, first check if a:
@@ -58,6 +58,7 @@ import random
 import json
 import kimobjects
 import sys
+import yaml
 
 TEDIR = os.path.join(KIM_REPOSITORY_DIR,"te")
 
@@ -82,22 +83,20 @@ def maketest(folder, variable_dict, dest=TEDIR,dry_run=False):
     """ Make a test given the input folder """
     tempdir = tempfile.mkdtemp()
     # First parse the kimspec file
-    with open(os.path.join(folder,'kimspec.ini')) as f:
+    with open(os.path.join(folder, CONFIG_FILE)) as f:
         kimspec_template = jinja2.Template(f.read())
         kimspec = kimspec_template.render(**variable_dict)
-    tmp_kimspec = os.path.join(tempdir,'kimspec.ini')
+    tmp_kimspec = os.path.join(tempdir, CONFIG_FILE)
     with open(tmp_kimspec,'w') as f:
         f.write(kimspec)
 
     #extend variable_dict with everything defined in kimspec
-    config = ConfigParser.ConfigParser()
-    config.optionxform = str
-    config.read(tmp_kimspec)
-    for section in config.sections():
-        variable_dict.update(config.items(section))
+    with open(tmp_kimspec) as f:
+        kimspeckeys = yaml.load(f)
+        variable_dict.update({'kimspec': kimspeckeys})
 
     # test name from kimspec
-    test_name = variable_dict['TEST_NAME']
+    test_name = variable_dict['kimspec']['extended-id']
 
     #make tmp directory
     tmp_test_dir = os.path.join(tempdir, test_name)

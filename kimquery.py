@@ -35,12 +35,11 @@ def query_datomic(querydata, queryrules="", keys=None):
 
 def query_mongo(query, url=""):
     # set up the globals for how to interact with the website
-    url = url or 'http://query.openkim.org/api'
+    url = url or 'https://query.openkim.org/api'
     user_agent = "OpenKIM Pipeline (http://pipeline.openkim.org/)"
     header = {'User-Agent' : user_agent, "Content-type": "application/x-www-form-urlencoded"}
-
-    # encode, send, and read the response
-    request  = urllib2.Request(url, query, header)
+    data = urllib.urlencode( dict( (key,simplejson.dumps(val)) for (key,val) in query.iteritems() ) )
+    request  = urllib2.Request(url, data, header)
     response = urllib2.urlopen(request)
     answer = response.read()
     response.close()

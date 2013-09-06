@@ -592,7 +592,7 @@ if __name__ == "__main__":
 
                 if i == 0:
                     logger.info("Building KIM API as worker 0")
-                    pipe[i].make_api()
+                    #pipe[i].make_api()
 
                 procs[i] = Process(target=Worker.run, args=(pipe[i],), name='worker-%i'%i)
                 #procs[i].daemon = True
