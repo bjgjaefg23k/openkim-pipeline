@@ -11,22 +11,10 @@ logger = logging.getLogger('pipeline').getChild('mongodb')
 client = pymongo.MongoClient()
 db = client[MONGODB]
 
-def config_ini(flname):
-    c = ConfigParser()
-    c.optionxform = str
-    c.read(flname)
-    data = {}
-    for section in c.sections():
-        data[section] = dict(c.items(section))
-    return data
-
 def config_yaml(flname):
     with open(flname) as f:
         doc = yaml.load(f)
-        if isinstance(doc, dict) and not doc.has_key('kimspec'):
-            out = {}
-            out['kimspec'] = doc
-            return out
+        doc.setdefault("created_on", str(datetime.datetime.fromtimestamp(os.path.getctime(flname))))
         return doc
 
 def parse_kim_code(kim_code):
@@ -37,9 +25,7 @@ def drop_tables():
     check = raw_input("Are you sure? [y/n] ")
     if check == "y":
         db['obj'].drop()
-        db['tr'].drop()
-        db['vr'].drop()
-        db['er'].drop()
+        db['data'].drop()
         db['log'].drop()
         db['job'].drop()
         db['agent'].drop()
@@ -89,19 +75,8 @@ def kimcode_to_dict(kimcode):
     else:
         foo['driver'] = False
 
-    try:
-        try:
-            specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,"kimspec.ini")
-            spec = config_yaml(specpath)
-            spec.setdefault("created_on", str(datetime.datetime.fromtimestamp(os.path.getctime(specpath))))
-        except:
-            specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,"kimspec.yaml")
-            spec = config_yaml(specpath)
-            spec.setdefault("created_on", str(datetime.datetime.fromtimestamp(os.path.getctime(specpath))))
-    except IOError as e:
-        specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,"kimspec.ini")
-        spec = config_ini(specpath)
-        spec.setdefault("created_on", str(datetime.datetime.fromtimestamp(os.path.getctime(specpath))))
+    specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,CONFIG_FILE)
+    spec = config_yaml(specpath)
 
     if foo['type'] == 'te':
         try:
@@ -130,40 +105,31 @@ def uuid_to_dict(leader,uuid):
             "latest": True,
             }
 
-    try:
-        try:
-            specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,"kimspec.ini")
-            spec = config_yaml(specpath)
-            spec.setdefault("created_on", str(datetime.datetime.fromtimestamp(os.path.getctime(specpath))))
-        except:
-            specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,"kimspec.yaml")
-            spec = config_yaml(specpath)
-            spec.setdefault("created_on", str(datetime.datetime.fromtimestamp(os.path.getctime(specpath))))
-    except IOError as e:
-        specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,"kimspec.ini")
-        spec = config_ini(specpath)
-        spec.setdefault("created_on", str(datetime.datetime.fromtimestamp(os.path.getctime(specpath))))
+    specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,CONFIG_FILE)
+    spec = config_yaml(specpath)
 
+    pipespecpath = os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,PIPELINESPEC_FILE)
+    pipespec = config_yaml(pipespecpath)
 
     #Extend runner and subject
     runner = None
     subject = None
     if leader == 'tr' or leader=='er':
         # IF wer are a TR get the test and model documents (cleaned up)
-        runner = rmbadkeys(kimcode_to_dict(spec['kimspec']['TEST_NAME']))
-        subject = rmbadkeys(kimcode_to_dict(spec['kimspec']['MODEL_NAME']))
+        runner = rmbadkeys(kimcode_to_dict(spec['test']))
+        subject = rmbadkeys(kimcode_to_dict(spec['model']))
     elif leader == 'vr':
         # IF we are a vr, get either the verification_Test or
         # verification_model and test or model
-        runner_code = spec['kimspec'].get('VERIFICATION_TEST',None)
+        runner_code = spec.get('verification-test',None)
         if not runner_code:
-            runner_code = spec['kimspec'].get('VERIFICATION_MODEL',None)
+            runner_code = spec.get('verification-model',None)
         if runner_code:
             runner = rmbadkeys(kimcode_to_dict(runner_code))
 
-        subject_code = spec['kimspec'].get('TEST_NAME',None)
+        subject_code = spec.get('test',None)
         if not subject_code:
-            subject_code = spec['kimspec'].get('MODEL_NAME',None)
+            subject_code = spec.get('model',None)
         if subject_code:
             subject = rmbadkeys(kimcode_to_dict(subject_code))
     if runner:
@@ -172,6 +138,7 @@ def uuid_to_dict(leader,uuid):
         foo['subject'] = subject
 
     foo.update(spec)
+    foo.update(pipespec)
     return foo
 
 
@@ -183,20 +150,20 @@ def doc_to_dict(doc,leader,uuid):
 
     if leader == 'tr':
         # IF wer are a TR get the test and model documents (cleaned up)
-        runner = rmbadkeys(kimcode_to_dict(result_obj_doc['kimspec']['TEST_NAME']))
-        subject = rmbadkeys(kimcode_to_dict(result_obj_doc['kimspec']['MODEL_NAME']))
+        runner = rmbadkeys(kimcode_to_dict(result_obj_doc['test']))
+        subject = rmbadkeys(kimcode_to_dict(result_obj_doc['model']))
     elif leader == 'vr':
         # IF we are a vr, get either the verification_Test or
         # verification_model and test or model
-        runner_code = result_obj_doc['kimspec'].get('VERIFICATION_TEST',None)
+        runner_code = result_obj_doc.get('verification-test',None)
         if not runner_code:
-            runner_code = result_obj_doc['kimspec'].get('VERIFICATION_MODEL',None)
+            runner_code = result_obj_doc.get('verification-model',None)
         if runner_code:
             runner = rmbadkeys(kimcode_to_dict(runner_code))
 
-        subject_code = result_obj_doc['kimspec'].get('TEST_NAME',None)
+        subject_code = result_obj_doc.get('test',None)
         if not subject_code:
-            subject_code = result_obj_doc['kimspec'].get('MODEL_NAME',None)
+            subject_code = result_obj_doc.get('model',None)
         if subject_code:
             subject = rmbadkeys(kimcode_to_dict(subject_code))
     try:

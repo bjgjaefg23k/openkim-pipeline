@@ -234,19 +234,23 @@ class Computation(object):
             self.result_path = os.path.join("er", self.result_code)
             self.full_result_path = os.path.join(KIM_REPOSITORY_DIR, self.result_path)
 
-        # create the kimspec.ini file for the test results
+        # create the kimspec.yaml file for the test results
         logger.debug("Create %s file" % CONFIG_FILE)
-        config = {}
-        config['kimspec'] = {}
-        if self.result_code:
-            config['kimspec']['UUID'] = self.result_code
-        config['kimspec'][self.runner.runner_name] = self.runner.kim_code
-        config['kimspec'][self.subject.subject_name] = self.subject.kim_code
+        kimspec = {}
+        kimspec[self.runner.runner_name] = self.runner.kim_code
+        kimspec[self.subject.subject_name] = self.subject.kim_code
+        kimspec['domain'] = 'openkim.org'
+
+        pipelinespec = {}
         if self.info_dict:
-            config['profiling'] = self.info_dict
+            pipelinespec['profiling'] = self.info_dict
+        if self.result_code:
+            pipelinespec['UUID'] = self.result_code
 
         with self.runner_temp.in_dir(), open(os.path.join(OUTPUT_DIR,CONFIG_FILE),'w') as f:
-            yaml.dump(config, f)
+            yaml.dump(config, f, default_flow_style=False)
+        with self.runner_temp.in_dir(), open(os.path.join(OUTPUT_DIR,PIPELINESPEC_FILE),'w') as f:
+            yaml.dump(pipelinespec, f, default_flow_style=False)
 
         logger.debug("Result path = %s", self.full_result_path)
         outputdir = os.path.join(self.runner_temp.path,OUTPUT_DIR)
