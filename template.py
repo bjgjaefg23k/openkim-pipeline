@@ -51,6 +51,11 @@ def stripversion(kim):
     newtup = ( kimtup.name, kimtup.leader, kimtup.num, None)
     return database.format_kim_code( *newtup )
 
+#custom yaml dump
+yamldump = partial(yaml.dump, default_flow_style=False, explicit_start=True)
+#custom json dump
+jsondump = partial(json.dumps, indent=4)
+
 #-----------------------------------------
 # Jinja Stuff
 #-----------------------------------------
@@ -69,8 +74,8 @@ template_environment = jinja2.Environment(
 
 template_environment.filters.update(
         {
-            "json": partial(json.dumps, indent=4),
-            "yaml": partial(yaml.dump, default_flow_style=False, explicit_start=True),
+            "json": jsondump,
+            "yaml": yamldump,
             "stripversion": stripversion,
             "latestversion": latestversion,
         })

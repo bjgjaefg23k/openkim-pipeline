@@ -253,6 +253,22 @@ class KIMObject(simplejson.JSONEncoder):
         logger.warning("REMOVING the kim object %r", self)
         shutil.rmtree(self.path)
 
+    @property
+    def kimspec(self):
+        """ Loads the kimspec file for the given object """
+        with self.in_dir():
+            with open(CONFIG_FILE) as kimspec_fl:
+                data = yaml.load(kimspec_fl)
+        return data
+
+    @kimspec.setter
+    def kimspec(self,data):
+        """ Overwrite the kimspec file """
+        with self.in_dir():
+            with open(CONFIG_FILE,'w') as kimspec_fl:
+                template.yamldump(data,kimspec_fl,explicit_start=False)
+
+
 #=============================================
 # Actual KIM Models
 #=============================================
