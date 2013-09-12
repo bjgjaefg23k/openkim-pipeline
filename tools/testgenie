@@ -17,8 +17,9 @@ Test generation takes place in steps.
   6. For each remaining file, first check if a:
         {# FILENAME = desired_file_name_with_{{ variables }} #}
       directives exist to fix the filename
-  6. Process the rest of the file as a jinja template.
-  7. Move folders to the given destination (or test dir in repository by default)
+  7. Remove prefixes or extensions as necessary
+  8. Process the rest of the file as a jinja template.
+  9. Move folders to the given destination (or test dir in repository by default)
 
 For convenience, if the --random-kimnums flag is given, the templating dictionaries will
 also contain a random 12 digit integer for use as the center of a kimcode.
@@ -187,9 +188,9 @@ parser.add_argument('--quiet', action="store_true",
         help="Hide all logging messages")
 
 parser.add_argument('--filename-prefix', type=str,
-        help="Filename prefix")
+        help="Filename prefix, only files with such prefix are processed.")
 parser.add_argument('--filename-extension', type=str,
-        help="Filename prefix")
+        help="Filename extension, only files with such extension are processed.")
 
 # parser.add_argument('--verify', action="store_true",
 #         help="Run verification tests on generated tests only works if not a dry-run")
