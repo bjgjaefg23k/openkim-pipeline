@@ -3,7 +3,7 @@
 testgenie - A simple templating kim test creation tool
 
 In order to use the testgenie, you need to specify a folder (default:
-test_template in the TD directory) that serves as a template for your test, as
+.test_template in the TD directory, Note dot) that serves as a template for your test, as
 well as a file containing json dictionaries that will be passed in to generate
 all of your tests.
 
@@ -195,7 +195,7 @@ generator_file = args['generator_file']
 
 #find test-template directory
 try:
-    tdpath = os.path.join(kimobjects.TestDriver(args['source']).path,'test_template')
+    tdpath = os.path.join(kimobjects.TestDriver(args['source']).path,'.test_template')
 except Exception:
     tdpath = args['source']
 
