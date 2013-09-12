@@ -79,7 +79,8 @@ FILENAME_REGEX = re.compile(r"""
     (\S+)       # name
     """, re.VERBOSE)
 
-def maketest(folder, variable_dict, dest=TEDIR,dry_run=False):
+def maketest(folder, variable_dict, dest=TEDIR, dry_run=False,
+        filename_prefix=None):
     """ Make a test given the input folder """
     tempdir = tempfile.mkdtemp()
     # First parse the kimspec file
@@ -113,6 +114,11 @@ def maketest(folder, variable_dict, dest=TEDIR,dry_run=False):
             #copy original mode so we can chmod at end
             original_mode = os.stat(filepath).st_mode
             filename = fl
+            if filename_prefix:
+                if not filename.startswith(filename_prefix):
+                    continue
+                else:
+                    filename = filename[len(filename_prefix):]
             filename_search = FILENAME_REGEX.search(contents)
             if filename_search:
                 filename_template = FILENAME_REGEX.search(contents).group(1)
@@ -172,6 +178,9 @@ parser.add_argument('--verbose', action="store_true",
 parser.add_argument('--quiet', action="store_true",
         help="Hide all logging messages")
 
+parser.add_argument('--filename-prefix', type=str,
+        help="Filename prefix")
+
 # parser.add_argument('--verify', action="store_true",
 #         help="Run verification tests on generated tests only works if not a dry-run")
 
@@ -192,6 +201,7 @@ dest = args['destination']
 dry_run = args['dry_run']
 random_codes = args['random_kimnums']
 generator_file = args['generator_file']
+filename_prefix = args['filename_prefix']
 
 #find test-template directory
 try:
@@ -220,7 +230,7 @@ with open(os.path.abspath(os.path.join(tdpath,'..',generator_file))) as f:
         if random_codes:
             #supply kimnum
             variable_dict['kimnum'] = "%012d" % random.randint(0,1e12-1)
-        newtestpath =  maketest(tdpath, variable_dict = variable_dict, dest=dest, dry_run=dry_run, )
+        newtestpath =  maketest(tdpath, variable_dict = variable_dict, dest=dest, dry_run=dry_run, filename_prefix =filename_prefix, )
         gentests.append(newtestpath)
         print newtestpath
 
