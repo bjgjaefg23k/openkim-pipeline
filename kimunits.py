@@ -80,8 +80,7 @@ def convert_units(from_value, from_unit, wanted_unit=None, suppress_unit=False):
         raise UnitConversion(e)
 
     matches = _units_output_expression.match(output).groupdict(None)
-
-    out =  ( float(matches['value']), matches['unit'] or '1')
+    out = (float(matches['value']), matches['unit'] or wanted_unit)
 
     if suppress_unit:
         return out[0]

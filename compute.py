@@ -248,7 +248,7 @@ class Computation(object):
             pipelinespec['UUID'] = self.result_code
 
         with self.runner_temp.in_dir(), open(os.path.join(OUTPUT_DIR,CONFIG_FILE),'w') as f:
-            yaml.dump(config, f, default_flow_style=False)
+            yaml.dump(kimspec, f, default_flow_style=False)
         with self.runner_temp.in_dir(), open(os.path.join(OUTPUT_DIR,PIPELINESPEC_FILE),'w') as f:
             yaml.dump(pipelinespec, f, default_flow_style=False)
 
