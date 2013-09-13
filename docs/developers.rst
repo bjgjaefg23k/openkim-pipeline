@@ -106,7 +106,7 @@ command line.  From there, you can decide how the test should operate.
 Test drivers
 """"""""""""
 As a simple example, we wrote a very basic lattice constant test drvier.  It can work for any
-species and for any cubic lattice type.  Therefore, are input would look something like
+species and for any cubic lattice type.  Therefore, our input would look something like
 this::
 
     Please enter the lattice type: <enter fcc, etc>
@@ -131,8 +131,8 @@ above, we need to be able to locate our test driver, provide it with a lattice t
 and a modelname.  To do this, the tests require 5 files:
 
 1. An executable which accepts input via stdin and is named the same as the KIMID
-2. A file called pipeline.in which describes the input to your test
-3. A file called pipeline.out which describes the output
+2. A file called pipeline.stdin which describes the input to your test
+3. A file called pipeline.yaml which is a jinja template of the results YAML document
 4. A <KIMID>.kim file
 5. A Makefile (this can be a bare minimum file such as ::
 
@@ -156,7 +156,9 @@ of how to print arrays or how to name a scalar.  If you wish to output a binary 
 out the :ref:`pipelineoutdocs` documentation.
 
 There is a library that deals with JSON in almost every language.  For C, it is https://live.gnome.org/JsonGlib,
-Python is http://pypi.python.org/pypi/simplejson/, C++ is http://jsoncpp.sourceforge.net/, Fortran 95 is https://github.com/josephalevin/fson.  Documentation about the JSON format in general is provided at http://www.json.org/.  
+Python is http://pypi.python.org/pypi/simplejson/, C++ is http://jsoncpp.sourceforge.net/, 
+Fortran 95 is https://github.com/josephalevin/fson.  
+Documentation about the JSON format in general is provided at http://www.json.org/.  
 
 Some brief examples of JSON are here though.  A dictionary of key, value pairs describing a lattice 
 constant would look like::
@@ -169,65 +171,84 @@ or an array of numbers that we would like to call the magic numbers is::
 
 And the list could go on.
 
-Addtionally, if you wish to store binary data you can have as our output a ``@FILE[filename]`` directive, that tells the processing pipeline that it should copy the listed file over to the
-results directory, i.e. if your test computes a plot, named ``interesting_plot.png``, the appropriate way to tell the processing pipeline that it is a result is to include an key,value pair in your JSON of the form::
-
-    {"plot_result", "@FILE[interesting_plot.png]"}
+Addtionally, if you wish to store binary data you can have as your output, save
+a file to the ``output`` directory inside the test directory.  You do not need
+to create this folder, it will be created by the pipeline upon invoking a run.  
 
 Required Files
 ^^^^^^^^^^^^^^
-In order to recieve input from the pipeline to run your test, there is a specific form that 
-you should expect input.  In particular, there are two new files that you need to provide
-along with your output in JSON. 
+In order to recieve input from the pipeline to run your test, there is a
+specific form that you should expect input.  In particular, there are two new
+files that you need to provide along with your output in JSON. 
 
 
 .. _pipelineindocs:
 
-pipeline.in
+pipeline.stdin
 """""""""""
 
-The ``pipeline.in`` file will be passed to your test on standard input upon its executation by the pipeline.  You should ensure that your test works in this way.
+The ``pipeline.stdin`` file will be passed to your test on standard input upon
+its executation by the pipeline.  You should ensure that your test works in
+this way.
 
-Additionally, the pipeline.in has a simple Templating language built in to help you obtain other pieces of information from the pipeline at runtime.
+Before being passed to the test, the ``pipeline.stdin`` will be templated using 
+the same jinja environment used to translate ``pipeline.yaml`` into proper test
+results.  In the environment, there are other pieces of information and 
+functions available that you can utilize which will be filled in at runtime.
+These are written in proper Python syntax.
 
-The templating language has four directives
+The templating environment has several functions and variables available on path
  * @PATH[kim_code]
-    This directive will be replaced by the path to the kim code you've given.  If the object is executable (i.e. a test or test driver) the path given will be to its executable,
-    otherwise the path is to the folder the kim object lives in. For example, if you're test derives from a TestDriver, you will need to reference it's executable and pass in the
-    necessary inputs for it to run, if you wanted the executable for test driver ``TD_000000000001_000`` you would put::
+    This directive will be replaced by the path to the kim code you've given.
+    If the object is executable (i.e. a test or test driver) the path given
+    will be to its executable, otherwise the path is to the folder the kim
+    object lives in. For example, if you're test derives from a TestDriver, you
+    will need to reference it's executable and pass in the necessary inputs for
+    it to run, if you wanted the executable for test driver
+    ``TD_000000000001_000`` you would put::
         
         @PATH[TD_000000000001_000]
 
-    at the top of your pipeline.in file.  Like most things requesting kim codes, you are allowed to put partial kim codes (i.e. leaving out the name or the version number or both), leaving out the version number
-    will get you the latest version in the repository
+    at the top of your ``pipeline.stdin`` file.  Like most things requesting KIM
+    codes, you are allowed to put partial KIM codes (i.e. leaving out the name
+    or the version number or both), leaving out the version number will get you
+    the latest version in the repository
 
  * @MODELNAME
-    This one is required, and it will be replaced by the full kim name of the model your test is being run against.  Use this to invoke the KIM_API_init for the model you're running against
+    This one is required, and it will be replaced by the full kim name of the
+    model your test is being run against.  Use this to invoke the KIM_API_init
+    for the model you're running against
 
- * @DATA
-    The DATA directive is used to request data in the repository, it has 3 valid forms
-     * @DATA[RD_############(_###)]
-        This gets the data stored in the given ReferenceDatum
-     * @DATA[TR_############(_###)][PR_############(_###)]
-        This gets the data for the property listed (PR code) computed in the given TestResult (TR code), versions are optional and if omitted the latest will be returned
-     * @DATA[(NAME)TE_############(_###)][(NAME)MO_############(_###)][PR_############_(###)]
-        This version will get the data for the property id given (PR code) as a result of the given TE, MO pair (TE, MO codes) if it exists, if the requested data does not exist, it will be computed before your test is run.
-        The names are optional, and the version numbers if omitted means you will get the latest version in the database
+ * @DATA[query_object]
+    The query function is used to request data from the database. Examples for
+    how to use this function are provided on the query page 
+    `here <https://query.openkim.org>`_.
 
+    It is recommended that you take advantage of the ``project`` mechanism
+    in your query so that the query will return a bare number for usage in
+    the test.
 
 .. _pipelineoutdocs:
 
-pipeline.out
+pipeline.yaml
 """"""""""""
-This file maps the output dictionary keys to the KIM property ID (PR_*) that you would
-like to assign to each output.  It is simply in the form::
+This file is a template for the YAML file that will be reported as the
+official test result.  The basis for this file comes from the main 
+`KIM site <https://portal.openkim.org>`_ and is composed of properties and primitives
+that describe the test results.  In this file, each value you want to report should
+be replaced with a templating directive where the key matches the JSON output
+of your test.  
 
-    key_name1 : PR_###########1_###
-    key_name2 : PR_###########2_###
+For example, if you wanted to report a cohesive energy, the primitive in this file
+would look like this::
 
-and so on.  This is the simpler of the two pipeline files.
+    energy:
+        kim-namespace:  tag:staff@noreply.openkim.org,2013-08-03:primitive/cohesive-energy
+        source-value: @<cohesive_energy>@
+        source-unit:  eV
 
-If you omit Property kim codes for some of your results, they will be stored, but people will not be able to associate your output across different tests.
+In the JSON output of the test, the key ``cohesive_energy`` should be reported.  Upon
+completion, this value will be filled in by the pipeline.
 
 A brief example
 ^^^^^^^^^^^^^^^
@@ -237,8 +258,8 @@ by a configuration file that lives with the executable.  The test driver is call
 this exercise.  In the directory ``td/energy__TD_000000000000_000``, we have the files::
 
     > ls -l energy__TD_000000000000_000
-    rw-r--r-- 1 vagrant vagrant configuration.dat
-    rwxr--r-- 1 vagrant vagrant energy__TD_000000000000_000
+    rw-r--r-- 1 openkim openkim configuration.dat
+    rwxr--r-- 1 openkim openkim energy__TD_000000000000_000
 
 The executable takes a number of command line arguments.  In particular, when it is 
 run, the user is prompted for the following information::
@@ -267,40 +288,50 @@ and provide the option ``Ar`` where appropriate.  We need 5 files for our test, 
 
     > ls te/energyAr__TE_000000000000_000   
     energyAr__TE_000000000000_000 energyAr__TE_000000000000_000.kim Makefile
-    pipeline.in p  pipeline.out
+    pipeline.stdin pipeline.yaml
 
-The contents of ``pipeline.in`` are::
+The contents of ``pipeline.stdin`` are::
 
     @PATH[energy__TD_000000000000_000]
     Ar
     @MODELNAME
 
-The first line is going to be parsed by the pipeline so we can find the path of our test driver
-executable in the pipeline system.  The second two lines are in response to the test drivers questions. 
-Again, ``@MODLENAME`` is filled in by the pipeline
-when it is run.  In ``pipeline.out`` we find the lines::
+The first line is going to be parsed by the pipeline so we can find the path of
+our test driver executable in the pipeline system.  The second two lines are in
+response to the test drivers questions.  Again, ``@MODLENAME`` is filled in by
+the pipeline when it is run.  The file ``pipeline.yaml`` contains the properties
+and primitives that have been approved to represent your test output.
 
-    total_energy : PR_000000000000_000
+The .kim file specifies what requirements your test driver has
+when run with these arguments, it won't be listed here.  The ``Makefile`` can
+be as blank as possible (see :ref:`desctests`) as we will be using a Python
+script as our main executable and it doesn't need to be made.  Finally, our
+Python script runs the path as returned by the ``@PATH`` directive and then
+simply passes along stdin input to our test driver.  The contents of this file
+are::
 
-where the property KIM code is the one we recieved from the website for our specific property
-the we are returning.  This tells the pipeline how to map your output.  The .kim file specifies
-what requirements your test driver has when run with these arguments, it won't be listed here.
-The ``Makefile`` can be as blank as possible (see :ref:`desctests`) as we will be using a 
-bash script as our main executable and it doesn't need to be made.  Finally, our bash 
-script runs the path as returned by the ``@PATH`` directive and then simply passes along 
-stdin input to our test driver.  The contents of this file are::
+    #!/usr/bin/env python 
+    import sys
+    from subprocess import Popen, PIPE
+    from StringIO import StringIO
+    import fileinput
+    
+    inp = fileinput.input()
+    exe = next(inp).strip()
+    args = "".join([line for line in inp])
+    
+    try:
+        proc = Popen(exe, stdin=PIPE, stdout=sys.stdout,
+                    stderr=sys.stderr, shell=True)
+        proc.communicate(input=args)
+    except Exception as e:
+        pass
+    finally:
+        exit(proc.returncode)
 
-    #!/bin/bash -e
-    read -p "enter test driver: " TESTDRIVER
-    read -p "enter species: " SPECIES
-    read -p "enter model name: " MODELNAME
-
-    echo -e "$SPECIES\n$MODELNAME" | $TESTDRIVER 
-
-There we have our simple test.  If we wanted to make more tests, we would need to change
-the name of folder, executable, and kim file.  Then we could change the species name
-in ``pipeline.in``. 
-
+There we have our simple test.  If we wanted to make more tests, we would need
+to change the name of folder, executable, and kim file.  Then we could change
+the species name in ``pipeline.stdin``. 
  
 
 Install your test
@@ -322,8 +353,8 @@ time as your box will not have a network connection to the secure repository.
 
 You should now attempt to run your test by doing::
 
-    cd /home/vagrant/openkim-pipeline/
-    python debugtest.py <testname>
+    pipeline_verify <testname>
+    pipeline_runmatches <testname>
 
 This will attempt to run your test and inform you of any problems that it encountered.  You can
 then to debug your test.
