@@ -165,10 +165,10 @@ class Computation(object):
             # We couldn't find any valid JSON
             try:
                 try:
-                    with open("pipeline.template-env.yaml") as f:
+                    with open(os.path.join(OUTPUT_DIR,"pipeline.template-env.yaml")) as f:
                         data = yaml.safe_load(f) 
                 except Exception as e:
-                    with open("pipeline.template-env.json") as f:
+                    with open(os.path.join(OUTPUT_DIR,"pipeline.template-env.json")) as f:
                         data = simplejson.loads(f.read())
             except Exception as e:
                 logger.exception("We didn't get JSON or YAML back!")
