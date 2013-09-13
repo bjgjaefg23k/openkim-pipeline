@@ -163,8 +163,16 @@ class Computation(object):
 
         if data is None or not isinstance(data, dict):
             # We couldn't find any valid JSON
-            logger.exception("We didn't get JSON back!")
-            raise PipelineTemplateError, "Test didn't return JSON!"
+            try:
+                try:
+                    with open("pipeline.template-env.yaml") as f:
+                        data = yaml.safe_load(f) 
+                except Exception as e:
+                    with open("pipeline.template-env.json") as f:
+                        data = simplejson.loads(f.read())
+            except Exception as e:
+                logger.exception("We didn't get JSON or YAML back!")
+                raise PipelineTemplateError, "Test didn't return JSON or YAML!"
 
         # we found our data, let's store it
         self.results = data
