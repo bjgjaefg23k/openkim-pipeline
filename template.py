@@ -27,7 +27,7 @@ from functools import partial
 #==========================
 RE_KIMID    = r"((?:[_a-zA-Z][_a-zA-Z0-9]*?_?_)?[A-Z]{2}_[0-9]{12}(?:_[0-9]{3})?)"
 RE_MODEL    = re.compile(r"(@MODELNAME)")       # matches @MODELNAME as a word
-RE_DATA     = re.compile(r"(@DATA\[(.*?)\])")
+RE_DATA     = re.compile(r"(@DATA\[(.*?)\]\s*$)")
 RE_PATH     = re.compile(r"(@PATH\[(.*?)\])")
 RE_TEST     = re.compile(r"(@TESTNAME)")
 
