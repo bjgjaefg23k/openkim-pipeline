@@ -17,8 +17,9 @@ Test generation takes place in steps.
   6. For each remaining file, first check if a:
         {# FILENAME = desired_file_name_with_{{ variables }} #}
       directives exist to fix the filename
-  6. Process the rest of the file as a jinja template.
-  7. Move folders to the given destination (or test dir in repository by default)
+  7. Remove prefixes or extensions as necessary
+  8. Process the rest of the file as a jinja template.
+  9. Move folders to the given destination (or test dir in repository by default)
 
 For convenience, if the --random-kimnums flag is given, the templating dictionaries will
 also contain a random 12 digit integer for use as the center of a kimcode.
@@ -79,7 +80,9 @@ FILENAME_REGEX = re.compile(r"""
     (\S+)       # name
     """, re.VERBOSE)
 
-def maketest(folder, variable_dict, dest=TEDIR,dry_run=False):
+def maketest(folder, variable_dict, dest=TEDIR, dry_run=False,
+        filename_prefix=None,
+        filename_extension=None):
     """ Make a test given the input folder """
     tempdir = tempfile.mkdtemp()
     # First parse the kimspec file
@@ -113,6 +116,18 @@ def maketest(folder, variable_dict, dest=TEDIR,dry_run=False):
             #copy original mode so we can chmod at end
             original_mode = os.stat(filepath).st_mode
             filename = fl
+            if filename_prefix:
+                if not filename.startswith(filename_prefix):
+                    os.remove(filepath)
+                    continue
+                else:
+                    filename = filename[len(filename_prefix):]
+            if filename_extension:
+                if not filename.endswith(filename_extension):
+                    os.remove(filepath)
+                    continue
+                else:
+                    filename = filename[:-len(filename_extension)-1]
             filename_search = FILENAME_REGEX.search(contents)
             if filename_search:
                 filename_template = FILENAME_REGEX.search(contents).group(1)
@@ -172,6 +187,11 @@ parser.add_argument('--verbose', action="store_true",
 parser.add_argument('--quiet', action="store_true",
         help="Hide all logging messages")
 
+parser.add_argument('--filename-prefix', type=str,
+        help="Filename prefix, only files with such prefix are processed.")
+parser.add_argument('--filename-extension', type=str,
+        help="Filename extension, only files with such extension are processed.")
+
 # parser.add_argument('--verify', action="store_true",
 #         help="Run verification tests on generated tests only works if not a dry-run")
 
@@ -192,6 +212,8 @@ dest = args['destination']
 dry_run = args['dry_run']
 random_codes = args['random_kimnums']
 generator_file = args['generator_file']
+filename_prefix = args['filename_prefix']
+filename_extension = args['filename_extension']
 
 #find test-template directory
 try:
@@ -220,7 +242,9 @@ with open(os.path.abspath(os.path.join(tdpath,'..',generator_file))) as f:
         if random_codes:
             #supply kimnum
             variable_dict['kimnum'] = "%012d" % random.randint(0,1e12-1)
-        newtestpath =  maketest(tdpath, variable_dict = variable_dict, dest=dest, dry_run=dry_run, )
+        newtestpath =  maketest(tdpath, variable_dict = variable_dict, dest=dest, dry_run=dry_run,
+                filename_prefix =filename_prefix,
+                filename_extension = filename_extension )
         gentests.append(newtestpath)
         print newtestpath
 
