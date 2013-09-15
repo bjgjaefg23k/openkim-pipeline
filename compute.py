@@ -66,7 +66,6 @@ class Computation(object):
         self.subject = subject
         self.runner_temp = runner
         self.runtime = None
-        self.results = None
         self.result_code = result_code
         self.info_dict = None
 
@@ -145,8 +144,13 @@ class Computation(object):
             logger.error("Runner returned error code %r, %r" % (self.retcode, os.strerror(self.retcode)) )
             raise KIMRuntimeError("Executable %r returned error code %r" % (self.runner_temp, self.retcode))
 
-    def process_output(self, extrainfo=None):
+    def process_output(self):
         """ Template the run results into the proper YAML """
+        # Short-circuit if we already have a results.yaml
+        with self.runner_temp.in_dir():
+            if os.path.isfile(RESULT_FILE):
+                return 
+
         with self.runner_temp.in_dir(), open(STDOUT_FILE) as stdout_file:
             stdout = stdout_file.readlines()
 
@@ -173,25 +177,6 @@ class Computation(object):
             except Exception as e:
                 logger.exception("We didn't get JSON or YAML back!")
                 raise PipelineTemplateError, "Test didn't return JSON or YAML!"
-
-        # we found our data, let's store it
-        self.results = data
-
-        # Add metadata
-        info_dict = {}
-        info_dict["time"] = self.runtime
-        info_dict["created-at"] = time.time()
-        if extrainfo:
-            info_dict.update(extrainfo)
-
-        # get the information from the timing script
-        with self.runner_temp.in_dir(), open(STDERR_FILE) as stderr_file:
-            stderr = stderr_file.read()
-        time_str = stderr.splitlines()[-1]
-        time_dat = simplejson.loads(time_str)
-        info_dict.update(time_dat)
-
-        logger.debug("Added metadata:\n{}".format(simplejson.dumps(info_dict,indent=4)))
 
         # sanitize strings by encoding backslashes -> newlines break YAML
         safe_data = sanitize(data)
@@ -225,22 +210,39 @@ class Computation(object):
             logger.debug("Writing unit converted version")
             yaml.safe_dump_all(newdocs,f,default_flow_style=False, explicit_start=True)
 
-
         logger.debug("Made it through YAML read, everything looks good")
+
+
+    def gather_profiling_info(self, extrainfo=None):
+        # Add metadata
+        info_dict = {}
+        info_dict["time"] = self.runtime
+        info_dict["created-at"] = time.time()
+        if extrainfo:
+            info_dict.update(extrainfo)
+
+        # get the information from the timing script
+        with self.runner_temp.in_dir(), open(STDERR_FILE) as stderr_file:
+            stderr = stderr_file.read()
+        time_str = stderr.splitlines()[-1]
+        time_dat = simplejson.loads(time_str)
+        info_dict.update(time_dat)
+
+        logger.debug("Added metadata:\n{}".format(simplejson.dumps(info_dict,indent=4)))
 
         logger.debug("Caching profile information")
         self.info_dict = info_dict
-
-        logger.debug("Copying kim.log")
-        with self.runner_temp.in_dir():
-            if os.path.exists("./kim.log"):
-                shutil.copy2("./kim.log", KIMLOG_FILE)
 
 
     def write_result(self, error=False):
         if error:
             self.result_path = os.path.join("er", self.result_code)
             self.full_result_path = os.path.join(KIM_REPOSITORY_DIR, self.result_path)
+
+        logger.debug("Copying kim.log")
+        with self.runner_temp.in_dir():
+            if os.path.exists("./kim.log"):
+                shutil.copy2("./kim.log", KIMLOG_FILE)
 
         # create the kimspec.yaml file for the test results
         logger.debug("Create %s file" % CONFIG_FILE)
@@ -289,12 +291,14 @@ class Computation(object):
         with self.tempdir():
             try:
                 self.execute_in_place()
-                self.process_output(extrainfo)
+                self.process_output()
+                self.gather_profiling_info(extrainfo)
                 self.write_result(error=False)
             except Exception as e:
                 import traceback
                 trace = traceback.format_exc()
 
+                self.gather_profiling_info(extrainfo)
                 self.write_result(error=True)
 
                 files = [STDOUT_FILE, STDERR_FILE, KIMLOG_FILE]
