@@ -108,8 +108,12 @@ def uuid_to_dict(leader,uuid):
     specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,CONFIG_FILE)
     spec = config_yaml(specpath)
 
-    pipespecpath = os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,PIPELINESPEC_FILE)
-    pipespec = config_yaml(pipespecpath)
+    pipespec = {}
+    try:
+        pipespecpath = os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,PIPELINESPEC_FILE)
+        pipespec = config_yaml(pipespecpath)
+    except:
+        pass
 
     #Extend runner and subject
     runner = None

@@ -317,11 +317,11 @@ class Runner(KIMObject):
 
     def processed_infile(self,subject):
         """ Process the input file, with template, and return a file object to the result """
-        template.process(self.infile,subject,self)
+        template.process(self.infile_path,subject,self)
         return open(os.path.join(self.path,TEMP_INPUT_FILE))
 
     def subjectname_processed_infile(self,subject):
-        template.process(self.infile, subject, self, modelonly=True)
+        template.process(self.infile_path, subject, self, modelonly=True)
         return open(os.path.join(self.path, TEMP_INPUT_FILE))
 
     @property

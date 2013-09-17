@@ -60,10 +60,10 @@ KIM_API_LIB_DIR    = os.path.join(KIM_API_DIR,"KIM_API")
 KIM_API_CHECK_MATCH_UTIL = os.path.join(KIM_API_LIB_DIR,"openkim-api-descriptor-file-match")
 
 OUTPUT_DIR      = "output"
-INPUT_FILE      = "pipeline.stdin"
-TEMPLATE_FILE   = "pipeline.yaml"
+INPUT_FILE      = "pipeline.stdin.tpl"
+TEMPLATE_FILE   = "pipeline.yaml.tpl"
 CONFIG_FILE     = "kimspec.yaml"
-TEMP_INPUT_FILE = os.path.join(OUTPUT_DIR,"pipeline.processed.stdin")
+TEMP_INPUT_FILE = os.path.join(OUTPUT_DIR,"pipeline.stdin")
 STDOUT_FILE     = os.path.join(OUTPUT_DIR,"pipeline.stdout")
 STDERR_FILE     = os.path.join(OUTPUT_DIR,"pipeline.stderr")
 KIMLOG_FILE     = os.path.join(OUTPUT_DIR,"kim.log")

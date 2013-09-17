@@ -11,25 +11,26 @@ The simple markup language as the following directives:
         the executable if its a test or a test driver, and the folder otherwise
     * @DATA[string] - gives the data string returned by the query string
 """
-import re, shutil, os
-from config import *
-from logger import logging
-logger = logging.getLogger("pipeline").getChild("template")
-import kimobjects
+import re
+import os
+import shutil
 
+import ase.data
 import jinja2, json, yaml
 from functools import partial
 
 from kimquery import query
 from kimunits import convert
-import ase.data
-
 import database
+import kimobjects
+from config import *
+from logger import logging
+logger = logging.getLogger("pipeline").getChild("template")
+
 
 #-----------------------------------------
 # New Template functions
 #-----------------------------------------
-
 def path(cand):
     obj = kimobjects.kim_obj(cand)
     try:
@@ -51,22 +52,20 @@ def stripversion(kim):
     newtup = ( kimtup.name, kimtup.leader, kimtup.num, None)
     return database.format_kim_code( *newtup )
 
-#custom yaml dump
+#custom yaml,json dump
 yamldump = partial(yaml.dump, default_flow_style=False, explicit_start=True)
-#custom json dump
 jsondump = partial(json.dumps, indent=4)
+
 
 #-----------------------------------------
 # Jinja Stuff
 #-----------------------------------------
-from kimquery import query
-
 template_environment = jinja2.Environment(
         loader=jinja2.FileSystemLoader('/'),
         block_start_string='@[',
         block_end_string=']@',
-        variable_start_string='@{',
-        variable_end_string='}@',
+        variable_start_string='@<',
+        variable_end_string='>@',
         comment_start_string='@#',
         comment_end_string='#@',
         undefined=jinja2.StrictUndefined,
@@ -79,6 +78,7 @@ template_environment.filters.update(
             "stripversion": stripversion,
             "latestversion": latestversion,
         })
+
 #add handy functions to global name space
 template_environment.globals.update(
         {
@@ -94,16 +94,19 @@ template_environment.globals.update(
 def process(inppath, model, test, modelonly = False):
     """ Takes in a path (relative to test directory)
     and writes a processed copy to TEMP_INPUT_FILE """
-    logger.info("attempting to process %r for (%r,%r)", inppath, model.kim_code, test.kim_code)
+    logger.info("attempting to process %r for (%r,%r)", inppath, test.kim_code, model.kim_code)
 
     with test.in_dir():
         if not os.path.exists(OUTPUT_DIR):
             os.makedirs(OUTPUT_DIR)
 
         template = template_environment.get_template(inppath)
-        output = template.render({"TEST_NAME" : test.kim_code, "MODEL_NAME" : model.kim_code })
-        print output
+        extrainfo = {
+                "TESTNAME": test.kim_code,
+                "MODELNAME": model.kim_code,
+            }
+        output = template.render(**extrainfo)
+
         with open(TEMP_INPUT_FILE,'w') as out:
             out.write(output)
-
 
