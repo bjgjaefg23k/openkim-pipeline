@@ -127,7 +127,10 @@ class BuilderBot(object):
             if not self.buildlocks.get(kimobj.kim_code, None):
                 self.buildlocks[kimobj.kim_code] = Lock()
             with self.buildlocks[kimobj.kim_code]:
-                kimobj.make()
+                try:
+                    kimobj.make()
+                except Exception as e:
+                    raise RuntimeError("Could not make %s" % kimobj.kim_code)
 
 class BuilderManager(BaseManager):
     pass
