@@ -19,21 +19,21 @@ Has a base ``KIMObject`` class and
 classes, all of which inherit from ``KIMObject`` and aim to know how to handle themselves.
 
 """
-
+from template import template_environment
+import database
+import dependencies
+import kimapi
 from config import *
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("kimobjects")
 
 from contextlib import contextmanager
 import template
-import database
-import kimapi
 import shutil
 import subprocess
 import re
 import dircache
 import simplejson, yaml
-from template import template_environment
 
 #------------------------------------------------
 # Base KIMObject
@@ -295,8 +295,8 @@ class Runner(KIMObject):
                 dependencies_good_to_go - kids for ready dependencies
                 dependencies_not_ready - tuples of test/model pairs to run """
         if subject:
-            return template.dependency_check(self.modelname_processed_infile(subject))
-        return template.dependency_check(self.infile,model=False)
+            return dependencies.dependency_check(self.modelname_processed_infile(subject))
+        return dependencies.dependency_check(self.infile,model=False)
 
     @property
     def dependencies(self):
