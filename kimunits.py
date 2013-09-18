@@ -31,13 +31,16 @@ def convert_udunits2(from_value,from_unit,wanted_unit=None, suppress_unit=False)
         # special Zero handling
         if from_unit != '1':
             warnings.warn("""Found a 0, udunits2 breaks,
-            so we are assuming that this is not a non-zero based conversion like temperature""")
+            so we are assuming that this is not a non-zero 
+            based conversion like temperature""")
         ZERO = True
         from_value = 1.
+
+    # format the input lines
     line1 = str(from_value) + " " + str(from_unit)
-    # second line of input
     line2 = str(wanted_unit) if wanted_unit else ' '
     inp = "\n".join((line1,line2))
+
     # Create subprocess with ascii encoding
     process = subprocess.Popen(['udunits2','-A'],
             bufsize=1000,
@@ -64,20 +67,22 @@ def convert_udunits2(from_value,from_unit,wanted_unit=None, suppress_unit=False)
     return out
 
 
-_units_output_expression = re.compile("(?P<value>(?:[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?))"
-        "(?: (?P<unit>.+))?",)
+_units_output_expression = re.compile("(?P<value>(?:[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?))(?: (?P<unit>.+))?")
 
 def convert_units(from_value, from_unit, wanted_unit=None, suppress_unit=False):
     """ Works with 'units' utility """
     from_value = str(from_value)
     from_unit = str(from_unit)
+
     try:
+        args = ['units','-qt1',' '.join((from_value, from_unit))]
         if wanted_unit:
-            output = subprocess.check_output(['units','-qt1',' ' + ' '.join((from_value, from_unit)),wanted_unit])
-        else:
-            output = subprocess.check_output(['units','-qt1',' ' + ' '.join((from_value, from_unit))])
+            args.append(wanted_unit)
+        output = subprocess.check_output(args)
     except subprocess.CalledProcessError as e:
-        raise UnitConversion(e)
+        tag = wanted_unit if wanted_unit else "SI"
+        raise UnitConversion("Error in unit conversion of %s %s to %s" % (
+            from_value, from_unit, tag))
 
     matches = _units_output_expression.match(output).groupdict(None)
     out = (float(matches['value']), matches['unit'] or wanted_unit)
@@ -132,7 +137,7 @@ def convert_list( x , from_unit, to_unit=None, convert=convert):
 
     def convert_inner( x ):
         if isinstance(x, (list,tuple)):
-            return type(x)( convert_inner(z ) for z in x )
+            return type(x)( convert_inner(z) for z in x )
         else:
             if known_out[0] == '1':
                 return float(x)
@@ -143,7 +148,7 @@ def convert_list( x , from_unit, to_unit=None, convert=convert):
                 out = convert( x, from_unit, to_unit )
                 known_out[0] = out[1]
                 return float(out[0])
-    output = convert_inner( x )
+    output = convert_inner(x)
     logger.debug("Obtained %r <%r> = %r <%r>.", x, from_unit, output, known_out[0])
     return ( output, known_out[0] )
 
@@ -151,14 +156,20 @@ def convert_list( x , from_unit, to_unit=None, convert=convert):
 def add_si_units(doc, convert=convert):
     """ Given a document, add all of the appropriate si-units fields """
     if isinstance(doc,dict):
-        #kludge for bad formatting
-        if 'source-unit' in doc or 'source-units' in doc:
+        # check for a source-unit to defined a value with units
+        if 'source-unit' in doc:
             #we've found a place to add
             assert 'source-value' in doc, "Badly formed doc"
-            o_value = doc['source-value']
-            # check for bad name
-            o_unit = doc.get('source-unit',None) or doc['source-units']
-            value, unit = convert_list( o_value, o_unit , convert=convert)
+            o_value = doc.get('source-value', None)
+            o_unit = doc.get('source-unit', None) or doc.get('source-units', None) 
+
+            if o_value is None:
+                raise UnitConversion("No source-value provided")
+            if o_unit is None:
+                raise UnitConversion("No source-unit provided")
+
+            # convert the units and insert
+            value, unit = convert_list(o_value, o_unit, convert=convert)
             si_dict = {"si-unit": unit, "si-value": value }
             doc = doc.copy()
             doc.update(si_dict)
