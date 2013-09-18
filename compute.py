@@ -82,6 +82,13 @@ class Computation(object):
         if not os.path.exists(outputdir):
             os.makedirs(outputdir)
 
+    def _clean_old_run(self):
+        for flname in INTERMEDIATE_FILES:
+            try:
+                os.remove(flname)
+            except OSError as e:
+                pass
+
     def _delete_tempdir(self):
         shutil.rmtree(self.runner_temp.path)
 
@@ -95,6 +102,7 @@ class Computation(object):
 
         try:
             self._create_output_dir()
+            self._clean_old_run()
             yield
         except Exception as e:
             logger.error("%r" % e)
@@ -169,10 +177,10 @@ class Computation(object):
             # We couldn't find any valid JSON
             try:
                 try:
-                    with self.runner_temp.in_dir(), open(os.path.join(OUTPUT_DIR,"pipeline.template-env.yaml")) as f:
+                    with self.runner_temp.in_dir(), open(TPLENV_YAML_FILE) as f:
                         data = yaml.safe_load(f) 
                 except Exception as e:
-                    with self.runner_temp.in_dir(), open(os.path.join(OUTPUT_DIR,"pipeline.template-env.json")) as f:
+                    with self.runner_temp.in_dir(), open(TPLENV_JSON_FILE) as f:
                         data = simplejson.loads(f.read())
             except Exception as e:
                 logger.exception("We didn't get JSON or YAML back!")
