@@ -230,11 +230,13 @@ class Computation(object):
             info_dict.update(extrainfo)
 
         # get the information from the timing script
-        with self.runner_temp.in_dir(), open(STDERR_FILE) as stderr_file:
-            stderr = stderr_file.read()
-        time_str = stderr.splitlines()[-1]
-        time_dat = simplejson.loads(time_str)
-        info_dict.update(time_dat)
+        with self.runner_temp.in_dir():
+            if os.path.exists(STDERR_FILE):
+                with open(STDERR_FILE) as stderr_file:
+                    stderr = stderr_file.read()
+                time_str = stderr.splitlines()[-1]
+                time_dat = simplejson.loads(time_str)
+                info_dict.update(time_dat)
 
         logger.debug("Added metadata:\n{}".format(simplejson.dumps(info_dict,indent=4)))
 

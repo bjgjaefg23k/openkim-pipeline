@@ -71,7 +71,8 @@ _units_output_expression = re.compile("(?P<value>(?:[-+]?(?:\d+(?:\.\d*)?|\.\d+)
 
 def convert_units(from_value, from_unit, wanted_unit=None, suppress_unit=False):
     """ Works with 'units' utility """
-    from_value = str(from_value)
+    from_sign = from_value < 0
+    from_value = str(abs(from_value))
     from_unit = str(from_unit)
 
     try:
@@ -85,7 +86,7 @@ def convert_units(from_value, from_unit, wanted_unit=None, suppress_unit=False):
             from_value, from_unit, tag))
 
     matches = _units_output_expression.match(output).groupdict(None)
-    out = (float(matches['value']), matches['unit'] or wanted_unit)
+    out = ((-1)**from_sign*float(matches['value']), matches['unit'] or wanted_unit)
 
     if suppress_unit:
         return out[0]
@@ -161,7 +162,7 @@ def add_si_units(doc, convert=convert):
             #we've found a place to add
             assert 'source-value' in doc, "Badly formed doc"
             o_value = doc.get('source-value', None)
-            o_unit = doc.get('source-unit', None) or doc.get('source-units', None) 
+            o_unit = doc.get('source-unit', None)
 
             if o_value is None:
                 raise UnitConversion("No source-value provided")
