@@ -98,6 +98,9 @@ From here on out, the information is strictly about development, no more virtual
 
 Tests and Test drivers
 ^^^^^^^^^^^^^^^^^^^^^^
+
+(specific tutorials can be found in :doc:`tutorial_ase`.)
+
 In order to reduce the amount of code reproduction and to ease debug and update, we have
 introduced test drivers.  If you intend on making a test which works with multiple options
 this is the way to go!  Your test should accept these options on standard input from the 
@@ -184,21 +187,21 @@ files that you need to provide along with your output in JSON.
 
 .. _pipelineindocs:
 
-pipeline.stdin
-"""""""""""
+pipeline.stdin.tpl
+"""""""""""""""""""
 
-The ``pipeline.stdin`` file will be passed to your test on standard input upon
+The ``pipeline.stdin.tpl`` file will be passed to your test on standard input upon
 its executation by the pipeline.  You should ensure that your test works in
 this way.
 
-Before being passed to the test, the ``pipeline.stdin`` will be templated using 
-the same jinja environment used to translate ``pipeline.yaml`` into proper test
+Before being passed to the test, the ``pipeline.stdin.tpl`` will be templated using 
+the same jinja environment used to translate ``results.yaml.tpl`` into proper test
 results.  In the environment, there are other pieces of information and 
 functions available that you can utilize which will be filled in at runtime.
 These are written in proper Python syntax.
 
 The templating environment has several functions and variables available on path
- * @PATH[kim_code]
+ * path(kim_code)
     This directive will be replaced by the path to the kim code you've given.
     If the object is executable (i.e. a test or test driver) the path given
     will be to its executable, otherwise the path is to the folder the kim
@@ -207,19 +210,19 @@ The templating environment has several functions and variables available on path
     it to run, if you wanted the executable for test driver
     ``TD_000000000001_000`` you would put::
         
-        @PATH[TD_000000000001_000]
+        path(TD_000000000001_000)
 
-    at the top of your ``pipeline.stdin`` file.  Like most things requesting KIM
+    at the top of your ``pipeline.stdin.tpl`` file.  Like most things requesting KIM
     codes, you are allowed to put partial KIM codes (i.e. leaving out the name
     or the version number or both), leaving out the version number will get you
     the latest version in the repository
 
- * @MODELNAME
+ * MODELNAME
     This one is required, and it will be replaced by the full kim name of the
     model your test is being run against.  Use this to invoke the KIM_API_init
     for the model you're running against
 
- * @DATA[query_object]
+ * query(query_object)
     The query function is used to request data from the database. Examples for
     how to use this function are provided on the query page 
     `here <https://query.openkim.org>`_.
@@ -230,8 +233,8 @@ The templating environment has several functions and variables available on path
 
 .. _pipelineoutdocs:
 
-pipeline.yaml
-""""""""""""
+results.yaml.tpl
+""""""""""""""""
 This file is a template for the YAML file that will be reported as the
 official test result.  The basis for this file comes from the main 
 `KIM site <https://portal.openkim.org>`_ and is composed of properties and primitives
