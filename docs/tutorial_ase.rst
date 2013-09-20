@@ -1,12 +1,12 @@
 ASE example test - cohesive energy
 ==================================
 
-A very basic test using the Atomic Simulation Environment (ASE) and Python
-binding for the OpenKIM API.  In this test, we gather the Fe body center cubic
-lattice constant from the OpenKIM database.  Using this lattice constant, we
-set up a single atom unit cell and calculate it's energy, reporting it as the
-cohesive energy.  For a general overview on test format, have a look at the
-documentation for :ref:`desctests`.  
+Here, we describe a very basic test using the Atomic Simulation Environment
+(ASE) and Python binding for the OpenKIM API.  In this test, we gather the Fe
+body center cubic lattice constant from the OpenKIM database.  Using this
+lattice constant, we set up a single atom unit cell and calculate it's energy,
+reporting it as the cohesive energy.  For a general overview on test format,
+have a look at the documentation for :ref:`desctests`.  
 
 For this example, we have adopted the descriptive KIM short name of
 ASECohesiveEnergyFromQuery_Fe_bcc and have been provided with the KIM code
@@ -47,7 +47,7 @@ The script is short enough that we should take a look at it here::
     """
     from ase.structure import bulk
     from kimcalculator import KIMCalculator
-    import simplejson
+    import json
     
     #grab from stdin (or a file)
     model = raw_input("modelname=")
@@ -65,7 +65,7 @@ The script is short enough that we should take a look at it here::
                 'cohesive_energy': energy}
     
     #print json output
-    print "\n", simplejson.dumps(results)
+    print "\n", json.dumps(results)
 
 
 It begins by grabbing the model name and lattice constant from standard input.
@@ -124,7 +124,7 @@ pipeline.stdin.tpl
 ^^^^^^^^^^^^^^^^^^
 
 This is a template file that the pipeline will fill in and provide to the test
-on standard input.  Since we have to items that we would like (model name and
+on standard input.  Since we have two items that we would like (model name and
 lattice constant) then there are two lines in our stdin file.  In the Jinja
 environment, we have chosen ``@[...]@`` to denote a code block, ``@<...>@`` to
 denote a variable, and ``@#...#@`` a comment.  In between these braces, Jinja
@@ -152,6 +152,13 @@ After templating, ``output/pipeline.stdin`` contains::
     EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000
     2.86652799316e-10
 
+Crafting the appropriate query can take some work.  To help with this, the
+query page has an interactive form where you can hone the question you are
+asking.  When you are done, the query page itself has a section which tells you
+exactly what to copy paste into your code after your find the right one. For 
+this example, I filled in the page like `this <https://query.openkim.org/?project=[%22crystal-structure.a.si-value%22]&fields={%22crystal-structure.a.si-value%22:1}&database=data&limit=1&query={%22kim-namespace%22:{%22$regex%22:%22equilibrium-crystal-structure%22},%22crystal-structure.short-name%22:%22bcc%22,%22meta.subject.kimcode%22:%22EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000%22,%22meta.runner.kimcode%22:{%22$regex%22:%22LatticeConstantCubicEnergy%22}}>`_.  
+At you bottom, you can see that the last howto (`pipeline.stdin.tpl`) 
+is the exact line used in our test.
 
 .. _aseref_results:
 
