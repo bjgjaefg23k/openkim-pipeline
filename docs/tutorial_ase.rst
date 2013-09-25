@@ -27,6 +27,8 @@ of them in order to build our test:
     * :ref:`aseref_makefile` - a Makefile
     * :ref:`aseref_stdin` - a Jinja template file to provide input on stdin
     * :ref:`aseref_results` - a Jinja template file for the results
+    * ``README.md`` - a basic explanation of the test
+    * ``LICENSE.CDDL`` - a copy of the standard license
 
 .. _aseref_exec:
 
@@ -149,8 +151,8 @@ test.  We employ the ``project`` operator to get a single number returned.
 
 After templating, ``output/pipeline.stdin`` contains::
 
-    EAM_Dynamo_Ackland_Bacon_Ar__MO_142799717516_000
-    2.86652799316e-10
+    ex_model_Ar_P_Morse__MO_831902330215_000
+    5.25352661133e-10
 
 Crafting the appropriate query can take some work.  To help with this, the
 query page has an interactive form where you can hone the question you are
