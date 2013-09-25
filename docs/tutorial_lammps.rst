@@ -1,5 +1,5 @@
-Using LAMMPS in KIM Tests
-*************************
+Example tests - LAMMPS
+**********************
 ..
     A very basic test using the Atomic Simulation Environment (ASE) and Python
     binding for the OpenKIM API.  In this test, we gather the Fe body center cubic

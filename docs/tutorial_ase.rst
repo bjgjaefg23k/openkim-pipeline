@@ -1,5 +1,5 @@
-ASE example test - cohesive energy
-==================================
+Example test - ASE
+==================
 
 Here, we describe a very basic test using the Atomic Simulation Environment
 (ASE) and Python binding for the OpenKIM API.  In this test, we gather the Ar
@@ -156,7 +156,7 @@ Crafting the appropriate query can take some work.  To help with this, the
 query page has an interactive form where you can hone the question you are
 asking.  When you are done, the query page itself has a section which tells you
 exactly what to copy paste into your code after your find the right one. For 
-this example, I filled in the page like `this <https://query.openkim.org/?project=[%22crystal-structure.a.si-value%22]&fields={%22crystal-structure.a.si-value%22:1}&database=data&limit=1&query={%22kim-namespace%22:{%22$regex%22:%22equilibrium-crystal-structure%22},%22crystal-structure.short-name%22:%22fcc%22,%22meta.subject.kimcode%22:%22EAM_Dynamo_Ackland_Bacon_Ar__MO_142799717516_000%22,%22meta.runner.kimcode%22:{%22$regex%22:%22LatticeConstantCubicEnergy%22}}>`_.  
+this example, I filled in the page like `this <https://query.openkim.org/?project=[%22crystal-structure.a.si-value%22]&fields={%22crystal-structure.a.si-value%22:1}&database=data&limit=1&query={%22kim-namespace%22:{%22$regex%22:%22equilibrium-crystal-structure%22},%22crystal-structure.short-name%22:%22fcc%22,%22meta.subject.kimcode%22:%22ex_model_Ar_P_Morse__MO_831902330215_000%22,%22meta.runner.kimcode%22:{%22$regex%22:%22LatticeConstantCubicEnergy%22}}>`_.  
 At you bottom, you can see that the last howto (`pipeline.stdin.tpl`) 
 is the exact line used in our test.
 
