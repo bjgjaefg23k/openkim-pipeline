@@ -2,14 +2,14 @@ ASE example test - cohesive energy
 ==================================
 
 Here, we describe a very basic test using the Atomic Simulation Environment
-(ASE) and Python binding for the OpenKIM API.  In this test, we gather the Fe
+(ASE) and Python binding for the OpenKIM API.  In this test, we gather the Ar
 body center cubic lattice constant from the OpenKIM database.  Using this
 lattice constant, we set up a single atom unit cell and calculate it's energy,
 reporting it as the cohesive energy.  For a general overview on test format,
 have a look at the documentation for :ref:`desctests`.  
 
 For this example, we have adopted the descriptive KIM short name of
-ASECohesiveEnergyFromQuery_Fe_bcc and have been provided with the KIM code
+ASECohesiveEnergyFromQuery_Ar_fcc and have been provided with the KIM code
 TE_102111117114_000.  
 
 .. _ase_listoffiles: 
@@ -30,7 +30,7 @@ of them in order to build our test:
 
 .. _aseref_exec:
 
-ASECohesiveEnergyFromQuery_Fe_bcc__TE_102111117114_000
+ASECohesiveEnergyFromQuery_Ar_fcc__TE_102111117114_000
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This is the standalone Python script that takes as input a model name
@@ -56,7 +56,7 @@ The script is short enough that we should take a look at it here::
     
     # calculate the cohesive energy
     calc = KIMCalculator(model)
-    slab = bulk('Fe', 'bcc', a=lattice_constant)
+    slab = bulk('Ar', 'fcc', a=lattice_constant)
     slab.set_calculator(calc)
     energy = -slab.get_potential_energy()
     
@@ -72,7 +72,7 @@ It begins by grabbing the model name and lattice constant from standard input.
 The test assumes that the lattice constant will be input in SI units, so we
 convert it to angstroms and make sure it's a float.   Next, we initialize an
 ASE calculator that integrates with KIM using the model name that was provided.
-We set up a single atom unit cell of bcc Fe with the given lattice constant,
+We set up a single atom unit cell of fcc Ar with the given lattice constant,
 and ask for the potential energy.  Finally, we pack the results into a dictionary
 which we output in JSON format to stdout.  This output will be used to supplement
 the standard Jinja templating environment when filling in the blanks for the
@@ -80,7 +80,7 @@ file :ref:`aseref_results`.
 
 .. _aseref_kimfile:
 
-ASECohesiveEnergyFromQuery_Fe_bcc__TE_102111117114_000.kim
+ASECohesiveEnergyFromQuery_Ar_fcc__TE_102111117114_000.kim
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This is our KIM file as specified by the standards of the KIM project.  
@@ -97,8 +97,8 @@ OpenKIM repository.  In our case, it look like::
 
     title: ASE cohesive energy test example
     test-driver: 
-    species: Fe
-    extended-id: ASECohesiveEnergyFromQuery_Fe_bcc__TE_102111117114_000
+    species: Ar
+    extended-id: ASECohesiveEnergyFromQuery_Ar_fcc__TE_102111117114_000
     disclaimer: Tutorial test using the Atomic Simulation Environment which calculates the cohesive energy
     domain: openkim.org
 
@@ -135,7 +135,7 @@ of the pipeline.  You can find a description of them here :ref:`pipelineindocs`.
 Let's look at this stdin as an example::
 
     @< MODELNAME >@
-    @< query({"database": "data", "fields": {"crystal-structure.a.si-value":1}, "project": ["crystal-structure.a.si-value"], "limit": 1, "query": {"kim-namespace": {"$regex": "equilibrium-crystal-structure"}, "crystal-structure.short-name": "bcc","meta.subject.kimcode": MODELNAME,"meta.runner.kimcode": {"$regex":"LatticeConstantCubicEnergy"}}}) >@
+    @< query({"database": "data", "fields": {"crystal-structure.a.si-value":1}, "project": ["crystal-structure.a.si-value"], "limit": 1, "query": {"kim-namespace": {"$regex": "equilibrium-crystal-structure"}, "crystal-structure.short-name": "fcc","meta.subject.kimcode": MODELNAME,"meta.runner.kimcode": {"$regex":"LatticeConstantCubicEnergy"}}}) >@
 
 
 In the first line, the global variable that defines the current model that is
@@ -149,14 +149,14 @@ test.  We employ the ``project`` operator to get a single number returned.
 
 After templating, ``output/pipeline.stdin`` contains::
 
-    EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000
+    EAM_Dynamo_Ackland_Bacon_Ar__MO_142799717516_000
     2.86652799316e-10
 
 Crafting the appropriate query can take some work.  To help with this, the
 query page has an interactive form where you can hone the question you are
 asking.  When you are done, the query page itself has a section which tells you
 exactly what to copy paste into your code after your find the right one. For 
-this example, I filled in the page like `this <https://query.openkim.org/?project=[%22crystal-structure.a.si-value%22]&fields={%22crystal-structure.a.si-value%22:1}&database=data&limit=1&query={%22kim-namespace%22:{%22$regex%22:%22equilibrium-crystal-structure%22},%22crystal-structure.short-name%22:%22bcc%22,%22meta.subject.kimcode%22:%22EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000%22,%22meta.runner.kimcode%22:{%22$regex%22:%22LatticeConstantCubicEnergy%22}}>`_.  
+this example, I filled in the page like `this <https://query.openkim.org/?project=[%22crystal-structure.a.si-value%22]&fields={%22crystal-structure.a.si-value%22:1}&database=data&limit=1&query={%22kim-namespace%22:{%22$regex%22:%22equilibrium-crystal-structure%22},%22crystal-structure.short-name%22:%22fcc%22,%22meta.subject.kimcode%22:%22EAM_Dynamo_Ackland_Bacon_Ar__MO_142799717516_000%22,%22meta.runner.kimcode%22:{%22$regex%22:%22LatticeConstantCubicEnergy%22}}>`_.  
 At you bottom, you can see that the last howto (`pipeline.stdin.tpl`) 
 is the exact line used in our test.
 
@@ -197,14 +197,14 @@ Testing everything
 -------------------
 
 Checkout the full source code in this :download:`archive
-<./ASECohesiveEnergyFromQuery_Fe_bcc__TE_102111117114_000.tar.gz>`.  To use,
+<./ASECohesiveEnergyFromQuery_Ar_fcc__TE_102111117114_000.tar.gz>`.  To use,
 place in the folder ``~/openkim-repository/te``.  We can then test out our new
 test using the tools provided by the pipeline.  They are on path, so you can
 simply call them like other Linux utilities.  
 
 To run every possible combination involving the test::
 
-    pipeline_runmatches ASECohesiveEnergyFromQuery_Fe_bcc__TE_102111117114_000
+    pipeline_runmatches ASECohesiveEnergyFromQuery_Ar_fcc__TE_102111117114_000
 
 or if you want to try only one run with a specific model, run::
 
