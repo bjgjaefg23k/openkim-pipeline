@@ -99,7 +99,7 @@ From here on out, the information is strictly about development, no more virtual
 Tests and Test drivers
 ^^^^^^^^^^^^^^^^^^^^^^
 
-(specific tutorials can be found in :doc:`tutorial_ase`.)
+(specific tutorials can be found in :doc:`tutorial_ase` and :doc:`tutorial_lammps`.)
 
 In order to reduce the amount of code reproduction and to ease debug and update, we have
 introduced test drivers.  If you intend on making a test which works with multiple options

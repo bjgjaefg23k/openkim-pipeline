@@ -22,6 +22,7 @@ FAQS
 
  * How do I write tests that comply with the pipeline?
     Look in the `Test Development <developers.html#test-development>`_ section of :doc:`developers`
+    Three example tests are described in :doc:`tutorial_ase` and :doc:`tutorial_lammps`.
 
  * How do I download a virtual box?
     Look in the `Initial Setup <developers.html#initial-setup>`_ section of :doc:`developers`
@@ -56,6 +57,8 @@ Table of Contents
    beanstalkd
    virtualbox
    developers
+   tutorial_ase
+   tutorial_lammps
    maintainers
    orm
    code
