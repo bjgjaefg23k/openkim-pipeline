@@ -16,13 +16,14 @@ RSYNC_FLAGS  = "-vvrtLhptgo -uzREc --progress --stats -e "
 RSYNC_FLAGS += "'ssh -i "+GLOBAL_KEY+" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'"
 RSYNC_FLAGS += " --exclude-from="+RSYNC_EXCLUDE_FILE
 
+RSYNC_ADDRESS = RSYNC_USER+"@"+RSYNC_HOST
 RSYNC_PATH = RSYNC_ADDRESS+":"+RSYNC_REMOTE_ROOT
 RSYNC_LOG_FILE_FLAG = "--log-file={}/rsync.log".format(KIM_LOG_DIR)
 RSYNC_LOG_PIPE_FLAG = " >> {} 2>&1".format(KIM_LOG_DIR+"/rsync_stdout.log")
 
-READ_PENDING  = os.path.join(RSYNC_PATH, "/./")#, "/read/pending/./")
-READ_APPROVED = os.path.join(RSYNC_PATH, "/./")#, "/read/approved/./")
-WRITE_RESULTS = os.path.join(RSYNC_PATH, "/./")#, "/write/results/./")
+READ_PENDING  = os.path.join(RSYNC_PATH, "/pending/./")#, "/read/pending/./")
+READ_APPROVED = os.path.join(RSYNC_PATH, "/approved/./")#, "/read/approved/./")
+WRITE_RESULTS = os.path.join(RSYNC_PATH, "/results/./")#, "/write/results/./")
 
 #================================
 # rsync wrappers
@@ -42,7 +43,6 @@ def rsync_command(files,read=True,path=None):
         try:
             logger.info("running rsync for files: %r",files)
             if read:    
-                flags = "-f \"- */tr\" " + flags
                 cmd = " ".join(["rsync", flags, full_path, RSYNC_LOG_FILE_FLAG,
                     "--files-from={}".format(tmp.name), RSYNC_LOCAL_ROOT, RSYNC_LOG_PIPE_FLAG])
             else:
@@ -76,40 +76,7 @@ def j(*s):
 
 RA = READ_APPROVED
 RP = READ_PENDING
-# WA = WRITE_APPROVED
-# WP = WRITE_PENDING
 WR = WRITE_RESULTS
-
-#=============================
-# Not for realsy
-#   This next section is just convience, not to be relied on
-#============================
-def full_test_sync():
-    """ grab the whole repository """
-    rsync_read([j(WP,"te/"),j(WP,"mo/"),j(WP,"md/"),j(WR,"tr/"),j(WP,"td/"),j(WP,"vt/"),j(WP,"vm/"),j(WR,"vr/"),j(WP,"pr/"),j(WP,"rd/")])
-
-
-# def full_write():
-#     """ write the whole repo """
-#     rsync_write(["te/","mo/","md/","tr/","td/","vt/","vm/","vr/","pr/","rd/"])
-
-# def temp_write(files,*args):
-#     """ write things to the temporary write area """
-#     rsync_command(files,read=False,path=TEMP_WRITE_PATH)
-
-# def temp_read(files,*args):
-#     """ pull things from the temporary read area """
-#     rsync_command(files,read=True,path=TEMP_READ_PATH)
-
-
-# def real_write(files,*args):
-#     """ FORBIDDEN:
-#         write things to the real write area """
-#     rsync_command(files,read=False,path=REAL_WRITE_PATH)
-
-# def real_read(files,*args):
-#     """ read things from the real read directory """
-#     rsync_command(files,read=True,path=REAL_READ_PATH)
 
 def rsync_read_full():
     # first, read everything from the /read directory, except all mentions of tr/
@@ -120,7 +87,7 @@ def rsync_read_full():
 def rsync_write_results(debug=False):
     # write the results back to the webserver in the appropriate place
     #rsync_command(["write/results/tr/", "write/results/vr/"], read=False)
-    rsync_command(["/tr/"], read=False)
+    rsync_command(["results/"], read=False)
 
 #=================================
 # director methods

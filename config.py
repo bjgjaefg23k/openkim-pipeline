@@ -83,18 +83,17 @@ GLOBAL_USER = "pipeline"
 GLOBAL_HOST = "pipeline.openkim.org"
 GLOBAL_KEY  = CONF["FILE_IDRSA"]
 
-WEBSITE_ROOT    = "/"
+WEBSITE_ROOT = "/repo/home/curators-to-pipeline-interface/"
 if PIPELINE_DEBUG:
     GATEWAY_ROOT = "/storage/repository_dbg/"
 else:
     GATEWAY_ROOT = "/storage/repository/"
 
-RSYNC_USER  = "pipeline"
-RSYNC_HOST  = "pipeline.openkim.org"
-RSYNC_ADDRESS     = RSYNC_USER+"@"+RSYNC_HOST
-RSYNC_LOCAL_ROOT  = KIM_REPOSITORY_DIR
+RSYNC_USER = "pipeline"
+RSYNC_HOST = "pipeline.openkim.org"
+RSYNC_LOCAL_ROOT = KIM_REPOSITORY_DIR
 RSYNC_REMOTE_ROOT = GATEWAY_ROOT
-RSYNC_EXCLUDE_FILE= KIM_PIPELINE_DIR+"/.rsync-exclude"
+RSYNC_EXCLUDE_FILE = KIM_PIPELINE_DIR+"/.rsync-exclude"
 
 if PIPELINE_DEBUG:
     BEAN_PORT = 14174
@@ -113,9 +112,13 @@ else:
 
 if PIPELINE_GATEWAY:
     PORT_TX, PORT_RX = PORT_RX, PORT_TX  # swap RX, TX
-    RSYNC_LOCAL_ROOT  = GATEWAY_ROOT
+    RSYNC_LOCAL_ROOT = GATEWAY_ROOT
     RSYNC_REMOTE_ROOT = WEBSITE_ROOT
-    GLOBAL_KEY = "/home/ubuntu/id_ecdsa_pipeline"
+    RSYNC_HOST = "shared-repository.openkim.org"
+    GLOBAL_KEY = "/home/openkim/data/id_ecdsa_pipeline"
+
+    if PIPELINE_DEBUG:
+        RSYNC_REMOTE_ROOT = "/repo/home/curators-to-pipeline-interface-dbg/"
 
 TUBE_WEB_UPDATES = "web_updates"
 TUBE_WEB_RESULTS = "web_results"
