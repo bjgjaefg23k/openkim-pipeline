@@ -491,7 +491,8 @@ class Worker(Agent):
                     self.logger.debug("Sending result message back")
                 finally:
                     self.logger.info("Rsyncing results %r", jobmsg.jobid)
-                    rsync_tools.worker_write(comp.result_path) 
+                    with self.rsynclock:
+                        rsync_tools.worker_write(comp.result_path)
                     if errormsg:
                         self.job_message(jobmsg, errors=e, tube=TUBE_ERRORS)
                     else:

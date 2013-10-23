@@ -117,9 +117,6 @@ if PIPELINE_GATEWAY:
     RSYNC_HOST = "shared-repository.openkim.org"
     GLOBAL_KEY = "/home/openkim/data/id_ecdsa_pipeline"
 
-    if PIPELINE_DEBUG:
-        RSYNC_REMOTE_ROOT = "/repo/home/"
-
 TUBE_WEB_UPDATES = "web_updates"
 TUBE_WEB_RESULTS = "web_results"
 TUBE_UPDATES     = "updates"

@@ -31,16 +31,14 @@ class Gateway(object):
             if tube == TUBE_WEB_UPDATES:
                 logger.debug("processing %r" % request.body)
                 try:
-                    if not PIPELINE_DEBUG:
-                        rsync_tools.rsync_read_full()
+                    rsync_tools.gateway_read_full()
                 except Exception as e:
                     logger.error("%r" % e)
                 self.bean.send_msg(TUBE_UPDATES, request.body)
             elif tube == TUBE_RESULTS or tube == TUBE_ERRORS:
                 logger.debug("processing %r" % request.body)
                 try:
-                    if not PIPELINE_DEBUG:
-                        rsync_tools.rsync_write_results()
+                    rsync_tools.gateway_write_results()
 
                     kimcode = simplejson.loads(request.body)['jobid']
                     tries = ['tr', 'vr', 'er']

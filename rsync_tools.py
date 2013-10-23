@@ -22,8 +22,8 @@ RSYNC_LOG_FILE_FLAG = "--log-file={}/rsync.log".format(KIM_LOG_DIR)
 RSYNC_LOG_PIPE_FLAG = " >> {} 2>&1".format(KIM_LOG_DIR+"/rsync_stdout.log")
 
 if PIPELINE_GATEWAY:
-    READ_PENDING  = os.path.join(RSYNC_PATH, "/curators-to-pipeline-interface/pending/./")
-    READ_APPROVED = os.path.join(RSYNC_PATH, "/curators-to-pipeline-interface/approved/./")
+    READ_PENDING  = os.path.join(RSYNC_PATH, "/curators-to-pipeline-interface/./pending/")
+    READ_APPROVED = os.path.join(RSYNC_PATH, "/curators-to-pipeline-interface/./approved/")
     if PIPELINE_DEBUG:
         WRITE_RESULTS = os.path.join(RSYNC_PATH, "/pipeline/results_dbg/./")
     else:
@@ -88,11 +88,11 @@ WR = WRITE_RESULTS
 
 def gateway_read_full():
     # first, read everything from the /read directory, except all mentions of tr/
-    rsync_read([RA, RP])
+    rsync_read([RA]) # FIXME - add back RP when it is added to curators
 
 def gateway_write_results(debug=False):
     # write the results back to the webserver in the appropriate place
-    rsync_write([WR])
+    rsync_write(["/results/./"], path=WR)
 
 #=================================
 # director methods
