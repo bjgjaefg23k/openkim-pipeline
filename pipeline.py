@@ -397,28 +397,11 @@ class Director(Agent):
         # run the test in its own directory
         depids = []
         with test.in_dir():
-            #grab the input file
-            ready, TRs, PAIRs = test.dependency_check(model)
-            self.logger.debug("Dependency check returned <%s, %s, %s>" % (ready, TRs, PAIRs))
-            TR_ids = tuple(map(str,TRs)) if TRs else ()
-
-            if hasattr(model, "model_driver"):
-                md = model.model_driver
-                if md:
-                    TR_ids += (md.kim_code,)
-
             trid = self.get_result_code()
             self.logger.info("Submitting job <%s, %s, %s> priority %i" % (test, model, trid, priority))
 
-            if not ready:
-                if PAIRs:
-                    for (t,m) in PAIRs:
-                        self.logger.info("Submitting dependency <%s, %s>" % (t, m))
-                        depids.append(self.check_dependencies_and_push(str(t),str(m),priority/10,
-                            status,child=(str(test),str(model),trid)))
-
             msg = Message(job=(str(test),str(model)),jobid=trid,
-                    child=child, depends=TR_ids+tuple(depids), status=status)
+                    child=child, depends=tuple(depids), status=status)
             self.job_message(msg, tube=TUBE_JOBS)
 
         return depids

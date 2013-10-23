@@ -21,9 +21,14 @@ RSYNC_PATH = RSYNC_ADDRESS+":"+RSYNC_REMOTE_ROOT
 RSYNC_LOG_FILE_FLAG = "--log-file={}/rsync.log".format(KIM_LOG_DIR)
 RSYNC_LOG_PIPE_FLAG = " >> {} 2>&1".format(KIM_LOG_DIR+"/rsync_stdout.log")
 
-READ_PENDING  = os.path.join(RSYNC_PATH, "/pending/./")#, "/read/pending/./")
-READ_APPROVED = os.path.join(RSYNC_PATH, "/approved/./")#, "/read/approved/./")
-WRITE_RESULTS = os.path.join(RSYNC_PATH, "/results/./")#, "/write/results/./")
+if PIPELINE_GATEWAY:
+    READ_PENDING  = os.path.join(RSYNC_PATH, "/curators-to-pipeline-interface/pending/./")
+    READ_APPROVED = os.path.join(RSYNC_PATH, "/curators-to-pipeline-interface/approved/./")
+    WRITE_RESULTS = os.path.join(RSYNC_PATH, "/pipeline/results/./")
+else:
+    READ_PENDING  = os.path.join(RSYNC_PATH, "/pending/./")
+    READ_APPROVED = os.path.join(RSYNC_PATH, "/approved/./")
+    WRITE_RESULTS = os.path.join(RSYNC_PATH, "/results/./")
 
 #================================
 # rsync wrappers

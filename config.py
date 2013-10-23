@@ -83,7 +83,7 @@ GLOBAL_USER = "pipeline"
 GLOBAL_HOST = "pipeline.openkim.org"
 GLOBAL_KEY  = CONF["FILE_IDRSA"]
 
-WEBSITE_ROOT = "/repo/home/curators-to-pipeline-interface/"
+WEBSITE_ROOT = "/repo/home/"
 if PIPELINE_DEBUG:
     GATEWAY_ROOT = "/storage/repository_dbg/"
 else:
@@ -118,7 +118,7 @@ if PIPELINE_GATEWAY:
     GLOBAL_KEY = "/home/openkim/data/id_ecdsa_pipeline"
 
     if PIPELINE_DEBUG:
-        RSYNC_REMOTE_ROOT = "/repo/home/curators-to-pipeline-interface-dbg/"
+        RSYNC_REMOTE_ROOT = "/repo/home/dbg/"
 
 TUBE_WEB_UPDATES = "web_updates"
 TUBE_WEB_RESULTS = "web_results"
