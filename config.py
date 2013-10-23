@@ -118,7 +118,7 @@ if PIPELINE_GATEWAY:
     GLOBAL_KEY = "/home/openkim/data/id_ecdsa_pipeline"
 
     if PIPELINE_DEBUG:
-        RSYNC_REMOTE_ROOT = "/repo/home/dbg/"
+        RSYNC_REMOTE_ROOT = "/repo/home/"
 
 TUBE_WEB_UPDATES = "web_updates"
 TUBE_WEB_RESULTS = "web_results"

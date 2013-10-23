@@ -24,7 +24,10 @@ RSYNC_LOG_PIPE_FLAG = " >> {} 2>&1".format(KIM_LOG_DIR+"/rsync_stdout.log")
 if PIPELINE_GATEWAY:
     READ_PENDING  = os.path.join(RSYNC_PATH, "/curators-to-pipeline-interface/pending/./")
     READ_APPROVED = os.path.join(RSYNC_PATH, "/curators-to-pipeline-interface/approved/./")
-    WRITE_RESULTS = os.path.join(RSYNC_PATH, "/pipeline/results/./")
+    if PIPELINE_DEBUG:
+        WRITE_RESULTS = os.path.join(RSYNC_PATH, "/pipeline/results_dbg/./")
+    else:
+        WRITE_RESULTS = os.path.join(RSYNC_PATH, "/pipeline/results/./")
 else:
     READ_PENDING  = os.path.join(RSYNC_PATH, "/pending/./")
     READ_APPROVED = os.path.join(RSYNC_PATH, "/approved/./")
