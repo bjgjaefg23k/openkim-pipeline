@@ -90,9 +90,9 @@ def gateway_read_full():
     # first, read everything from the /read directory, except all mentions of tr/
     rsync_read([RA]) # FIXME - add back RP when it is added to curators
 
-def gateway_write_results(debug=False):
+def gateway_write_result(leader, kimcode):
     # write the results back to the webserver in the appropriate place
-    rsync_write(["/results/./"], path=WR)
+    rsync_write([j("/results/./",leader,kimcode)], path=WR)
 
 #=================================
 # director methods

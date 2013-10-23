@@ -11,6 +11,9 @@ logger = logging.getLogger('pipeline').getChild('mongodb')
 client = pymongo.MongoClient()
 db = client[MONGODB]
 
+PATH_RESULT = os.path.join(RSYNC_LOCAL_ROOT, "results")
+PATH_APPROVED = os.path.join(RSYNC_LOCAL_ROOT, "approved")
+
 def config_yaml(flname):
     with open(flname) as f:
         doc = yaml.load(f)
@@ -75,7 +78,7 @@ def kimcode_to_dict(kimcode):
     else:
         foo['driver'] = False
 
-    specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,CONFIG_FILE)
+    specpath = os.path.join(PATH_APPROVED,leader,kimcode,CONFIG_FILE)
     spec = config_yaml(specpath)
 
     if foo['type'] == 'te':
@@ -105,12 +108,12 @@ def uuid_to_dict(leader,uuid):
             "latest": True,
             }
 
-    specpath = os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,CONFIG_FILE)
+    specpath = os.path.join(PATH_RESULT,leader,uuid,CONFIG_FILE)
     spec = config_yaml(specpath)
 
     pipespec = {}
     try:
-        pipespecpath = os.path.join(RSYNC_LOCAL_ROOT,leader,uuid,PIPELINESPEC_FILE)
+        pipespecpath = os.path.join(PATH_RESULT,leader,uuid,PIPELINESPEC_FILE)
         pipespec = config_yaml(pipespecpath)
     except:
         pass
@@ -213,7 +216,7 @@ def insert_one_result(leader, kimcode):
         logger.error("Aready have %s", kimcode)
         return
     try:
-        with open(os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,'results.yaml')) as f:
+        with open(os.path.join(PATH_RESULT,leader,kimcode,'results.yaml')) as f:
             yaml_docs = yaml.load_all(f)
             for doc in yaml_docs:
                 stuff = doc_to_dict(doc,leader,kimcode)
@@ -227,14 +230,14 @@ def insert_one_result(leader, kimcode):
 
 def insert_one_reference_data(leader, kimcode):
     logger.info("Inserting reference data %s ", kimcode)
-    info = uuid_to_dict(leader, kimcode)
+    info = kimcode_to_dict(leader, kimcode)
     try:
         resultobj = db.obj.insert(info)
     except:
         logger.error("Aready have %s", kimcode)
         return
     try:
-        with open(os.path.join(RSYNC_LOCAL_ROOT,leader,kimcode,kimcode+'.yaml')) as f:
+        with open(os.path.join(PATH_APPROVED,leader,kimcode,kimcode+'.yaml')) as f:
             yaml_docs = yaml.load_all(f)
             for doc in yaml_docs:
                 stuff = doc_to_dict(doc,leader,kimcode)
@@ -248,7 +251,7 @@ def insert_objs():
     logger.info("Filling with objects")
     leaders = ('te','vt','vm','mo','md','td')
     for leader in leaders:
-        for i,folder in enumerate(os.listdir(os.path.join(RSYNC_LOCAL_ROOT,leader))):
+        for i,folder in enumerate(os.listdir(os.path.join(PATH_APPROVED,leader))):
             if folder.startswith("Make"):
                 continue
             insert_one_object(folder)
@@ -257,14 +260,14 @@ def insert_results():
     logger.info("Filling with test results")
     leaders = ('tr','vr','er')
     for leader in leaders:
-        for i, folder in enumerate(os.listdir(os.path.join(RSYNC_LOCAL_ROOT,leader))):
+        for i, folder in enumerate(os.listdir(os.path.join(PATH_RESULT,leader))):
             insert_one_result(leader, folder)
 
 def insert_reference_data():
     logger.info("Filling with reference data")
     leaders = ('rd',)
     for leader in leaders:
-        for i, folder in enumerate(os.listdir(os.path.join(RSYNC_LOCAL_ROOT,leader))):
+        for i, folder in enumerate(os.listdir(os.path.join(PATH_APPROVED,leader))):
             insert_one_reference_data(leader, folder)
 
 
