@@ -86,16 +86,13 @@ RA = READ_APPROVED
 RP = READ_PENDING
 WR = WRITE_RESULTS
 
-def rsync_read_full():
+def gateway_read_full():
     # first, read everything from the /read directory, except all mentions of tr/
-    #rsync_command(["read/submitted/", "read/approved/"], read=True)
-    #rsync_command(["write/results/"], read=True)
-    rsync_command(["/"], read=True)
+    rsync_read([RA, RP])
 
-def rsync_write_results(debug=False):
+def gateway_write_results(debug=False):
     # write the results back to the webserver in the appropriate place
-    #rsync_command(["write/results/tr/", "write/results/vr/"], read=False)
-    rsync_command(["results/"], read=False)
+    rsync_write([WR])
 
 #=================================
 # director methods
