@@ -31,18 +31,20 @@ class Gateway(object):
             if tube == TUBE_WEB_UPDATES:
                 logger.debug("processing %r" % request.body)
                 try:
-                    rsync_tools.gateway_read_full()
-                    insert_one_object(simplejson.loads(request.body)['kimid'])
+                    job = simplejson.loads(request.body)
+                    approved = True if job['status'] == 'approved' else False
+                    rsync_tools.gateway_read(job['kimid'], approved=approved)
+                    insert_one_object(job['kimid'])
+                    self.bean.send_msg(TUBE_UPDATES, request.body)
                 except Exception as e:
                     logger.error("%r" % e)
-                self.bean.send_msg(TUBE_UPDATES, request.body)
             elif tube == TUBE_RESULTS or tube == TUBE_ERRORS:
                 logger.debug("processing %r" % request.body)
                 try:
                     kimcode = simplejson.loads(request.body)['jobid']
                     tries = ['tr', 'vr', 'er']
                     for leader in tries:
-                        if os.path.exists(os.path.join(RSYNC_LOCAL_ROOT, "results", leader, kimcode)):
+                        if os.path.exists(os.path.join(RSYNC_LOCAL_ROOT, leader, kimcode)):
                             rsync_tools.gateway_write_result(leader, kimcode)
                             insert_one_result(leader, kimcode)
                 except Exception as e:

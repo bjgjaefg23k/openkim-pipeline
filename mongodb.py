@@ -5,14 +5,18 @@ import datetime
 from ConfigParser import ConfigParser
 
 from config import *
+import database
 from logger import logging
 logger = logging.getLogger('pipeline').getChild('mongodb')
 
 client = pymongo.MongoClient()
 db = client[MONGODB]
 
-PATH_RESULT = os.path.join(RSYNC_LOCAL_ROOT, "results")
-PATH_APPROVED = os.path.join(RSYNC_LOCAL_ROOT, "approved")
+PATH_RESULT = RSYNC_LOCAL_ROOT
+PATH_APPROVED = RSYNC_LOCAL_ROOT
+
+#PATH_RESULT = os.path.join(RSYNC_LOCAL_ROOT, "results")
+#PATH_APPROVED = os.path.join(RSYNC_LOCAL_ROOT, "approved")
 
 def config_yaml(flname):
     with open(flname) as f:
@@ -56,6 +60,10 @@ def flatten(o):
 
 def kimcode_to_dict(kimcode):
     name,leader,num,version = parse_kim_code(kimcode)
+    if not name:
+        name = database.look_for_name(leader, num, version)
+        kimcode = database.format_kim_code(name, leader, num, version)
+
     leader = leader.lower()
     foo = { "name": name, "type": leader.lower(),
             "kimnum": num, "version": int(version),

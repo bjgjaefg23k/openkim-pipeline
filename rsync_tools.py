@@ -22,16 +22,16 @@ RSYNC_LOG_FILE_FLAG = "--log-file={}/rsync.log".format(KIM_LOG_DIR)
 RSYNC_LOG_PIPE_FLAG = " >> {} 2>&1".format(KIM_LOG_DIR+"/rsync_stdout.log")
 
 if PIPELINE_GATEWAY:
-    READ_PENDING  = os.path.join(RSYNC_PATH, "/curators-to-pipeline-interface/./pending/")
-    READ_APPROVED = os.path.join(RSYNC_PATH, "/curators-to-pipeline-interface/./approved/")
+    READ_PENDING  = os.path.join(RSYNC_PATH, "/curators-to-pipeline-interface/pending/./")
+    READ_APPROVED = os.path.join(RSYNC_PATH, "/curators-to-pipeline-interface/approved/./")
     if PIPELINE_DEBUG:
         WRITE_RESULTS = os.path.join(RSYNC_PATH, "/pipeline/results_dbg/./")
     else:
         WRITE_RESULTS = os.path.join(RSYNC_PATH, "/pipeline/results/./")
 else:
-    READ_PENDING  = os.path.join(RSYNC_PATH, "/pending/./")
-    READ_APPROVED = os.path.join(RSYNC_PATH, "/approved/./")
-    WRITE_RESULTS = os.path.join(RSYNC_PATH, "/results/./")
+    READ_PENDING  = os.path.join(RSYNC_PATH, "/./")
+    READ_APPROVED = os.path.join(RSYNC_PATH, "/./")
+    WRITE_RESULTS = os.path.join(RSYNC_PATH, "/./")
 
 #================================
 # rsync wrappers
@@ -52,7 +52,7 @@ def rsync_command(files,read=True,path=None):
             logger.info("running rsync for files: %r",files)
             if read:    
                 cmd = " ".join(["rsync", flags, full_path, RSYNC_LOG_FILE_FLAG,
-                    "--files-from={}".format(tmp.name), RSYNC_LOCAL_ROOT, RSYNC_LOG_PIPE_FLAG])
+                    "--include-from={} --exclude '**'".format(tmp.name), RSYNC_LOCAL_ROOT, RSYNC_LOG_PIPE_FLAG])
             else:
                 cmd = " ".join(["rsync", flags, RSYNC_LOG_FILE_FLAG,
                     "--files-from={}".format(tmp.name), RSYNC_LOCAL_ROOT, full_path, RSYNC_LOG_PIPE_FLAG])
@@ -67,13 +67,18 @@ def rsync_command(files,read=True,path=None):
 #======================================
 def kid_to_folder(kid):
     """ Convert a kim_code to its directory """
-    #obj = models.KIMObject(kid)
-    #return obj.path
     name,leader,num,version = parse_kim_code(kid)
     path = os.path.join(leader.lower(),kid)
     return path
 
+def kid_to_folder_wild(kid):
+    """ Convert a kim_code to its directory """
+    name,leader,num,version = parse_kim_code(kid)
+    path = os.path.join(leader.lower(),"*"+kid+"*")
+    return path
+
 ktf = kid_to_folder
+ktfw = kid_to_folder_wild
 
 rsync_read  = partial(rsync_command, read=True)
 rsync_write = partial(rsync_command, read=False)
@@ -86,13 +91,16 @@ RA = READ_APPROVED
 RP = READ_PENDING
 WR = WRITE_RESULTS
 
-def gateway_read_full():
+def gateway_read(kimcode, approved=True):
     # first, read everything from the /read directory, except all mentions of tr/
-    rsync_read([RA]) # FIXME - add back RP when it is added to curators
+    if approved:
+        rsync_read([j(RA,ktfw(kimcode))])
+    else:
+        rsync_read([j(RP,ktfw(kimcode))])
 
 def gateway_write_result(leader, kimcode):
     # write the results back to the webserver in the appropriate place
-    rsync_write([j("/results/./",leader,kimcode)], path=WR)
+    rsync_write([j(leader,kimcode)], path=WR)
 
 #=================================
 # director methods
