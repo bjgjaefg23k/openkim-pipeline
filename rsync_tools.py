@@ -25,9 +25,9 @@ if PIPELINE_GATEWAY:
     READ_PENDING  = os.path.join(RSYNC_PATH, "/curators-to-pipeline-interface/pending/./")
     READ_APPROVED = os.path.join(RSYNC_PATH, "/curators-to-pipeline-interface/approved/./")
     if PIPELINE_DEBUG:
-        WRITE_RESULTS = os.path.join(RSYNC_PATH, "/pipeline/results_dbg/./")
+        WRITE_RESULTS = os.path.join(RSYNC_PATH, "/pipeline/test-result-uploads-dbg/incoming/./")
     else:
-        WRITE_RESULTS = os.path.join(RSYNC_PATH, "/pipeline/results/./")
+        WRITE_RESULTS = os.path.join(RSYNC_PATH, "/pipeline/test-result-uploads/incoming/./")
 else:
     READ_PENDING  = os.path.join(RSYNC_PATH, "/./")
     READ_APPROVED = os.path.join(RSYNC_PATH, "/./")

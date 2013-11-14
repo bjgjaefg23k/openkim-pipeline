@@ -90,26 +90,6 @@ def getboxinfo():
 
     return info
 
-class Message(dict):
-    def __init__(self, **kwargs):
-        super(Message, self).__init__()
-        dic = kwargs
-        if kwargs.has_key('string'):
-            dic = simplejson.loads(kwargs['string'])
-        for key in dic.keys():
-            self[key] = dic[key]
-
-    def __getattr__(self, name):
-        if not self.has_key(name):
-            return None
-        return self[name]
-
-    def __setattr__(self, name, value):
-        self[name] = value
-
-    def __repr__(self):
-        return simplejson.dumps(self)
-
 def ll(iterator):
     return len(list(iterator))
 
@@ -400,7 +380,7 @@ class Director(Agent):
             trid = self.get_result_code()
             self.logger.info("Submitting job <%s, %s, %s> priority %i" % (test, model, trid, priority))
 
-            msg = Message(job=(str(test),str(model)),jobid=trid,
+            msg = network.Message(job=(str(test),str(model)),jobid=trid,
                     child=child, depends=tuple(depids), status=status)
             self.job_message(msg, tube=TUBE_JOBS)
 
@@ -437,7 +417,7 @@ class Worker(Agent):
 
             # update the repository, attempt to run the job and return the results to the director
             try:
-                jobmsg = Message(string=job.body)
+                jobmsg = network.Message(string=job.body)
                 pending = True if jobmsg == "pending" else False
             except simplejson.JSONDecodeError:
                 # message is not JSON decodeable

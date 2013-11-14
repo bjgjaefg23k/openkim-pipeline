@@ -155,3 +155,22 @@ def addNetworkHandler(comm, boxinfo):
     network_handler.setFormatter(log_formatter)
     tlog.addHandler(network_handler)
 
+class Message(dict):
+    def __init__(self, **kwargs):
+        super(Message, self).__init__()
+        dic = kwargs
+        if kwargs.has_key('string'):
+            dic = simplejson.loads(kwargs['string'])
+        for key in dic.keys():
+            self[key] = dic[key]
+
+    def __getattr__(self, name):
+        if not self.has_key(name):
+            return None
+        return self[name]
+
+    def __setattr__(self, name, value):
+        self[name] = value
+
+    def __repr__(self):
+        return simplejson.dumps(self)
