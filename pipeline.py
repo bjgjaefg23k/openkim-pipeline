@@ -16,8 +16,10 @@ Any of the classes below rely on a secure public key to open an ssh
 tunnel to the remote host.  It then connects to the beanstalkd
 across this tunnel.
 """
-from subprocess import check_call, CalledProcessError
+from subprocess import check_call, CalledProcessError, Popen, PIPE
 from multiprocessing import cpu_count, Process, Lock
+from multiprocessing.managers import BaseManager
+from contextlib import contextmanager
 import sys
 import time
 import simplejson
@@ -34,42 +36,59 @@ import kimapi
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("pipeline")
 
-buildlock = Lock()
-
 def getboxinfo():
-    os.system("cd /home/vagrant/openkim-pipeline; git log -n 1 | grep commit | sed s/commit\ // > /persistent/setuphash")
+    """ 
+    we need to gather information from two sources, the /pipeline/environment
+    file and various of resources, so we split into things and temps or 
+    /pipeline/environment and various bash calls
+    """
+    import urllib
+    import re
+    things = ['pipeline_sitename', 'pipeline_username', 'boxtype',
+            'vmversion', 'setupargs', 'gitbranch', 'githost', 'gitname', 'uuid']
 
     info = {}
-    things = ['sitename', 'username', 'boxtype',
-            'ipaddr', 'vmversion', 'setuphash', 'uuid',
-            'gitargs', 'gitbranch', 'githost']
-
     for thing in things:
         try:
-            info[thing] = open(os.path.join('/persistent',thing)).read().strip()
+            info[thing] = CONF[thing.upper()]
         except Exception as e:
             info[thing] = None
+
+    info['cpucount'] = cpu_count()
+    info['setuphash'] = Popen("cd "+CONF["PIPELINEDIR"]+"; git log -n 1 | grep commit | sed s/commit\ //", 
+        stdout=PIPE, shell=True).communicate()[0]
+
+    try:
+        info['ipaddr'] = urllib.urlopen("http://pipeline.openkim.org/ip").read()
+    except IOError as e:
+        logger.error("pipeline.openkim.org could not be reached for ip")
+        info['ipaddr'] = None
+
+    try:
+        with open(CONF["FILE_BENCHMARK"]) as f:
+            content = f.read()
+            lps = re.search(r"([0-9\.]+\slps)", content)
+            MWIPS = re.search(r"([0-9\.]+\sMWIPS)", content)
+
+            info['benchmark_dry'] = lps.groups()[0] if lps else None
+            info['benchmark_whet'] = MWIPS.groups()[0] if MWIPS else None
+    except Exception as e:
+        logger.error("Benchmark has not been completed")
+        info['benchmark_dry'] = info['benchmark_whet'] = None
+
+    try:
+        with open("/proc/cpuinfo") as f:
+            model = re.search(r"(model name)\s:\s(.*)\n", f.read())
+            info['cpu'] = model.groups()[1] if model else None
+
+        with open("/proc/meminfo") as f:
+            mem = re.search(r"(MemTotal:)\s*(.*)\n", f.read())
+            info['mem'] = mem.groups()[1] if mem else None
+    except:
+        logger.error("CPU and RAM info could not be found")
+        info['cpu'] = info['mem'] = None
+
     return info
-
-class Message(dict):
-    def __init__(self, **kwargs):
-        super(Message, self).__init__()
-        dic = kwargs
-        if kwargs.has_key('string'):
-            dic = simplejson.loads(kwargs['string'])
-        for key in dic.keys():
-            self[key] = dic[key]
-
-    def __getattr__(self, name):
-        if not self.has_key(name):
-            return None
-        return self[name]
-
-    def __setattr__(self, name, value):
-        self[name] = value
-
-    def __repr__(self):
-        return simplejson.dumps(self)
 
 def ll(iterator):
     return len(list(iterator))
@@ -78,13 +97,36 @@ def pingpongHandler(header, message, agent):
     if header == "ping":
         agent.comm.send_msg("reply", [agent.uuid, agent.data])
 
+class BuilderBot(object):
+    def __init__(self):
+        self.mod_buildlocks = Lock()
+        self.buildlocks = {}
+
+    def lock_build(self, kimobj):
+        with self.mod_buildlocks:
+            if not self.buildlocks.get(kimobj.kim_code, None):
+                self.buildlocks[kimobj.kim_code] = Lock()
+            with self.buildlocks[kimobj.kim_code]:
+                try:
+                    kimobj.make()
+                except Exception as e:
+                    raise RuntimeError("Could not make %s" % kimobj.kim_code)
+
+class BuilderManager(BaseManager):
+    pass
+
+BuilderManager.register('BuilderBot', BuilderBot, exposed = ['lock_build'])
+
 #==================================================================
 # Agent is the base class for Director, Worker, Site
 # handles basic networking and message responding (so it is not duplicated)
 #==================================================================
 class Agent(object):
-    def __init__(self, name='worker', num=0):
+    def __init__(self, name='worker', num=0, builder=None, rsynclock=None):
         self.boxinfo  = getboxinfo()
+
+        self.builder = builder
+        self.rsynclock = rsynclock
 
         self.job = None
         self.name = name
@@ -92,6 +134,7 @@ class Agent(object):
         self.uuid = self.boxinfo['uuid']+":"+str(self.num)
         self.logger = logger.getChild("%s-%i" % (self.name, num))
         self.data = {"job": self.job, "data": self.boxinfo}
+        self.boxinfo['cid'] = self.num
 
     def connect(self):
         # start up the 2-way comm too
@@ -124,7 +167,7 @@ class Agent(object):
     def job_message(self, jobmsg, errors=None, tube=TUBE_RESULTS):
         """ Send back a job message """
         jobmsg.results = None
-        jobmsg.errors = "%r" % errors
+        jobmsg.errors = "%s" % errors
         jobmsg.update(self.boxinfo)
 
         if len(jobmsg.errors) > PIPELINE_MSGSIZE:
@@ -144,16 +187,39 @@ class Agent(object):
                 return 1
             return 0
 
+    @contextmanager
+    def in_api_dir(self):
+        cwd = os.getcwd()
+        os.chdir(KIM_API_DIR)
+        try:
+            yield
+        except Exception as e:
+            raise e
+        finally:
+            os.chdir(cwd)
+
     def make_all(self):
         self.logger.debug("Building everything...")
-        try:
-            check_call("makekim",shell=True)
-        except CalledProcessError as e:
-            self.logger.error("could not makekim")
+        with self.in_api_dir():
+            try:
+                with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
+                    check_call(["make"], shell=True, stdout=log, stderr=log)
+            except CalledProcessError as e:
+                self.logger.error("could not make kim")
+                raise RuntimeError, "Could not build entire repository"
+            return 0
 
-            raise RuntimeError, "our makekim failed!"
-            return 1
-        return 0
+    def make_api(self):
+        self.logger.debug("Building the API...")
+        with self.in_api_dir():
+            try:
+                with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
+                    check_call(["make", "openkim-api"], shell=True, stdout=log, stderr=log)
+            except CalledProcessError as e:
+                self.logger.error("Could not make KIM API")
+                raise RuntimeError, "Could not make KIM API"
+            return 0
+
 
 #==================================================================
 # director class for the pipeline
@@ -162,8 +228,8 @@ class Director(Agent):
     """ The Director object, knows to listen to incoming jobs, computes dependencies
     and passes them along to workers
     """
-    def __init__(self, num=0):
-        super(Director, self).__init__(name="director", num=num)
+    def __init__(self, num=0, *args, **kwargs):
+        super(Director, self).__init__(name="director", num=num, *args, **kwargs)
 
     def run(self):
         """
@@ -311,28 +377,11 @@ class Director(Agent):
         # run the test in its own directory
         depids = []
         with test.in_dir():
-            #grab the input file
-            ready, TRs, PAIRs = test.dependency_check(model)
-            self.logger.debug("Dependency check returned <%s, %s, %s>" % (ready, TRs, PAIRs))
-            TR_ids = tuple(map(str,TRs)) if TRs else ()
-
-            if hasattr(model, "model_driver"):
-                md = model.model_driver
-                if md:
-                    TR_ids += (md.kim_code,)
-
             trid = self.get_result_code()
             self.logger.info("Submitting job <%s, %s, %s> priority %i" % (test, model, trid, priority))
 
-            if not ready:
-                if PAIRs:
-                    for (t,m) in PAIRs:
-                        self.logger.info("Submitting dependency <%s, %s>" % (t, m))
-                        depids.append(self.check_dependencies_and_push(str(t),str(m),priority/10,
-                            status,child=(str(test),str(model),trid)))
-
-            msg = Message(job=(str(test),str(model)),jobid=trid,
-                    child=child, depends=TR_ids+tuple(depids), status=status)
+            msg = network.Message(job=(str(test),str(model)),jobid=trid,
+                    child=child, depends=tuple(depids), status=status)
             self.job_message(msg, tube=TUBE_JOBS)
 
         return depids
@@ -346,8 +395,8 @@ class Director(Agent):
 #==================================================================
 class Worker(Agent):
     """ Represents a worker, knows how to do jobs he is given, create results and rsync them back """
-    def __init__(self, num=0):
-        super(Worker, self).__init__(name='worker', num=num)
+    def __init__(self, num=0, *args, **kwargs):
+        super(Worker, self).__init__(name='worker', num=num, *args, **kwargs)
 
     def run(self):
         """ Start to listen, tunnels should be open and ready """
@@ -368,7 +417,7 @@ class Worker(Agent):
 
             # update the repository, attempt to run the job and return the results to the director
             try:
-                jobmsg = Message(string=job.body)
+                jobmsg = network.Message(string=job.body)
                 pending = True if jobmsg == "pending" else False
             except simplejson.JSONDecodeError:
                 # message is not JSON decodeable
@@ -393,21 +442,28 @@ class Worker(Agent):
 
             try:
                 # check to see if this is a verifier or an actual test
-                with buildlock:
+                with self.rsynclock:
                     self.logger.info("Rsyncing from repo %r", jobmsg.job+jobmsg.depends)
                     rsync_tools.worker_read(*jobmsg.job, depends=jobmsg.depends, pending=pending)
-                    self.make_all()
 
                 runner_kcode, subject_kcode = jobmsg.job
                 runner  = kimobjects.kim_obj(runner_kcode)
                 subject = kimobjects.kim_obj(subject_kcode)
+
+                for driver in runner.drivers:
+                    self.builder.lock_build(driver)
+                self.builder.lock_build(runner)
+
+                for driver in subject.drivers:
+                    self.builder.lock_build(driver)
+                self.builder.lock_build(subject)
 
                 self.logger.info("Running (%r,%r)", runner, subject)
                 comp = compute.Computation(runner, subject, result_code=jobmsg.jobid)
 
                 errormsg = None
                 try:
-                    comp.run()
+                    comp.run(extrainfo=self.boxinfo)
                 except Exception as e:
                     errormsg = e
                     self.logger.exception("Errors occured, moving to er/")
@@ -415,7 +471,8 @@ class Worker(Agent):
                     self.logger.debug("Sending result message back")
                 finally:
                     self.logger.info("Rsyncing results %r", jobmsg.jobid)
-                    rsync_tools.worker_write(comp.result_path) 
+                    with self.rsynclock:
+                        rsync_tools.worker_write(comp.result_path)
                     if errormsg:
                         self.job_message(jobmsg, errors=e, tube=TUBE_ERRORS)
                     else:
@@ -469,8 +526,6 @@ def signal_handler(): #signal, frame):
         p.join(timeout=1)
     sys.exit(1)
 
-network.open_ports(BEAN_PORT, PORT_RX, PORT_TX, GLOBAL_USER, GLOBAL_HOST, GLOBAL_IP)
-
 if __name__ == "__main__":
     import sys
     if PIPELINE_REMOTE:
@@ -482,6 +537,12 @@ if __name__ == "__main__":
     if PIPELINE_GATEWAY:
         logger.info("GATEWAY MODE: ON")
 
+    network.open_ports(BEAN_PORT, PORT_RX, PORT_TX, GLOBAL_USER, GLOBAL_HOST, GLOBAL_IP)
+
+    manager = BuilderManager()
+    manager.start()
+    builder = manager.BuilderBot()
+    rsynclock = Lock()
 
     if len(sys.argv) > 1:
         # directors are not multithreaded for build safety
@@ -494,7 +555,12 @@ if __name__ == "__main__":
         elif sys.argv[1] == "worker":
             thrds = cpu_count()
             for i in range(thrds):
-                pipe[i] = Worker(num=i)
+                pipe[i] = Worker(num=i, builder=builder, rsynclock=rsynclock)
+
+                if i == 0:
+                    logger.info("Building KIM API as worker 0")
+                    #pipe[i].make_api()
+
                 procs[i] = Process(target=Worker.run, args=(pipe[i],), name='worker-%i'%i)
                 #procs[i].daemon = True
                 procs[i].start()

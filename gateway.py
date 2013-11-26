@@ -5,8 +5,10 @@ from logger import logging
 logger = logging.getLogger("pipeline").getChild("gateway")
 
 import simplejson, re, time, os, time
-from mongodb import db, insert_one_result
+from mongodb import db, insert_one_result, insert_one_object
 from threading import Thread
+from datetime import datetime
+from bson.json_util import dumps
 
 regex = r"(?:([_a-zA-Z][_a-zA-Z0-9]*?)__)?([A-Z]{2})_([0-9]{10,12})(?:_([0-9]{3}))?"
 RSYNC_FLAGS = "-rtpgoDOL -uzRhEc --progress --stats"
@@ -20,7 +22,7 @@ class Gateway(object):
 
     def connect_to_daemon(self):
         self.bean.connect()
-        self.bean.watch(TUBE_WEB_UPDATES, TUBE_RESULTS)
+        self.bean.watch(TUBE_WEB_UPDATES, TUBE_RESULTS, TUBE_ERRORS)
 
     def process_messages(self):
         while 1:
@@ -29,21 +31,21 @@ class Gateway(object):
             if tube == TUBE_WEB_UPDATES:
                 logger.debug("processing %r" % request.body)
                 try:
-                    if not PIPELINE_DEBUG:
-                        rsync_tools.rsync_read_full(debug=self.debug)
+                    job = simplejson.loads(request.body)
+                    approved = True if job['status'] == 'approved' else False
+                    rsync_tools.gateway_read(job['kimid'], approved=approved)
+                    insert_one_object(job['kimid'])
+                    self.bean.send_msg(TUBE_UPDATES, request.body)
                 except Exception as e:
                     logger.error("%r" % e)
-                self.bean.send_msg(TUBE_UPDATES, request.body)
             elif tube == TUBE_RESULTS or tube == TUBE_ERRORS:
                 logger.debug("processing %r" % request.body)
                 try:
-                    if not PIPELINE_DEBUG:
-                        rsync_tools.rsync_write_results(debug=self.debug)
-
                     kimcode = simplejson.loads(request.body)['jobid']
                     tries = ['tr', 'vr', 'er']
                     for leader in tries:
                         if os.path.exists(os.path.join(RSYNC_LOCAL_ROOT, leader, kimcode)):
+                            rsync_tools.gateway_write_result(leader, kimcode)
                             insert_one_result(leader, kimcode)
                 except Exception as e:
                     logger.error("%r" % e)
@@ -89,9 +91,15 @@ def save_job(tube, dic):
         db.job.update({"jobid": dic['jobid']}, {"$set": info})
     return trimjob(info)
 
-def save_log(log):
-    db.log.insert({"log": log})
-    return log
+def save_log(full):
+    log = full.get('message', None)
+    uuid = full.get('uuid', None)
+    cid = full.get('cid', None)
+
+    trimmed = {"log": log, 'uuid': uuid, 'cid': cid, 'date': str(datetime.utcnow())}
+    db.log.insert(trimmed)
+    trimmed.pop('_id')
+    return trimmed
 
 def save_agent(uuid, obj):
     if not db.agent.find_one({"uuid": uuid}):
@@ -132,9 +140,8 @@ class WebCommunicator(network.Communicator):
 
                 # if it comes in on the 'logs' tube, send to the deque
                 if message[0] == "logs":
-                    templog = message[1]['message']
-                    trimmed = save_log(templog)
-                    self.sock_logs.send(trimmed)
+                    trimmed = save_log(message[1])
+                    self.sock_logs.send(dumps(trimmed))
 
                 # if it is a reply to a request, treat it as
                 # obj[1] is uuid | obj[2] is the message

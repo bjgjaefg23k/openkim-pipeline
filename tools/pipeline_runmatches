@@ -18,7 +18,10 @@ if __name__ == "__main__":
             if len(list(test.models)) > 0:
                 for model in test.models:
                     logger.info("Running combination <%r, %r" % (test, model))
-                    Computation(test, model, d.get_result_code()).run()
+                    try:
+                        Computation(test, model, d.get_result_code()).run()
+                    except Exception as e:
+                        pass
             else:
                 logger.info("No matches found for your test")
         if leader == "TD":
@@ -27,7 +30,10 @@ if __name__ == "__main__":
                 for t in test.tests:
                     for m in t.models:
                         logger.info("Running combination <%r, %r" % (t, m))
-                        Computation(t, m, d.get_result_code()).run()
+                        try:
+                            Computation(t, m, d.get_result_code()).run()
+                        except Exception as e:
+                            pass
             else:
                 logger.info("No matches found for your test driver")
         if leader == "MO":

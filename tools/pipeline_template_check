@@ -1,0 +1,88 @@
+#! /usr/bin/env python
+""" Simple utility for checking the format of template files
+
+    Utility can also check YAML syntax with the --check-yaml flag.
+"""
+
+import argparse
+import jinja2
+import json
+import yaml
+import os
+
+import kimobjects
+import template
+
+from logger import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("testgenie")
+
+env = template.template_environment
+
+parser = argparse.ArgumentParser(description="Template checker",
+        epilog=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,)
+parser.add_argument('file', type=str,
+        help="file to run through template engine")
+
+parser.add_argument("--variables",type=str,
+        help="JSON file or string to get template variables from")
+
+parser.add_argument("--strict",action="store_true",
+        help="Use strict variable rendering")
+
+parser.add_argument("--check-yaml",action="store_true",
+        help="Check yaml syntax")
+
+parser.add_argument("--default-markers",action="store_true",
+        help="Use default markers, i.e. for testgenie checks")
+
+parser.add_argument("--quiet",action="store_true",
+        help="Suppress output of formatted template")
+
+args = vars(parser.parse_args())
+
+if args['strict']:
+    env.undefined = jinja2.StrictUndefined
+else:
+    env.undefined = jinja2.Undefined
+
+if args['default_markers']:
+    env.block_start_string='{%'
+    env.block_end_string='%}'
+    env.variable_start_string='{{'
+    env.variable_end_string='}}'
+    env.comment_start_string='{#'
+    env.comment_end_string='#}'
+
+#get filename
+flname = os.path.abspath(args['file'])
+
+template = env.get_template(flname)
+
+#get variables
+if args['variables']:
+    varpath = args['variables']
+    try:
+        with open(varpath) as f:
+            vardict = json.loads(f.read())
+    except Exception:
+        vardict = json.loads(varpath)
+else:
+    vardict = {}
+
+rendered = template.render(vardict)
+if not args['quiet']:
+    print rendered
+
+if args['check_yaml']:
+    #check syntax
+    try:
+        z = yaml.safe_load_all(rendered)
+        zz = list(z)
+        logger.info("Proper YAML")
+    except yaml.scanner.ScannerError as e:
+        logger.error("Improperly formatted YAML\n:%s", e)
+
+
+

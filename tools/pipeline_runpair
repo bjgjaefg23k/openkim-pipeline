@@ -1,0 +1,24 @@
+#!/usr/bin/env python
+import database
+import kimobjects
+from compute import Computation
+import sys
+from config import *
+from logger import logging
+from pipeline import Director
+logger = logging.getLogger("pipeline").getChild("development")
+
+if __name__ == "__main__":
+    if len(sys.argv) == 3:
+        d = Director()
+        runner = kimobjects.kim_obj(sys.argv[1])
+        subject = kimobjects.kim_obj(sys.argv[2])
+        logger.info("Running combination <%r, %r" % (runner, subject))
+        Computation(runner, subject, d.get_result_code()).run()
+    elif len(sys.argv) == 4:
+        runner = kimobjects.kim_obj(sys.argv[1])
+        subject = kimobjects.kim_obj(sys.argv[2])
+        logger.info("Running combination <%r, %r" % (runner, subject))
+        Computation(runner, subject).run()
+    else:
+        logger.info("Usage: pipeline_runpair <runner> <subject> [inplace]")

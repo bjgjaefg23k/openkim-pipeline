@@ -1,4 +1,4 @@
 #!/bin/bash
 . /pipeline/environment
-python $PIPELINEDIR/pipeline.py "$@"
+python $WEBDIR/website.py 
 

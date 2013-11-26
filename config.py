@@ -10,6 +10,28 @@ and this module is imported in star from at the top of all of the scripts::
     from config import *
 """
 import os
+import re
+
+#======================================
+# the environment parser
+#======================================
+def read_environment(filename):
+    conf = {}
+    lines = open(filename).readlines()
+    for line in lines:
+        if not re.match(r"^[A-Za-z0-9\_]+\=.", line):
+            continue
+        var, val = line.strip().split("=")
+        search = re.search(r"(\$[A-Za-z0-9\_]+)", val) 
+        if search:
+            for rpl in search.groups():
+                val = val.replace(rpl, conf[rpl[1:]])
+        conf[var] = val
+    return conf
+
+ENVIRONMENT_FILE = "/pipeline/environment"
+CONF = read_environment(ENVIRONMENT_FILE)
+CONF.update(read_environment(CONF["FILE_CONF_EXTRA"]))
 
 # Setting up global truths - provide these with environment variables!
 PIPELINE_REMOTE    = False  # are we even connected remotely
@@ -38,15 +60,20 @@ KIM_API_LIB_DIR    = os.path.join(KIM_API_DIR,"KIM_API")
 KIM_API_CHECK_MATCH_UTIL = os.path.join(KIM_API_LIB_DIR,"openkim-api-descriptor-file-match")
 
 OUTPUT_DIR      = "output"
-INPUT_FILE      = "pipeline.stdin"
-TEMPLATE_FILE   = "pipeline.yaml"
-CONFIG_FILE     = "kimspec.ini"
-TEMP_INPUT_FILE = os.path.join(OUTPUT_DIR,"pipeline.processed.stdin")
+INPUT_FILE      = "pipeline.stdin.tpl"
+TEMPLATE_FILE   = "results.yaml.tpl"
+CONFIG_FILE     = "kimspec.yaml"
+TEMP_INPUT_FILE = os.path.join(OUTPUT_DIR,"pipeline.stdin")
 STDOUT_FILE     = os.path.join(OUTPUT_DIR,"pipeline.stdout")
 STDERR_FILE     = os.path.join(OUTPUT_DIR,"pipeline.stderr")
 KIMLOG_FILE     = os.path.join(OUTPUT_DIR,"kim.log")
 RESULT_FILE     = os.path.join(OUTPUT_DIR,"results.yaml")
+TPLENV_JSON_FILE = os.path.join(OUTPUT_DIR,"results.template-env.json")
+TPLENV_YAML_FILE = os.path.join(OUTPUT_DIR,"results.template-env.yaml")
+PIPELINESPEC_FILE = "pipelinespec.yaml"
 
+INTERMEDIATE_FILES = [TEMP_INPUT_FILE, STDOUT_FILE, STDERR_FILE, KIMLOG_FILE,
+        TPLENV_JSON_FILE, TPLENV_YAML_FILE, RESULT_FILE]
 #==============================
 # Settings for remote access
 #==============================
@@ -54,20 +81,19 @@ GLOBAL_IP   = "127.0.0.1"
 GLOBAL_TOUT = 1
 GLOBAL_USER = "pipeline"
 GLOBAL_HOST = "pipeline.openkim.org"
-GLOBAL_KEY  = "/persistent/id_rsa"
+GLOBAL_KEY  = CONF["FILE_IDRSA"]
 
-WEBSITE_ROOT    = "/"
+WEBSITE_ROOT = "/repo/home/"
 if PIPELINE_DEBUG:
     GATEWAY_ROOT = "/storage/repository_dbg/"
 else:
     GATEWAY_ROOT = "/storage/repository/"
 
-RSYNC_USER  = "pipeline"
-RSYNC_HOST  = "pipeline.openkim.org"
-RSYNC_ADDRESS     = RSYNC_USER+"@"+RSYNC_HOST
-RSYNC_LOCAL_ROOT  = KIM_REPOSITORY_DIR
+RSYNC_USER = "pipeline"
+RSYNC_HOST = "pipeline.openkim.org"
+RSYNC_LOCAL_ROOT = KIM_REPOSITORY_DIR
 RSYNC_REMOTE_ROOT = GATEWAY_ROOT
-RSYNC_EXCLUDE_FILE= KIM_PIPELINE_DIR+"/.rsync-exclude"
+RSYNC_EXCLUDE_FILE = KIM_PIPELINE_DIR+"/.rsync-exclude"
 
 if PIPELINE_DEBUG:
     BEAN_PORT = 14174
@@ -86,9 +112,11 @@ else:
 
 if PIPELINE_GATEWAY:
     PORT_TX, PORT_RX = PORT_RX, PORT_TX  # swap RX, TX
-    RSYNC_LOCAL_ROOT  = GATEWAY_ROOT
+    RSYNC_LOCAL_ROOT = GATEWAY_ROOT
     RSYNC_REMOTE_ROOT = WEBSITE_ROOT
-    GLOBAL_KEY = "/home/ubuntu/id_ecdsa_pipeline"
+    RSYNC_HOST = "shared-repository.openkim.org"
+    GLOBAL_KEY = "/home/openkim/data/id_ecdsa_pipeline"
+    KIM_REPOSITORY_DIR = RSYNC_LOCAL_ROOT
 
 TUBE_WEB_UPDATES = "web_updates"
 TUBE_WEB_RESULTS = "web_results"
@@ -152,3 +180,4 @@ class PipelineRuntimeError(Exception):
             return str(self._e)
         else:
             return '%s: %s\n\n%s' % (self._e.__class__.__name__, str(self._e), self.extra)
+

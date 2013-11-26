@@ -17,6 +17,10 @@ from subprocess import Popen
 from threading import Thread
 import zmq
 
+# TODO: switch this over to provy / fabric framework 
+# ssh -f (run in the background) -N (only port forwarding) pipeline
+# and using .ssh/config
+
 def open_ports(port=BEAN_PORT, rx=PORT_RX, tx=PORT_TX, user=GLOBAL_USER, 
         addr=GLOBAL_HOST, ip=GLOBAL_IP):
     try:
@@ -24,9 +28,10 @@ def open_ports(port=BEAN_PORT, rx=PORT_RX, tx=PORT_TX, user=GLOBAL_USER,
         bsd.close()
     except bean.SocketError:
         st  = ""
-        st += "screen -dm ssh -i /persistent/id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "  
+        st += "screen -dm ssh -i {} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "  
         st +=                 "-L{}:{}:{}   -L{}:{}:{}  -L{}:{}:{}  {}@{}"
-        ssh = Popen(st.format(port,ip,port,  rx,ip,rx,  tx,ip,tx,   user,addr), shell=True)
+        ssh = Popen(st.format(GLOBAL_KEY, port,ip,port,  
+                rx,ip,rx,  tx,ip,tx,   user,addr), shell=True)
         logger.info("Waiting to open ports via ssh tunnels")
         time.sleep(1)
 
@@ -150,3 +155,22 @@ def addNetworkHandler(comm, boxinfo):
     network_handler.setFormatter(log_formatter)
     tlog.addHandler(network_handler)
 
+class Message(dict):
+    def __init__(self, **kwargs):
+        super(Message, self).__init__()
+        dic = kwargs
+        if kwargs.has_key('string'):
+            dic = simplejson.loads(kwargs['string'])
+        for key in dic.keys():
+            self[key] = dic[key]
+
+    def __getattr__(self, name):
+        if not self.has_key(name):
+            return None
+        return self[name]
+
+    def __setattr__(self, name, value):
+        self[name] = value
+
+    def __repr__(self):
+        return simplejson.dumps(self)

@@ -1,0 +1,38 @@
+#! /usr/bin/env python
+""" Simple wrapper for udunits2-bin for converting arbitrary units to SI units """
+import argparse
+
+import kimunits
+
+parser = argparse.ArgumentParser(description="KIM wrapper for UDUNITS2")
+parser.add_argument('source-value', type=str, help="value in original units")
+parser.add_argument('source-unit', type=str, help="original units")
+parser.add_argument('dest-unit', type=str, help="desired units [default: converts to SI]",
+        default=None, nargs='?')
+parser.add_argument('--version','-v', action='version',
+        version='%(prog)s {}'.format(kimunits.VERSION))
+
+method_group = parser.add_mutually_exclusive_group()
+method_group.add_argument('--udunits2', action='store_true', help="Force udunits2 command line version [default]")
+method_group.add_argument('--cfunits',  action='store_true', help="Force cfunits-python version")
+method_group.add_argument('--units',  action='store_true', help="Force units version")
+
+parser.add_argument('--no-unit', action='store_true', default=False, help="Supress printing of units and just give number")
+
+args = vars(parser.parse_args())
+
+if args['cfunits']:
+    convert = kimunits.convert_cfunits
+elif args['udunits2']:
+    convert = kimunits.convert_udunits2
+elif args['units']:
+    convert = kimunits.convert_units
+else:
+    convert = kimunits.convert
+
+result = convert(args['source-value'], args['source-unit'], args['dest-unit'])
+
+if args['no_unit']:
+    print str(result[0])
+else:
+    print " ".join(map(str,result))

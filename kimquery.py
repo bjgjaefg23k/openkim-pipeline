@@ -33,19 +33,15 @@ def query_datomic(querydata, queryrules="", keys=None):
         return result
     return arr
 
-from bson.json_util import dumps, loads
-
 def query_mongo(query, url=""):
     # set up the globals for how to interact with the website
-    url = url or 'http://pipeline.openkim.org/api'
+    url = url or 'https://query.openkim.org/api'
     user_agent = "OpenKIM Pipeline (http://pipeline.openkim.org/)"
     header = {'User-Agent' : user_agent, "Content-type": "application/x-www-form-urlencoded"}
-
-    # encode, send, and read the response
-    request  = urllib2.Request(url, query, header)
+    data = urllib.urlencode( dict( (key,simplejson.dumps(val)) for (key,val) in query.iteritems() ) )
+    request  = urllib2.Request(url, data, header)
     response = urllib2.urlopen(request)
     answer = response.read()
-    print answer
     response.close()
 
     if not answer:

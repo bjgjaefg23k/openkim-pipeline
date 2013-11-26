@@ -19,21 +19,21 @@ Has a base ``KIMObject`` class and
 classes, all of which inherit from ``KIMObject`` and aim to know how to handle themselves.
 
 """
-
+from template import template_environment
+import database
+import dependencies
+import kimapi
 from config import *
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("kimobjects")
 
 from contextlib import contextmanager
 import template
-import database
-import kimapi
 import shutil
 import subprocess
 import re
 import dircache
 import simplejson, yaml
-from template import template_environment
 
 #------------------------------------------------
 # Base KIMObject
@@ -85,9 +85,9 @@ class KIMObject(simplejson.JSONEncoder):
                     false is useful when creating new KIMObjects to avoid hitting a PipelineSearchError
                 dirpath (str)
                     In order to point to a directory that does not follow that pattern
-                    /home/vagrant/openkim-repository/{mo,md,te...}/KIM_CODE/KIM_CODE
+                    /home/openkim/openkim-repository/{mo,md,te...}/KIM_CODE/KIM_CODE
                     can provide the folder of
-                    /home/vagrant/openkim-repository/{mo,md,te...}/SUBDIR/KIM_CODE
+                    /home/openkim/openkim-repository/{mo,md,te...}/SUBDIR/KIM_CODE
         """
         logger.debug("Initializing a new KIMObject: %r", kim_code)
         name, leader, num, version = database.parse_kim_code(kim_code)
@@ -208,12 +208,17 @@ class KIMObject(simplejson.JSONEncoder):
         finally:
             os.chdir(cwd)
 
+    @property
+    def drivers(self):
+        return ()
+
     def make(self):
         """ Try to build the thing, by executing ``make`` in its directory """
         if self.makeable:
             with self.in_dir():
-                logger.debug("Attempting to make %r: %r", self.__class__.__name__, self.kim_code)
-                subprocess.check_call('make')
+                with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
+                    logger.debug("Attempting to make %r: %r", self.__class__.__name__, self.kim_code)
+                    subprocess.check_call('make', stdout=log, stderr=log)
         else:
             logger.warning("%r:%r is not makeable", self.__class__.__name__, self.kim_code)
 
@@ -290,8 +295,8 @@ class Runner(KIMObject):
                 dependencies_good_to_go - kids for ready dependencies
                 dependencies_not_ready - tuples of test/model pairs to run """
         if subject:
-            return template.dependency_check(self.modelname_processed_infile(subject))
-        return template.dependency_check(self.infile,model=False)
+            return dependencies.dependency_check(self.modelname_processed_infile(subject))
+        return dependencies.dependency_check(self.infile,model=False)
 
     @property
     def dependencies(self):
@@ -312,11 +317,11 @@ class Runner(KIMObject):
 
     def processed_infile(self,subject):
         """ Process the input file, with template, and return a file object to the result """
-        template.process(self.infile,subject,self)
+        template.process(self.infile_path,subject,self)
         return open(os.path.join(self.path,TEMP_INPUT_FILE))
 
     def subjectname_processed_infile(self,subject):
-        template.process(self.infile, subject, self, modelonly=True)
+        template.process(self.infile_path, subject, self, modelonly=True)
         return open(os.path.join(self.path, TEMP_INPUT_FILE))
 
     @property
@@ -355,7 +360,7 @@ class Model(Subject):
     """
     required_leader = "MO"
     makeable = True
-    subject_name = "MODEL_NAME"
+    subject_name = "model"
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Model, with a kim_code """
@@ -376,6 +381,9 @@ class Model(Subject):
         """ Return a generator of the valid matching tests that match this model """
         return ( test for test in Test.all() if kimapi.valid_match(test,self) )
 
+    @property
+    def drivers(self):
+        return () if not self.model_driver else [self.model_driver]
 
 #=============================================
 # Runner Objs
@@ -406,8 +414,8 @@ class Test(Runner):
     makeable = True
     subject_type = Model
     result_leader = "TR"
-    runner_name = "TEST_NAME"
-    subject_name = "TEST_NAME"
+    runner_name = "test"
+    subject_name = "test"
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Test, with a kim_code """
@@ -436,6 +444,9 @@ class Test(Runner):
         """ Returns a generator of valid matched models """
         return self.subjects
 
+    @property
+    def drivers(self):
+        return self.test_drivers
 
 #------------------------------------------
 # VerificationTest(Check)
@@ -462,7 +473,7 @@ class VerificationTest(Test):
     makeable = True
     subject_type = Test
     result_leader = "VR"
-    runner_name = "VERIFICATION_TEST_NAME"
+    runner_name = "verification-test"
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Test, with a kim_code """
@@ -494,7 +505,7 @@ class VerificationModel(Test):
     makeable = True
     subject_type = Model
     result_leader = "VR"
-    runner_name = "VERIFICATION_MODEL_NAME"
+    runner_name = "verification-model"
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Test, with a kim_code """

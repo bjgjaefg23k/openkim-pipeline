@@ -13,6 +13,7 @@ import yaml
 import shutil
 from contextlib import contextmanager
 import ConfigParser
+import kimunits
 
 from config import *
 import kimobjects
@@ -65,7 +66,6 @@ class Computation(object):
         self.subject = subject
         self.runner_temp = runner
         self.runtime = None
-        self.results = None
         self.result_code = result_code
         self.info_dict = None
 
@@ -82,6 +82,13 @@ class Computation(object):
         if not os.path.exists(outputdir):
             os.makedirs(outputdir)
 
+    def _clean_old_run(self):
+        for flname in INTERMEDIATE_FILES:
+            try:
+                os.remove(flname)
+            except OSError as e:
+                pass
+
     def _delete_tempdir(self):
         shutil.rmtree(self.runner_temp.path)
 
@@ -95,6 +102,7 @@ class Computation(object):
 
         try:
             self._create_output_dir()
+            self._clean_old_run()
             yield
         except Exception as e:
             logger.error("%r" % e)
@@ -144,8 +152,13 @@ class Computation(object):
             logger.error("Runner returned error code %r, %r" % (self.retcode, os.strerror(self.retcode)) )
             raise KIMRuntimeError("Executable %r returned error code %r" % (self.runner_temp, self.retcode))
 
-    def process_output(self, extrainfo=None):
+    def process_output(self):
         """ Template the run results into the proper YAML """
+        # Short-circuit if we already have a results.yaml
+        with self.runner_temp.in_dir():
+            if os.path.isfile(RESULT_FILE):
+                return 
+
         with self.runner_temp.in_dir(), open(STDOUT_FILE) as stdout_file:
             stdout = stdout_file.readlines()
 
@@ -162,31 +175,21 @@ class Computation(object):
 
         if data is None or not isinstance(data, dict):
             # We couldn't find any valid JSON
-            logger.exception("We didn't get JSON back!")
-            raise PipelineTemplateError, "Test didn't return JSON!"
-
-        # we found our data, let's store it
-        self.results = data
-
-        # Add metadata
-        info_dict = {}
-        info_dict["time"] = self.runtime
-        info_dict["created-at"] = time.time()
-        if extrainfo:
-            info_dict.update(extrainfo)
-
-        # get the information from the timing script
-        with self.runner_temp.in_dir(), open(STDERR_FILE) as stderr_file:
-            stderr = stderr_file.read()
-        time_str = stderr.splitlines()[-1]
-        time_dat = simplejson.loads(time_str)
-        info_dict.update(time_dat)
-
-        logger.debug("Added metadata:\n{}".format(simplejson.dumps(info_dict,indent=4)))
+            try:
+                try:
+                    with self.runner_temp.in_dir(), open(TPLENV_YAML_FILE) as f:
+                        data = yaml.safe_load(f) 
+                except Exception as e:
+                    with self.runner_temp.in_dir(), open(TPLENV_JSON_FILE) as f:
+                        data = simplejson.loads(f.read())
+            except Exception as e:
+                logger.exception("We didn't get JSON or YAML back!")
+                raise PipelineTemplateError, "Test didn't return JSON or YAML!"
 
         # sanitize strings by encoding backslashes -> newlines break YAML
         safe_data = sanitize(data)
         renderedyaml = self.runner_temp.template.render(**safe_data)
+
         logger.debug("Writing output.")
         with self.runner_temp.in_dir(), open(RESULT_FILE,'w') as f:
             f.write(renderedyaml)
@@ -195,22 +198,50 @@ class Computation(object):
         logger.debug("Checking the output YAML for validity")
         with self.runner_temp.in_dir(), open(RESULT_FILE, 'r') as f:
             docs = yaml.safe_load_all(f)
+            newdocs = []
             try:
-                # for-loop to reduce memory load 
+                # for-loop to reduce memory load
                 for doc in docs:
-                    pass
+                    # insert units business
+                    logger.debug("Attempting to add unit conversions...")
+                    try:
+                        newdoc = kimunits.add_si_units(doc)
+                        newdocs.append(newdoc)
+                    except kimunits.UnitConversion as e:
+                        logger.error("Error in Unit Conversion")
+                        raise PipelineTemplateError("Error in unit conversions")
             except Exception as e:
                 logger.error("Templated %r did not render valid YAML." % TEMPLATE_FILE)
                 raise PipelineTemplateError("Improperly formatted YAML after templating")
+
+        with self.runner_temp.in_dir(), open(RESULT_FILE, 'w') as f:
+            logger.debug("Writing unit converted version")
+            yaml.safe_dump_all(newdocs,f,default_flow_style=False, explicit_start=True)
+
         logger.debug("Made it through YAML read, everything looks good")
+
+
+    def gather_profiling_info(self, extrainfo=None):
+        # Add metadata
+        info_dict = {}
+        info_dict["time"] = self.runtime
+        info_dict["created-at"] = time.time()
+        if extrainfo:
+            info_dict.update(extrainfo)
+
+        # get the information from the timing script
+        with self.runner_temp.in_dir():
+            if os.path.exists(STDERR_FILE):
+                with open(STDERR_FILE) as stderr_file:
+                    stderr = stderr_file.read()
+                time_str = stderr.splitlines()[-1]
+                time_dat = simplejson.loads(time_str)
+                info_dict.update(time_dat)
+
+        logger.debug("Added metadata:\n{}".format(simplejson.dumps(info_dict,indent=4)))
 
         logger.debug("Caching profile information")
         self.info_dict = info_dict
-
-        logger.debug("Copying kim.log")
-        with self.runner_temp.in_dir():
-            if os.path.exists("./kim.log"):
-                shutil.copy2("./kim.log", KIMLOG_FILE)
 
 
     def write_result(self, error=False):
@@ -218,22 +249,28 @@ class Computation(object):
             self.result_path = os.path.join("er", self.result_code)
             self.full_result_path = os.path.join(KIM_REPOSITORY_DIR, self.result_path)
 
-        # create the kimspec.ini file for the test results
-        logger.debug("Create kimspec.ini file")
-        config = ConfigParser.ConfigParser()
-        config.optionxform = str
-        config.add_section('kimspec')
-        if self.result_code:
-            config.set('kimspec','UUID',self.result_code)
-        config.set('kimspec',self.runner.runner_name,self.runner.kim_code)
-        config.set('kimspec',self.subject.subject_name,self.subject.kim_code)
+        logger.debug("Copying kim.log")
+        with self.runner_temp.in_dir():
+            if os.path.exists("./kim.log"):
+                shutil.copy2("./kim.log", KIMLOG_FILE)
+
+        # create the kimspec.yaml file for the test results
+        logger.debug("Create %s file" % CONFIG_FILE)
+        kimspec = {}
+        kimspec[self.runner.runner_name] = self.runner.kim_code
+        kimspec[self.subject.subject_name] = self.subject.kim_code
+        kimspec['domain'] = 'openkim.org'
+
+        pipelinespec = {}
         if self.info_dict:
-            config.add_section('profiling')
-            for key,value in self.info_dict.iteritems():
-                config.set('profiling',key,value)
+            pipelinespec['profiling'] = self.info_dict
+        if self.result_code:
+            pipelinespec['UUID'] = self.result_code
 
         with self.runner_temp.in_dir(), open(os.path.join(OUTPUT_DIR,CONFIG_FILE),'w') as f:
-            config.write(f)
+            yaml.dump(kimspec, f, default_flow_style=False)
+        with self.runner_temp.in_dir(), open(os.path.join(OUTPUT_DIR,PIPELINESPEC_FILE),'w') as f:
+            yaml.dump(pipelinespec, f, default_flow_style=False)
 
         logger.debug("Result path = %s", self.full_result_path)
         outputdir = os.path.join(self.runner_temp.path,OUTPUT_DIR)
@@ -264,12 +301,14 @@ class Computation(object):
         with self.tempdir():
             try:
                 self.execute_in_place()
-                self.process_output(extrainfo)
+                self.process_output()
+                self.gather_profiling_info(extrainfo)
                 self.write_result(error=False)
             except Exception as e:
                 import traceback
                 trace = traceback.format_exc()
 
+                self.gather_profiling_info(extrainfo)
                 self.write_result(error=True)
 
                 files = [STDOUT_FILE, STDERR_FILE, KIMLOG_FILE]
@@ -309,7 +348,7 @@ def append_newline(string):
     return string
 
 def sanitize(obj):
-    out = obj 
+    out = obj
     if isinstance(obj, str):
         out = obj.encode('string_escape')
     if isinstance(obj, dict):
