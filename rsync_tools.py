@@ -58,9 +58,9 @@ def rsync_command(files,read=True,path=None):
                     "--files-from={}".format(tmp.name), RSYNC_LOCAL_ROOT, full_path, RSYNC_LOG_PIPE_FLAG])
             logger.debug("rsync command = %r",cmd)
             out = subprocess.check_call(cmd, shell=True)
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError as e:
             logger.exception("RSYNC FAILED!")
-            raise subprocess.CalledProcessError("Rsync command failed")
+            raise subprocess.CalledProcessError("Rsync command failed", e)
 
 def rsync_command_read_wildcard(files,path=None):
     """ run rsync, syncing the files (or folders) listed in files, assumed to be paths or partial
@@ -80,9 +80,9 @@ def rsync_command_read_wildcard(files,path=None):
                             RSYNC_LOCAL_ROOT, RSYNC_LOG_PIPE_FLAG])
             logger.debug("rsync command = %r",cmd)
             out = subprocess.check_call(cmd, shell=True)
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError as e:
             logger.exception("RSYNC FAILED!")
-            raise subprocess.CalledProcessError("Rsync command failed")
+            raise subprocess.CalledProcessError("Rsync command failed", e)
 
 #======================================
 # Helper methods
