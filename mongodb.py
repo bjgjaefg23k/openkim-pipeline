@@ -244,7 +244,7 @@ def insert_one_result(leader, kimcode):
 
 def insert_one_reference_data(leader, kimcode):
     logger.info("Inserting reference data %s ", kimcode)
-    info = kimcode_to_dict(leader, kimcode)
+    info = kimcode_to_dict(kimcode)
     try:
         resultobj = db.obj.insert(info)
     except:

@@ -52,15 +52,37 @@ def rsync_command(files,read=True,path=None):
             logger.info("running rsync for files: %r",files)
             if read:    
                 cmd = " ".join(["rsync", flags, full_path, RSYNC_LOG_FILE_FLAG,
-                    "--include-from={} --exclude '**'".format(tmp.name), RSYNC_LOCAL_ROOT, RSYNC_LOG_PIPE_FLAG])
+                    "--files-from={}".format(tmp.name), RSYNC_LOCAL_ROOT, RSYNC_LOG_PIPE_FLAG])
             else:
                 cmd = " ".join(["rsync", flags, RSYNC_LOG_FILE_FLAG,
                     "--files-from={}".format(tmp.name), RSYNC_LOCAL_ROOT, full_path, RSYNC_LOG_PIPE_FLAG])
             logger.debug("rsync command = %r",cmd)
             out = subprocess.check_call(cmd, shell=True)
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError as e:
             logger.exception("RSYNC FAILED!")
-            raise subprocess.CalledProcessError("Rsync command failed")
+            raise subprocess.CalledProcessError("Rsync command failed", e)
+
+def rsync_command_read_wildcard(files,path=None):
+    """ run rsync, syncing the files (or folders) listed in files, assumed to be paths or partial
+    paths from the RSYNC_LOCAL_ROOT
+    """
+    for filename in files:
+        if path:
+            full_path = RSYNC_PATH + path + "/./"
+        else:
+            full_path = RSYNC_PATH
+        full_path += filename
+
+        flags = RSYNC_FLAGS
+        try:
+            logger.info("running rsync for files: %r",filename)
+            cmd = " ".join(["rsync", flags, full_path, RSYNC_LOG_FILE_FLAG,
+                            RSYNC_LOCAL_ROOT, RSYNC_LOG_PIPE_FLAG])
+            logger.debug("rsync command = %r",cmd)
+            out = subprocess.check_call(cmd, shell=True)
+        except subprocess.CalledProcessError as e:
+            logger.exception("RSYNC FAILED!")
+            raise subprocess.CalledProcessError("Rsync command failed", e)
 
 #======================================
 # Helper methods
@@ -82,6 +104,7 @@ ktfw = kid_to_folder_wild
 
 rsync_read  = partial(rsync_command, read=True)
 rsync_write = partial(rsync_command, read=False)
+rsync_read_wild = partial(rsync_command_read_wildcard)
 
 def j(*s):
     """ Convience for joining paths together """
@@ -94,9 +117,9 @@ WR = WRITE_RESULTS
 def gateway_read(kimcode, approved=True):
     # first, read everything from the /read directory, except all mentions of tr/
     if approved:
-        rsync_read([j(RA,ktfw(kimcode))])
+        rsync_read_wild([j(RA,ktfw(kimcode))])
     else:
-        rsync_read([j(RP,ktfw(kimcode))])
+        rsync_read_wild([j(RP,ktfw(kimcode))])
 
 def gateway_write_result(leader, kimcode):
     # write the results back to the webserver in the appropriate place

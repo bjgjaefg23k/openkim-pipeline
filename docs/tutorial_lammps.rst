@@ -29,6 +29,13 @@ In the :ref:`second example Test <example2_ref>`, the user specifies a type of c
 
 Example 1: Cohesive energy & lattice constant of fcc Argon
 ==========================================================
+:ref:`Test Driver <example1_TD_ref>`
+|
+:ref:`Test <example1_TE_ref>`
+|
+:ref:`Example Calculation <example1_calc_ref>`
+
+.. _example1_TD_ref:
 
 Test Driver 
 ---------------
@@ -199,7 +206,9 @@ This file is processed by :ref:`example1_TD_exec` using the 'sed' command line u
     print "Equilibrium lattice constant = ${a} angstrom"
 
 Neither the contents nor name of this file are standardized within the pipeline, but instead are left up to the Test writer.
- 
+
+.. _example1_TE_ref:
+
 Test 
 --------
 Next, we inspect a Test which uses the above Test Driver.  In this case, this Test corresponds to one particular initial guess at the lattice constant, 5.3 Angstroms.
@@ -442,28 +451,30 @@ This file must be named ``results.yaml.tpl``.
 
 .. warning:: LAMMPS does not always use "derived" sets of units, as the KIM API does.  In this example, LAMMPS uses 'units metal' as instructed to in :ref:`example1_TD_lammpstemplate`.  In this system of units, for example, pressure is reported in bars rather than eV/Angstrom^3 even though the unit for energy is eV and the unit for length is Angstroms.  Therefore, one should pay attention to what units are actually being reported.  However, this is easy to resolve, since any units defined within `GNU Units <http://www.gnu.org/software/units/>`_ can be specified as the ``source-unit`` field in ``results.yaml.tpl``.  Above, the ``pressure`` key in the ``equilibrium-ensemble-npt`` primitive of the ``cohesive-energy`` property has had ``source-unit: bar`` specified since no post-conversion of the units of the LAMMPS pressure was done.
 
-Testing everything
-------------------
-To verify that the Test Driver and Test above work, let us try running the Test against a particular Model, ``ex_model_Ar_P_LJ_MO_129904326346_000``.  In order to run a specific Test-Model pair, the pipeline provides a utility named ``pipeline_runpair`` which can be invoked in the following manner::
+.. _example1_calc_ref:
 
-    pipeline_runpair LammpsExample__TE_565333229701_000 ex_model_Ar_P_LJ__MO_129904326346_000
+Example Calculation
+-------------------
+To verify that the Test Driver and Test above work, let us try running the Test against a particular Model, ``Pair_Lennard_Jones_Shifted_Bernardes_MedCutoff_Ar__MO_126566794224_000``.  In order to run a specific Test-Model pair, the pipeline provides a utility named ``pipeline_runpair`` which can be invoked in the following manner::
+
+    pipeline_runpair LammpsExample__TE_565333229701_000 Pair_Lennard_Jones_Shifted_Bernardes_MedCutoff_Ar__MO_126566794224_000
 
 which yields as output something similar to the following::
 
-    2013-09-24 19:49:06,585 - INFO - pipeline.development - Running combination <<Test(LammpsExample__TE_565333229701_000)>, <Model(ex_model_Ar_P_LJ__MO_129904326346_000)>
-    2013-09-24 19:49:06,607 - INFO - pipeline.compute - running <Test(LammpsExample__TE_565333229701_000)> with <Model(ex_model_Ar_P_LJ__MO_129904326346_000)>
-    2013-09-24 19:49:06,610 - INFO - pipeline.template - attempting to process '/home/openkim/openkim-repository/te/LammpsExample_running5f345c23-2552-11e3-9b54-4c9a3c8910a2__TE_565333229701_000/pipeline.stdin.tpl' for ('LammpsExample__TE_565333229701_000','ex_model_Ar_P_LJ__MO_129904326346_000')
-    2013-09-24 19:49:06,618 - INFO - pipeline.compute - launching run...
-    2013-09-24 19:49:06,685 - INFO - pipeline.compute - Run completed in 0.06745100021362305 seconds
-    2013-09-24 19:49:06,781 - INFO - pipeline.compute - Copying the contents of /home/openkim/openkim-repository/te/LammpsExample_running5f345c23-2552-11e3-9b54-4c9a3c8910a2__TE_565333229701_000/output to /home/openkim/openkim-repository/tr/5f345c23-2552-11e3-9b54-4c9a3c8910a2
+    2014-01-28 20:08:37,837 - INFO - pipeline.development - Running combination <<Test(LammpsExample__TE_565333229701_000)>, <Model(Pair_Lennard_Jones_Shifted_Bernardes_MedCutoff_Ar__MO_126566794224_000)>
+    2014-01-28 20:08:37,868 - INFO - pipeline.compute - running <Test(LammpsExample__TE_565333229701_000)> with <Model(Pair_Lennard_Jones_Shifted_Bernardes_MedCutoff_Ar__MO_126566794224_000)>
+    2014-01-28 20:08:37,872 - INFO - pipeline.template - attempting to process '/home/openkim/openkim-repository/te/LammpsExample_runningf96016a1-8857-11e3-8596-4005d10d911c__TE_565333229701_000/pipeline.stdin.tpl' for ('LammpsExample__TE_565333229701_000','Pair_Lennard_Jones_Shifted_Bernardes_MedCutoff_Ar__MO_126566794224_000')
+    2014-01-28 20:08:37,880 - INFO - pipeline.compute - launching run...
+    2014-01-28 20:08:38,000 - INFO - pipeline.compute - Run completed in 0.12008380889892578 seconds
+    2014-01-28 20:08:38,150 - INFO - pipeline.compute - Copying the contents of /home/openkim/openkim-repository/te/LammpsExample_runningf96016a1-8857-11e3-8596-4005d10d911c__TE_565333229701_000/output to /home/openkim/openkim-repository/tr/f96016a1-8857-11e3-8596-4005d10d911c
 
-The actual files produced can then be viewed by going to, e.g. ``/home/openkim/openkim-repository/tr/5f345c23-2552-11e3-9b54-4c9a3c8910a2/``.  Looking at ``pipeline.stdout``, we can see the JSON dictionary printed by the Test Driver::
+In this case, the last line of the output indicates that the results of the calculation have been copied to ``/home/openkim/openkim-repository/tr/f96016a1-8857-11e3-8596-4005d10d911c/``.  Examining ``pipeline.stdout``, we can see the JSON dictionary printed by the Test Driver::
     
     Please enter a KIM Model name:
     Please enter an initial lattice constant (Angstroms):
-    { "latticeconstant": "5.2806550000000092027", "cohesiveenergy": "0.076065140180276838433", "finalpressure": "0.14722628071473592426" }
+    { "latticeconstant": "5.24859000000002", "cohesiveenergy": "0.0865055077405508", "finalpressure": "-1.44622588926135" }
 
-The JSON dictionary indicates that the cohesive energy returned by the Test is 0.07606514018027684 eV and the equilibrium lattice constant is 5.280655000000009 Angstroms.  Since the final pressure reported by LAMMPS is only 0.14722628071473592 bar, we can safely assume that the calculation has converged to a relaxed state.  These results compare favorably to the results of the ``ex_test_Ar_FCCcohesive_MI_OPBC``, ``ex_test_Ar_FCCcohesive_NEIGH_PURE``, and ``ex_test_Ar_FCCcohesive_NEIGH_RVEC`` example Tests included with the API when run against ``ex_model_Ar_P_LJ_MO_129904326346_000``.  We can also inspect the formal results file generated by the Test,  ``results.yaml``:
+The JSON dictionary indicates that the cohesive energy returned by the Test is 0.0865055077405508 eV and the equilibrium lattice constant is 5.24859000000002 Angstroms.  Since the final pressure reported by LAMMPS is only -1.44622588926135 bar, we can safely assume that the calculation has converged to a relaxed state.  These results compare favorably to the results of the ``ex_test_Ar_FCCcohesive_MI_OPBC``, ``ex_test_Ar_FCCcohesive_NEIGH_PURE``, and ``ex_test_Ar_FCCcohesive_NEIGH_RVEC`` example Tests included with the API when run against ``Pair_Lennard_Jones_Shifted_Bernardes_MedCutoff_Ar__MO_126566794224_000``.  We can also inspect the formal results file generated by the Test, ``results.yaml``:
 
 .. code-block:: yaml
 
@@ -471,25 +482,25 @@ The JSON dictionary indicates that the cohesive energy returned by the Test is 0
     crystal-structure:
       a:
         si-unit: m
-        si-value: 5.280655e-10
+        si-value: 5.24859e-10
         source-unit: angstrom
-        source-value: 5.280655000000009
+        source-value: 5.24859000000002
       alpha:
         source-units: degrees
         source-value: 90
       b:
         si-unit: m
-        si-value: 5.280655e-10
+        si-value: 5.24859e-10
         source-unit: angstrom
-        source-value: 5.280655000000009
+        source-value: 5.24859000000002
       beta:
         source-units: degrees
         source-value: 90
       c:
         si-unit: m
-        si-value: 5.280655e-10
+        si-value: 5.24859e-10
         source-unit: angstrom
-        source-value: 5.280655000000009
+        source-value: 5.24859000000002
       gamma:
         source-units: degrees
         source-value: 90
@@ -528,25 +539,25 @@ The JSON dictionary indicates that the cohesive energy returned by the Test is 0
     crystal-structure:
       a:
         si-unit: m
-        si-value: 5.280655e-10
+        si-value: 5.24859e-10
         source-unit: angstrom
-        source-value: 5.280655000000009
+        source-value: 5.24859000000002
       alpha:
         source-units: degrees
         source-value: 90
       b:
         si-unit: m
-        si-value: 5.280655e-10
+        si-value: 5.24859e-10
         source-unit: angstrom
-        source-value: 5.280655000000009
+        source-value: 5.24859000000002
       beta:
         source-units: degrees
         source-value: 90
       c:
         si-unit: m
-        si-value: 5.280655e-10
+        si-value: 5.24859e-10
         source-unit: angstrom
-        source-value: 5.280655000000009
+        source-value: 5.24859000000002
       gamma:
         source-units: degrees
         source-value: 90
@@ -576,17 +587,17 @@ The JSON dictionary indicates that the cohesive energy returned by the Test is 0
     energy:
       kim-namespace: tag:staff@noreply.openkim.org,2013-08-03:primitive/cohesive-energy
       si-unit: kg m^2 / s^2
-      si-value: 1.2186978e-20
+      si-value: 1.3859709e-20
       source-unit: eV
-      source-value: 0.07606514018027684
+      source-value: 0.0865055077405508
     kim-namespace: tag:staff@noreply.openkim.org,2013-08-03:property/cohesive-energy
     npt:
       kim-ns: tag:staff@noreply.openkim.org,2013-08-03:primitive/equilibrium-ensemble-npt
       pressure:
         si-unit: kg / m s^2
-        si-value: 14722.628
+        si-value: -144622.59
         source-unit: bar
-        source-value: 0.14722628071473592
+        source-value: -1.44622588926135
       temperature:
         si-unit: K
         si-value: 0.0
@@ -595,15 +606,22 @@ The JSON dictionary indicates that the cohesive energy returned by the Test is 0
 
 where one can notice that the pipeline automatically creates the ``si-unit`` and ``si-value`` fields for its own internal storage purposes.
 
-.. note:: The ``inplace`` flag can be placed after the Model name when invoking ``pipeline_runpair`` in order to redirect the test results to a directory named ``output`` in the Test directory.
+.. note:: The ``inplace`` flag can be placed after the Model name when invoking ``pipeline_runpair`` in order to redirect the test results to a directory named ``output`` inside of the Test directory.
 .. note:: The ``pipeline_runmatches`` command can be used to attempt to run a Test against all Models whose .kim files indicate they are compatible with the Test.
 
 .. _example2_ref:
 
 Example 2: Cohesive energy vs. lattice constant curve
 =====================================================
+:ref:`Test Driver <example2_TD_ref>`
+|
+:ref:`Test <example2_TE_ref>`
+|
+:ref:`Example Calculation <example2_calc_ref>`
 
 Please ensure you understand :ref:`Example 1 <example1_ref>` before continuing with this example.
+
+.. _example2_TD_ref:
 
 Test Driver
 ---------------
@@ -897,6 +915,8 @@ This file is processed by :ref:`example2_TD_exec` using the 'sed' command line u
     next loopcount # Increment loopcount to next value
     jump SELF # Reload this input script with the new variable values
 
+.. _example2_TE_ref:
+
 Test
 --------
 We consider next a particular Test which uses the Test Driver above.  This Test computes a specific cohesive energy versus lattice constant curve for diamond Silicon.
@@ -1119,22 +1139,24 @@ This Jinja template is used to report the results of the Test.  In this case, a 
 
 Here, we see the use of ``for`` loops in the template which cycle over elements in the ``latticeconstantarray`` and ``cohesiveenergyarray`` entries output by :ref:`example2_TD_exec`.  The actual "curve" of cohesive energy versus lattice constant is defined using the ``table-info`` key.  In this case, ``table-info`` is listed alongside the array of values for ``a`` under the ``crystal-structure`` primitive and alongside the array of values under the ``cohesive-energy`` primitive.  The ``table-info`` entry at the bottom of the file tells the pipeline how to construct the "table," i.e. the pairing of the array of lattice constants with the array of cohesive energies.  Each of the ``n-fields`` arrays of length ``shape`` consists of ``dim``-dimensional data.  The values of each array are assumed to correspond in sequence, e.g. the the first element of the lattice constant array is paired with the first entry of the cohesive energy array, and so on.
 
-Testing everything
-------------------
-We can run this Test against one of the Models for Silicon in the OpenKIM repository, such as ``model_Si_BOP_EDIP_C__MO_958932894036_000``.  We once again use ``pipeline_runpair``::
+.. _example2_calc_ref:
 
-    pipeline_runpair LammpsExample2_Si_diamond__TE_837477125670_000 model_Si_BOP_EDIP_C__MO_958932894036_000
+Example Calculation
+-------------------
+We can run this Test against one of the Models for Silicon in the OpenKIM repository, such as ``EDIP_BOP_Bazant_Kaxiras_Si__MO_958932894036_000``.  We once again use ``pipeline_runpair``::
+
+    pipeline_runpair LammpsExample2_Si_diamond__TE_837477125670_000 EDIP_BOP_Bazant_Kaxiras_Si__MO_958932894036_000
 
 which produces output similar to ::
 
-    2013-09-24 22:58:19,842 - INFO - pipeline.development - Running combination <<Test(LammpsExample2_Si_diamond__TE_837477125670_000)>, <Model(model_Si_BOP_EDIP_C__MO_958932894036_000)>
-    2013-09-24 22:58:19,919 - INFO - pipeline.compute - running <Test(LammpsExample2_Si_diamond__TE_837477125670_000)> with <Model(model_Si_BOP_EDIP_C__MO_958932894036_000)>
-    2013-09-24 22:58:19,922 - INFO - pipeline.template - attempting to process '/home/openkim/openkim-repository/te/LammpsExample2_Si_diamond_runningce45f385-256c-11e3-9041-4c9a3c8910a2__TE_837477125670_000/pipeline.stdin.tpl' for ('LammpsExample2_Si_diamond__TE_837477125670_000','model_Si_BOP_EDIP_C__MO_958932894036_000')
-    2013-09-24 22:58:19,929 - INFO - pipeline.compute - launching run...
-    2013-09-24 22:58:20,403 - INFO - pipeline.compute - Run completed in 0.4731411933898926 seconds
-    2013-09-24 22:58:21,195 - INFO - pipeline.compute - Copying the contents of /home/openkim/openkim-repository/te/LammpsExample2_Si_diamond_runningce45f385-256c-11e3-9041-4c9a3c8910a2__TE_837477125670_000/output to /home/openkim/openkim-repository/tr/ce45f385-256c-11e3-9041-4c9a3c8910a2
+    2014-01-28 21:40:21,532 - INFO - pipeline.development - Running combination <<Test(LammpsExample2_Si_diamond__TE_837477125670_000)>, <Model(EDIP_BOP_Bazant_Kaxiras_Si__MO_958932894036_000)>
+    2014-01-28 21:40:21,571 - INFO - pipeline.compute - running <Test(LammpsExample2_Si_diamond__TE_837477125670_000)> with <Model(EDIP_BOP_Bazant_Kaxiras_Si__MO_958932894036_000)>
+    2014-01-28 21:40:21,575 - INFO - pipeline.template - attempting to process '/home/openkim/openkim-repository/te/LammpsExample2_Si_diamond_runningc9d4b5f0-8864-11e3-8118-4005d10d911c__TE_837477125670_000/pipeline.stdin.tpl' for ('LammpsExample2_Si_diamond__TE_837477125670_000','EDIP_BOP_Bazant_Kaxiras_Si__MO_958932894036_000')
+    2014-01-28 21:40:21,585 - INFO - pipeline.compute - launching run...
+    2014-01-28 21:40:22,007 - INFO - pipeline.compute - Run completed in 0.42205309867858887 seconds
+    2014-01-28 21:40:22,789 - INFO - pipeline.compute - Copying the contents of /home/openkim/openkim-repository/te/LammpsExample2_Si_diamond_runningc9d4b5f0-8864-11e3-8118-4005d10d911c__TE_837477125670_000/output to /home/openkim/openkim-repository/tr/c9d4b5f0-8864-11e3-8118-4005d10d911c
 
-Within the Test Result directory, e.g. ``/home/openkim/openkim-repository/tr/ce45f385-256c-11e3-9041-4c9a3c8910a2``, the file ``pipeline.stdout`` consists of the following::
+In this case, the last line of the output indicates that the results of the calculation have been copied to ``/home/openkim/openkim-repository/tr/c9d4b5f0-8864-11e3-8118-4005d10d911c``.  Examining ``pipeline.stdout``, we can see the JSON dictionary printed by the Test Driver::
 
     Please enter a valid KIM Model extended-ID:
     Please enter the species symbol (e.g. Si, Au, Al, etc.):
@@ -1147,7 +1169,7 @@ Within the Test Result directory, e.g. ``/home/openkim/openkim-repository/tr/ce4
     Please enter the number of sample lattice spacings to compute which are > a_0 and <= a_max (one of these sample lattice spacings will be equal to a_max):
     Please enter a value of the lower sample spacing parameter (see README.txt for more details):
     Please enter a value of the upper sample spacing parameter (see README.txt for more details):
-    { "crystal_structure": "diamond",  "element": "Si", "wyckoff_code": "8a", "space_group": "Fd-3m", "numberofspacings": "36", 
+    { "crystal_structure": "diamond",  "element": "Si", "wyckoff_code": "8a", "space_group": "Fd-3m", "numberofspacings": "36",
     "latticeconstantarray": [ {"lattice_constant": "4.150000"}, {"lattice_constant": "4.349873"}, {"lattice_constant": "4.509468"},
     {"lattice_constant": "4.642327"}, {"lattice_constant": "4.756137"}, {"lattice_constant": "4.855680"}, {"lattice_constant": "4.944139"},
     {"lattice_constant": "5.023736"}, {"lattice_constant": "5.096087"}, {"lattice_constant": "5.162401"}, {"lattice_constant": "5.223608"},
@@ -1165,6 +1187,7 @@ Within the Test Result directory, e.g. ``/home/openkim/openkim-repository/tr/ce4
     {"cohesive_energy": "4.38644"}, {"cohesive_energy": "4.29688"}, {"cohesive_energy": "4.1835"}, {"cohesive_energy": "4.04013"}, {"cohesive_energy": "3.86195"},
     {"cohesive_energy": "3.64285"}, {"cohesive_energy": "3.37092"}, {"cohesive_energy": "3.02077"}, {"cohesive_energy": "2.54026"}, {"cohesive_energy": "1.82299"},
     {"cohesive_energy": "0.714214"}, {"cohesive_energy": "0.0031393"}, {"cohesive_energy": "0"}]}
+
 
 The first things reported are ``crystal_structure``, ``element``, ``wyckoff_code``, ``space-group``, and ``numberofspacings``.  After this, ``latticeconstantarray``, which consists of 36 individual dictionary entries that contain the key ``lattice_constant``, is given.  Finally, ``cohesiveenergyarray`` is defined.  In :ref:`example2_TE_results`, the code snippets
 
@@ -1346,7 +1369,7 @@ Finally, the ``results.yaml`` file looks like::
         - 7.05476
         - 7.5
         table-info: cohesiveenergyversuslatticeconstant
-    alpha:
+      alpha:
         si-unit: radian
         si-value: 1.5707963
         source-unit: degrees

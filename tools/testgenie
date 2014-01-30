@@ -86,7 +86,8 @@ def maketest(folder, variable_dict, dest=TEDIR, dry_run=False,
     """ Make a test given the input folder """
     tempdir = tempfile.mkdtemp()
     # First parse the kimspec file
-    with open(os.path.join(folder, CONFIG_FILE)) as f:
+    CONFIG_FILE_TEMP = CONFIG_FILE + ".template"
+    with open(os.path.join(folder, CONFIG_FILE_TEMP)) as f:
         kimspec_template = jinja2.Template(f.read())
         kimspec = kimspec_template.render(**variable_dict)
     tmp_kimspec = os.path.join(tempdir, CONFIG_FILE)
