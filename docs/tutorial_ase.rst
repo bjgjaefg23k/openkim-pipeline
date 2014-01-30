@@ -212,3 +212,41 @@ or if you want to try only one run with a specific model, run::
 
     pipeline_runpair <testname> <modelname> inplace
 
+
+Installing ASE Interface Locally
+--------------------------------
+
+If you do not wish to develop on the virtual machine, you can also install the 
+OpenKIM KIMCalculator onto your local machine.
+
+OpenKIM currently maintains an unofficial interface to the Atomic Simulation
+Environment (ASE) through a Python module called `kimcalculator`.  This module
+implements a calculator class much like all of the other calculators in the standard
+release though it calculates quantities using the KIM API.  To install the calculator,
+you must install both the OpenKIM Python bindings as well as the calculator from git
+repositories hosted on github.  On standard \*nix environments, this can be done by::
+
+    git clone https://github.com/woosong/openkim-python.git
+    cd openkim-python
+    [sudo] KIM_DIR=<path_to_KIM_API> python setupy.py install [--prefix=<path>]
+
+    git clone https://github.com/mattbierbaum/openkim-kimcalculator-ase.git
+    cd openkim-kimcalculator-ase 
+    [sudo] python setupy.py install [--prefix=<path>]
+
+If you have permissions and want to install to the entire system path, use the [sudo]
+part.  If you do not have permissions or wish to install the package on a per-user
+basis, specify a Python library path in which to install these packages (see
+`python docs <http://docs.python.org/2/install/>`_).  
+
+To use a KIM model in your calculations, you simply need to trade your calculator for
+the kimcalculator.KIMCalculator object.  For example::
+
+    calc = EMT()
+
+changes to::
+
+    calc = kimcalculator.KIMCalculator("AValidModelName__MO_123456789012_000")
+
+From there, your Python program should work as usual though using the model
+`AValidModelName__MO_123456789012_000`.  
