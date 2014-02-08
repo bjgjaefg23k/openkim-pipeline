@@ -9,7 +9,7 @@ reporting it as the cohesive energy.  For a general overview on test format,
 have a look at the documentation for :ref:`desctests`.  
 
 For this example, we have adopted the descriptive KIM short name of
-ASECohesiveEnergyFromQuery_Ar_fcc and have been provided with the KIM code
+ASECohesiveEnergyFromQuery_fcc_Ar and have been provided with the KIM code
 TE_102111117114_000.  
 
 .. _ase_listoffiles: 
@@ -32,7 +32,7 @@ of them in order to build our test:
 
 .. _aseref_exec:
 
-ASECohesiveEnergyFromQuery_Ar_fcc__TE_102111117114_000
+ASECohesiveEnergyFromQuery_fcc_Ar__TE_102111117114_000
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This is the standalone Python script that takes as input a model name
@@ -82,7 +82,7 @@ file :ref:`aseref_results`.
 
 .. _aseref_kimfile:
 
-ASECohesiveEnergyFromQuery_Ar_fcc__TE_102111117114_000.kim
+ASECohesiveEnergyFromQuery_fcc_Ar__TE_102111117114_000.kim
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This is our KIM file as specified by the standards of the KIM project.  
@@ -100,7 +100,7 @@ OpenKIM repository.  In our case, it look like::
     title: ASE cohesive energy test example
     test-driver: 
     species: Ar
-    extended-id: ASECohesiveEnergyFromQuery_Ar_fcc__TE_102111117114_000
+    extended-id: ASECohesiveEnergyFromQuery_fcc_Ar__TE_102111117114_000
     disclaimer: Tutorial test using the Atomic Simulation Environment which calculates the cohesive energy
     domain: openkim.org
 
@@ -199,14 +199,14 @@ Testing everything
 -------------------
 
 Checkout the full source code in this :download:`archive
-<./ASECohesiveEnergyFromQuery_Ar_fcc__TE_102111117114_000.tar.gz>`.  To use,
+<./ASECohesiveEnergyFromQuery_fcc_Ar__TE_102111117114_000.tar.gz>`.  To use,
 place in the folder ``~/openkim-repository/te``.  We can then test out our new
 test using the tools provided by the pipeline.  They are on path, so you can
 simply call them like other Linux utilities.  
 
 To run every possible combination involving the test::
 
-    pipeline_runmatches ASECohesiveEnergyFromQuery_Ar_fcc__TE_102111117114_000
+    pipeline_runmatches ASECohesiveEnergyFromQuery_fcc_Ar__TE_102111117114_000
 
 or if you want to try only one run with a specific model, run::
 

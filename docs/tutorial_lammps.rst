@@ -790,7 +790,7 @@ LammpsExample2__TD_887699523131_000
     read -a cohesive_energy <<< `grep "Cohesive energy = [0-9.e-]* eV/atom" output/lammps.log | cut -d' ' -f4 | sed ':a;N;$!ba;s/\n/ /g'`
     
     # Build a JSON dictionary of results.  This will be used to parse through the results.yaml.tpl Jinja template found in the directories of Tests which are
-    # derived from this Test Driver (e.g. LammpsExample2_Ar_fcc__TE_778998786610_000).
+    # derived from this Test Driver (e.g. LammpsExample2_fcc_Ar__TE_778998786610_000).
     JSONresults="{ \"crystal_structure\": \"$latticetype\",  \"element\": \"$element\", \"wyckoff_code\": \"$wyckoffcode\", \"space_group\": \"$space_group\",\
      \"numberofspacings\": \"$numberofspacings\", \"latticeconstantarray\": ["
     
@@ -935,7 +935,7 @@ List of files
 
 .. _example2_TE_exec:
 
-LammpsExample2_Si_diamond__TE_837477125670_000
+LammpsExample2_diamond_Si__TE_837477125670_000
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 As mentioned in Example 1, the contents of a Test's executable file can be a copy of the following standard python script whenever it is derived from a Test Driver::
 
@@ -960,11 +960,11 @@ As mentioned in Example 1, the contents of a Test's executable file can be a cop
 
 .. _example2_TE_kimfile:
 
-LammpsExample2_Si_diamond__TE_837477125670_000.kim
+LammpsExample2_diamond_Si__TE_837477125670_000.kim
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 As always, the .kim descriptor file outlines the essential details of a Test, including the units it uses, the atomic species it supports, the neighborlist methods it contains, what information it passes to a Model, and what information it expects to receive from a Model. ::
 
-    TEST_NAME        := LammpsExample2_Si_diamond__TE_837477125670_000
+    TEST_NAME        := LammpsExample2_diamond_Si__TE_837477125670_000
     Unit_Handling    := flexible
     Unit_length      := A
     Unit_energy      := eV
@@ -1008,9 +1008,9 @@ This YAML_formatted file contains metadata associated with the Test.  More infor
 
 .. code-block:: yaml
 
-    extended-id: LammpsExample2_Si_diamond__TE_837477125670_000
+    extended-id: LammpsExample2_diamond_Si__TE_837477125670_000
     test-driver: LammpsExample2__TD_887699523131_000
-    title: "LammpsExample2_Si_diamond: compute energy-volume curve for diamond Silicon."
+    title: "LammpsExample2_diamond_Si: compute energy-volume curve for diamond Silicon."
     species: Si
     description: "This example Test illustrates the use of LAMMPS in the openkim-pipeline to compute an energy vs. lattice
        constant curve for diamond Silicon.  The curve is computed for lattice constants ranging from 4.15 Angstroms
@@ -1145,18 +1145,19 @@ Example Calculation
 -------------------
 We can run this Test against one of the Models for Silicon in the OpenKIM repository, such as ``EDIP_BOP_Bazant_Kaxiras_Si__MO_958932894036_000``.  We once again use ``pipeline_runpair``::
 
-    pipeline_runpair LammpsExample2_Si_diamond__TE_837477125670_000 EDIP_BOP_Bazant_Kaxiras_Si__MO_958932894036_000
+    pipeline_runpair LammpsExample2_diamond_Si__TE_837477125670_000 EDIP_BOP_Bazant_Kaxiras_Si__MO_958932894036_000
 
 which produces output similar to ::
 
-    2014-01-28 21:40:21,532 - INFO - pipeline.development - Running combination <<Test(LammpsExample2_Si_diamond__TE_837477125670_000)>, <Model(EDIP_BOP_Bazant_Kaxiras_Si__MO_958932894036_000)>
-    2014-01-28 21:40:21,571 - INFO - pipeline.compute - running <Test(LammpsExample2_Si_diamond__TE_837477125670_000)> with <Model(EDIP_BOP_Bazant_Kaxiras_Si__MO_958932894036_000)>
-    2014-01-28 21:40:21,575 - INFO - pipeline.template - attempting to process '/home/openkim/openkim-repository/te/LammpsExample2_Si_diamond_runningc9d4b5f0-8864-11e3-8118-4005d10d911c__TE_837477125670_000/pipeline.stdin.tpl' for ('LammpsExample2_Si_diamond__TE_837477125670_000','EDIP_BOP_Bazant_Kaxiras_Si__MO_958932894036_000')
-    2014-01-28 21:40:21,585 - INFO - pipeline.compute - launching run...
-    2014-01-28 21:40:22,007 - INFO - pipeline.compute - Run completed in 0.42205309867858887 seconds
-    2014-01-28 21:40:22,789 - INFO - pipeline.compute - Copying the contents of /home/openkim/openkim-repository/te/LammpsExample2_Si_diamond_runningc9d4b5f0-8864-11e3-8118-4005d10d911c__TE_837477125670_000/output to /home/openkim/openkim-repository/tr/c9d4b5f0-8864-11e3-8118-4005d10d911c
+    2014-02-08 16:14:14,726 - INFO - pipeline.development - Running combination <<Test(LammpsExample2_diamond_Si__TE_837477125670_000)>, <Model(EDIP_BOP_Bazant_Kaxiras_Si__MO_958932894036_000)>
+    2014-02-08 16:14:14,767 - INFO - pipeline.compute - running <Test(LammpsExample2_diamond_Si__TE_837477125670_000)> with <Model(EDIP_BOP_Bazant_Kaxiras_Si__MO_958932894036_000)>
+    2014-02-08 16:14:14,770 - INFO - pipeline.template - attempting to process '/home/openkim/openkim-repository/te/LammpsExample2_diamond_Si_running0da974dc-90dc-11e3-ab70-4005d10d911c__TE_837477125670_000/pipeline.stdin.tpl' for ('LammpsExample2_diamond_Si__TE_837477125670_000','EDIP_BOP_Bazant_Kaxiras_Si__MO_958932894036_000')
+    2014-02-08 16:14:14,778 - INFO - pipeline.compute - launching run...
+    2014-02-08 16:14:15,349 - INFO - pipeline.compute - Run completed in 0.5713558197021484 seconds
+    2014-02-08 16:14:16,222 - INFO - pipeline.compute - Copying the contents of /home/openkim/openkim-repository/te/LammpsExample2_diamond_Si_running0da974dc-90dc-11e3-ab70-4005d10d911c__TE_837477125670_000/output to /home/openkim/openkim-repository/tr/0da974dc-90dc-11e3-ab70-4005d10d911c
 
-In this case, the last line of the output indicates that the results of the calculation have been copied to ``/home/openkim/openkim-repository/tr/c9d4b5f0-8864-11e3-8118-4005d10d911c``.  Examining ``pipeline.stdout``, we can see the JSON dictionary printed by the Test Driver::
+
+In this case, the last line of the output indicates that the results of the calculation have been copied to ``/home/openkim/openkim-repository/tr/0da974dc-90dc-11e3-ab70-4005d10d911c``.  Examining ``pipeline.stdout``, we can see the JSON dictionary printed by the Test Driver::
 
     Please enter a valid KIM Model extended-ID:
     Please enter the species symbol (e.g. Si, Au, Al, etc.):
@@ -1579,5 +1580,5 @@ Finally, the ``results.yaml`` file looks like::
         shape:
         - 36
 
-.. note:: Another Test derived from this Test Driver, LammpsExample2_Ar_fcc__TE_778998786610_000, can be found in the source archive of these example Tests.
-.. note:: The ``testgenie`` utility included on the OpenKIM Virtual Machine was used to generate the Tests LammpsExample2_Si_diamond__TE_837477125670_000 and LammpsExample2_Ar_fcc__TE_778998786610_000.  This utility operates using a file named ``test_generator.json`` in the Test Driver directory and the template files found in ``test_template/``.  To generate these two Tests, enter the LammpsExample2__TD_887699523131_000 directory and issue, for example, the command ``testgenie --destination ~/openkim-repository/te/ LammpsExample2__TD_887699523131_000``.  For more information on ``testgenie``, enter the command ``testgenie --h``.
+.. note:: Another Test derived from this Test Driver, LammpsExample2_fcc_Ar__TE_778998786610_000, can be found in the source archive of these example Tests.
+.. note:: The ``testgenie`` utility included on the OpenKIM Virtual Machine was used to generate the Tests LammpsExample2_diamond_Si__TE_837477125670_000 and LammpsExample2_fcc_Ar__TE_778998786610_000.  This utility operates using a file named ``test_generator.json`` in the Test Driver directory and the template files found in ``test_template/``.  To generate these two Tests, enter the LammpsExample2__TD_887699523131_000 directory and issue, for example, the command ``testgenie --destination ~/openkim-repository/te/ LammpsExample2__TD_887699523131_000``.  For more information on ``testgenie``, enter the command ``testgenie --h``.
