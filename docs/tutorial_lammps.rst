@@ -356,19 +356,19 @@ This Jinja template file is used by the Test to report its results.  Separate do
         source-unit: angstrom
         source-value: @<latticeconstant>@
       alpha:
-        source-units: degrees
+        source-unit: degrees
         source-value: 90
       b:
         source-unit: angstrom
         source-value: @<latticeconstant>@
       beta:
-        source-units: degrees
+        source-unit: degrees
         source-value: 90
       c:
         source-unit: angstrom
         source-value: @<latticeconstant>@
       gamma:
-        source-units: degrees
+        source-unit: degrees
         source-value: 90
       short-name:
       - fcc
@@ -398,19 +398,19 @@ This Jinja template file is used by the Test to report its results.  Separate do
         source-unit: angstrom
         source-value: @<latticeconstant>@
       alpha:
-        source-units: degrees
+        source-unit: degrees
         source-value: 90
       b:
         source-unit: angstrom
         source-value: @<latticeconstant>@
       beta:
-        source-units: degrees
+        source-unit: degrees
         source-value: 90
       c:
         source-unit: angstrom
         source-value: @<latticeconstant>@
       gamma:
-        source-units: degrees
+        source-unit: degrees
         source-value: 90
       kim-ns: tag:staff@noreply.openkim.org,2013-08-03:primitive.crystal-structure
       short-name:
@@ -439,7 +439,7 @@ This Jinja template file is used by the Test to report its results.  Separate do
         source-unit: K
         source-value: 0
       pressure:
-        source-unit: bar
+        source-unit: bar 
         source-value: @<finalpressure>@
     kim-namespace: tag:staff@noreply.openkim.org,2013-08-03:property/cohesive-energy
 
@@ -486,7 +486,7 @@ The JSON dictionary indicates that the cohesive energy returned by the Test is 0
         source-unit: angstrom
         source-value: 5.24859000000002
       alpha:
-        source-units: degrees
+        source-unit: degrees
         source-value: 90
       b:
         si-unit: m
@@ -494,7 +494,7 @@ The JSON dictionary indicates that the cohesive energy returned by the Test is 0
         source-unit: angstrom
         source-value: 5.24859000000002
       beta:
-        source-units: degrees
+        source-unit: degrees
         source-value: 90
       c:
         si-unit: m
@@ -502,7 +502,7 @@ The JSON dictionary indicates that the cohesive energy returned by the Test is 0
         source-unit: angstrom
         source-value: 5.24859000000002
       gamma:
-        source-units: degrees
+        source-unit: degrees
         source-value: 90
       kim-namespace: tag:staff@noreply.openkim.org,2013-08-03:primitive/crystal-structure
       short-name:
@@ -543,7 +543,7 @@ The JSON dictionary indicates that the cohesive energy returned by the Test is 0
         source-unit: angstrom
         source-value: 5.24859000000002
       alpha:
-        source-units: degrees
+        source-unit: degrees
         source-value: 90
       b:
         si-unit: m
@@ -551,7 +551,7 @@ The JSON dictionary indicates that the cohesive energy returned by the Test is 0
         source-unit: angstrom
         source-value: 5.24859000000002
       beta:
-        source-units: degrees
+        source-unit: degrees
         source-value: 90
       c:
         si-unit: m
@@ -559,7 +559,7 @@ The JSON dictionary indicates that the cohesive energy returned by the Test is 0
         source-unit: angstrom
         source-value: 5.24859000000002
       gamma:
-        source-units: degrees
+        source-unit: degrees
         source-value: 90
       kim-ns: tag:staff@noreply.openkim.org,2013-08-03:primitive.crystal-structure
       short-name:
