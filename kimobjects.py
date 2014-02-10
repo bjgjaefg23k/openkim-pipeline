@@ -242,6 +242,18 @@ class KIMObject(simplejson.JSONEncoder):
             except Exception as e:
                 logger.exception("Exception on formation of kim_code (%s)", x)
 
+    @property
+    def kimspec(self):
+        specfile = os.path.join(self.path,CONFIG_FILE)
+        spec = {}
+        with open(specfile) as f:
+            spec = yaml.safe_load(f) 
+        return spec
+
+    @property
+    def dependencies(self):
+        """ Return a generator of kim objects that are its dependencies """
+        return list(self.drivers)
 
     def delete(self):
         """ Delete the folder for this object
@@ -288,28 +300,6 @@ class Runner(KIMObject):
         """ return a file object for the INPUT_FILE """
         return open(self.infile_path)
 
-    def dependency_check(self, subject=None):
-        """ Ask template.py to do a dependency check
-            returns a 3 tuple
-                ready - bool of whether good to go or not
-                dependencies_good_to_go - kids for ready dependencies
-                dependencies_not_ready - tuples of test/model pairs to run """
-        if subject:
-            return dependencies.dependency_check(self.modelname_processed_infile(subject))
-        return dependencies.dependency_check(self.infile,model=False)
-
-    @property
-    def dependencies(self):
-        """ Return a generator of kim objects that are its dependencies """
-        ready, goods, bads = self.dependency_check()
-        if goods:
-            for guy in goods:
-                yield guy
-        if bads:
-            for guy1, guy2 in bads:
-                yield guy1
-                yield guy2
-
     @property
     def subjects(self):
         """ Return a generator for all of the valid subjects """
@@ -344,6 +334,7 @@ class Subject(KIMObject):
         """ Return a generator of the valid matching tests that match this model """
         return ( test for test in Test.all() if kimapi.valid_match(test,self) )
 
+
 #===============================================
 # Subject Objs
 #==============================================
@@ -371,10 +362,10 @@ class Model(Subject):
         """ Return the model driver if there is one, otherwise None,
             currently, this tries to parse the kim file for the MODEL_DRIVER_NAME line
         """
-        try:
-            return ModelDriver(next( line.split(":=")[1].strip() for line in self.makefile if line.startswith("MODEL_DRIVER_NAME") ))
-        except StopIteration:
-            return None
+        if not self.kimspec or not self.kimspec.get('model-driver'):
+            return None 
+        else:
+            return ModelDriver(self.kimspec['model-driver'])
 
     @property
     def tests(self):
@@ -430,7 +421,10 @@ class Test(Runner):
     @property
     def test_drivers(self):
         """ Return a generator of test drivers this guy relies on """
-        return ( depend for depend in self.dependencies if depend.required_leader == "TD")
+        if not self.kimspec or not self.kimspec.get('test-driver'):
+            return None 
+        else:
+            return TestDriver(self.kimspec['test-driver'])
 
     def result_with_model(self, model):
         """ Get the first result with the model: model, or None """
@@ -446,7 +440,7 @@ class Test(Runner):
 
     @property
     def drivers(self):
-        return self.test_drivers
+        return () if not self.test_drivers else [self.test_drivers]
 
 #------------------------------------------
 # VerificationTest(Check)

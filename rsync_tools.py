@@ -12,7 +12,7 @@ from database import parse_kim_code
 from functools import partial
 
 # --delete ensures that we delete files that aren't on remote
-RSYNC_FLAGS  = "-vvrtLhptgo -uzREc --progress --stats -e "
+RSYNC_FLAGS  = "-vvrLhptg -zREc --progress --stats -e "
 RSYNC_FLAGS += "'ssh -i "+GLOBAL_KEY+" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'"
 RSYNC_FLAGS += " --exclude-from="+RSYNC_EXCLUDE_FILE
 
@@ -36,7 +36,7 @@ else:
 #================================
 # rsync wrappers
 #================================
-def rsync_command(files,read=True,path=None):
+def rsync_command(files, read=True, path=None, delete=False):
     """ run rsync, syncing the files (or folders) listed in files, assumed to be paths or partial
     paths from the RSYNC_LOCAL_ROOT
     """
@@ -48,6 +48,10 @@ def rsync_command(files,read=True,path=None):
         tmp.file.write("\n".join(files))
         tmp.file.close()
         flags = RSYNC_FLAGS
+
+        if delete:
+            flags = "--delete "+flags
+
         try:
             logger.info("running rsync for files: %r",files)
             if read:    
@@ -124,6 +128,11 @@ def gateway_read(kimcode, approved=True):
 def gateway_write_result(leader, kimcode):
     # write the results back to the webserver in the appropriate place
     rsync_write([j(leader,kimcode)], path=WR)
+
+def gateway_full_read():
+    """ when a director trys to get everything """
+    files = [j(RA,"te/"),j(RA,"mo/"),j(RA,"md/"),j(RA,"td/"),j(RA,"vt/"),j(RA,"vm/"),j(RA,"rd/")]
+    rsync_read(files, delete=True)
 
 #=================================
 # director methods

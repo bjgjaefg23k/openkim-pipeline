@@ -33,7 +33,7 @@ class Gateway(object):
                 try:
                     job = simplejson.loads(request.body)
                     approved = True if job['status'] == 'approved' else False
-                    rsync_tools.gateway_read(job['kimid'], approved=approved)
+                    rsync_tools.gateway_full_read()
                     insert_one_object(job['kimid'])
                     self.bean.send_msg(TUBE_UPDATES, request.body)
                 except Exception as e:

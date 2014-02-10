@@ -214,7 +214,9 @@ class Agent(object):
         with self.in_api_dir():
             try:
                 with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
-                    check_call(["make", "openkim-api"], shell=True, stdout=log, stderr=log)
+                    check_call(["make", "clean"], shell=True, stdout=log, stderr=log)
+                with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
+                    check_call(["make"], shell=True, stdout=log, stderr=log)
             except CalledProcessError as e:
                 self.logger.error("Could not make KIM API")
                 raise RuntimeError, "Could not make KIM API"
@@ -375,7 +377,7 @@ class Director(Agent):
     def check_dependencies_and_push(self, test, model, priority, status, child=None):
         """ Check dependencies, and push them first if necessary """
         # run the test in its own directory
-        depids = []
+        depids = (str(item) for item in test.dependencies + model.dependencies)
         with test.in_dir():
             trid = self.get_result_code()
             self.logger.info("Submitting job <%s, %s, %s> priority %i" % (test, model, trid, priority))
@@ -548,6 +550,8 @@ if __name__ == "__main__":
         # directors are not multithreaded for build safety
         if sys.argv[1] == "director":
             director = Director(num=0)
+            logger.info("Building KIM API...")
+            director.make_api()
             director.run()
 
         # workers can be multi-threaded so launch the appropriate
@@ -559,7 +563,7 @@ if __name__ == "__main__":
 
                 if i == 0:
                     logger.info("Building KIM API as worker 0")
-                    #pipe[i].make_api()
+                    pipe[i].make_api()
 
                 procs[i] = Process(target=Worker.run, args=(pipe[i],), name='worker-%i'%i)
                 #procs[i].daemon = True
