@@ -203,6 +203,8 @@ class Agent(object):
         with self.in_api_dir():
             try:
                 with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
+                    check_call(["make", "clean"], shell=True, stdout=log, stderr=log)
+                with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
                     check_call(["make"], shell=True, stdout=log, stderr=log)
             except CalledProcessError as e:
                 self.logger.error("could not make kim")
