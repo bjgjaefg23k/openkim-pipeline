@@ -1,6 +1,5 @@
 import pymongo
 import os, re
-import datetime
 import yaml
 import datetime
 from ConfigParser import ConfigParser
@@ -37,7 +36,6 @@ def drop_tables():
         db['log'].drop()
         db['job'].drop()
         db['agent'].drop()
-        db['data'].drop()
 
 BADKEYS = { "kimspec", "profiling", "inserted_on", "latest" }
 def rmbadkeys(dd):
@@ -61,8 +59,6 @@ def flatten(o):
         return o
 
 def kimcode_to_dict(kimcode):
-    dirpath = os.path.join(RSYNC_LOCAL_ROOT, leader, kimcode)
-
     name,leader,num,version = parse_kim_code(kimcode)
     if not name:
         name = database.look_for_name(leader, num, version)
@@ -75,7 +71,6 @@ def kimcode_to_dict(kimcode):
             "kimcode": kimcode,
             "path" : os.path.join(leader.lower(),kimcode),
             "approved" : True,
-            "created_at" : datetime.datetime.fromtimestamp( os.path.getctime( dirpath )),
             '_id' : kimcode,
             "inserted_on": str(datetime.datetime.utcnow()),
             "latest": True,
@@ -113,7 +108,6 @@ def kimcode_to_dict(kimcode):
     return foo
 
 def uuid_to_dict(leader,uuid):
-    dirpath = os.path.join(RSYNC_LOCAL_ROOT,leader,uuid)
     foo = {'uuid': uuid ,
             'path': os.path.join(leader.lower(),uuid),
             'type': leader,
