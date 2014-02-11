@@ -12,7 +12,7 @@ from database import parse_kim_code
 from functools import partial
 
 # --delete ensures that we delete files that aren't on remote
-RSYNC_FLAGS  = "-vvrLhptg -zREc --progress --stats -e "
+RSYNC_FLAGS  = "-vvrLhzREc --progress --stats -e "
 RSYNC_FLAGS += "'ssh -i "+GLOBAL_KEY+" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'"
 RSYNC_FLAGS += " --exclude-from="+RSYNC_EXCLUDE_FILE
 
@@ -140,7 +140,7 @@ def gateway_full_read():
 def director_approved_read():
     """ when a director trys to get everything """
     files = [j(RA,"te/"),j(RA,"mo/"),j(RA,"md/"),j(RA,"td/"),j(RA,"vt/"),j(RA,"vm/")]
-    rsync_read(files)
+    rsync_read(files, delete=True)
 
 def director_pending_read(kimobj):
     """ when the director needs to verify a test """

@@ -115,11 +115,13 @@ class BuilderBot(object):
                     self.buildlocks[driver.kim_code] = Lock()
 
         if driver:
+            with self.buildlocks[driver.kim_code]:
+                driver.make()
+                with self.buildlocks[kimobj.kim_code]:
+                    kimobj.make()
+        else:
             with self.buildlocks[kimobj.kim_code]:
-                with self.buildlocks[driver.kim_code]:
-                    driver.make()
-        with self.buildlocks[kimobj.kim_code]:
-            kimobj.make()
+                kimobj.make()
 
 class BuilderManager(BaseManager):
     pass
@@ -227,7 +229,7 @@ class Agent(object):
                 with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
                     check_call(["make", "clean"], shell=True, stdout=log, stderr=log)
                 with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
-                    check_call(["make"], shell=True, stdout=log, stderr=log)
+                    check_call(["make openkim-api"], shell=True, stdout=log, stderr=log)
             except CalledProcessError as e:
                 self.logger.error("Could not make KIM API")
                 raise RuntimeError, "Could not make KIM API"
@@ -557,7 +559,7 @@ if __name__ == "__main__":
         if sys.argv[1] == "director":
             director = Director(num=0)
             logger.info("Building KIM API...")
-            director.make_all()
+            director.make_api()
             director.run()
 
         # workers can be multi-threaded so launch the appropriate
@@ -569,7 +571,7 @@ if __name__ == "__main__":
 
                 if i == 0:
                     logger.info("Building KIM API as worker 0")
-                    pipe[i].make_all()
+                    pipe[i].make_api()
 
                 procs[i] = Process(target=Worker.run, args=(pipe[i],), name='worker-%i'%i)
                 #procs[i].daemon = True
