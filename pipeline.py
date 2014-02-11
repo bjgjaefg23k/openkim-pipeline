@@ -103,14 +103,23 @@ class BuilderBot(object):
         self.buildlocks = {}
 
     def lock_build(self, kimobj):
+        driver = kimobj.drivers[0] if kimobj.drivers else None
+
         with self.mod_buildlocks:
             if not self.buildlocks.get(kimobj.kim_code, None):
                 self.buildlocks[kimobj.kim_code] = Lock()
+
+        if driver:
+            with self.mod_buildlocks:
+                if not self.buildlocks.get(driver.kim_code, None):
+                    self.buildlocks[driver.kim_code] = Lock()
+
+        if driver:
             with self.buildlocks[kimobj.kim_code]:
-                try:
-                    kimobj.make()
-                except Exception as e:
-                    raise RuntimeError("Could not make %s" % kimobj.kim_code)
+                with self.buildlocks[driver.kim_code]:
+                    driver.make()
+        with self.buildlocks[kimobj.kim_code]:
+            kimobj.make()
 
 class BuilderManager(BaseManager):
     pass
@@ -454,12 +463,7 @@ class Worker(Agent):
                 runner  = kimobjects.kim_obj(runner_kcode)
                 subject = kimobjects.kim_obj(subject_kcode)
 
-                for driver in runner.drivers:
-                    self.builder.lock_build(driver)
                 self.builder.lock_build(runner)
-
-                for driver in subject.drivers:
-                    self.builder.lock_build(driver)
                 self.builder.lock_build(subject)
 
                 self.logger.info("Running (%r,%r)", runner, subject)

@@ -218,7 +218,10 @@ class KIMObject(simplejson.JSONEncoder):
             with self.in_dir():
                 with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
                     logger.debug("Attempting to make %r: %r", self.__class__.__name__, self.kim_code)
-                    subprocess.check_call('make', stdout=log, stderr=log)
+                    try:
+                        subprocess.check_call('make', stdout=log, stderr=log)
+                    except Exception as e:
+                        raise subprocess.CalledProcessError("Could not build %r" % self, e)
         else:
             logger.warning("%r:%r is not makeable", self.__class__.__name__, self.kim_code)
 
@@ -374,7 +377,7 @@ class Model(Subject):
 
     @property
     def drivers(self):
-        return () if not self.model_driver else [self.model_driver]
+        return [] if not self.model_driver else [self.model_driver]
 
 #=============================================
 # Runner Objs
@@ -440,7 +443,7 @@ class Test(Runner):
 
     @property
     def drivers(self):
-        return () if not self.test_drivers else [self.test_drivers]
+        return [] if not self.test_drivers else [self.test_drivers]
 
 #------------------------------------------
 # VerificationTest(Check)
@@ -542,7 +545,7 @@ class TestDriver(KIMObject):
     @property
     def tests(self):
         """ Return a generator of all tests using this TestDriver """
-        return ( test for test in Test.all() if self in test.test_drivers )
+        return ( test for test in Test.all() if self in test.drivers )
 
 
 #------------------------------------------
