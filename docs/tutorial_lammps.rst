@@ -21,7 +21,7 @@ We consider here the use of the `LAMMPS Molecular Dynamics Simulator <http://lam
 
 Two example Tests which make use of LAMMPS are detailed below.  These should already be on your box as part of the OpenKIM repository, but can also be downloaded :download:`here <./LAMMPS_tutorial_examples.tgz>`. Although not strictly necessary, both of the Tests included in this tutorial have been set up to make use of Test Drivers for the purposes of demonstration.  If you are unfamiliar with the role of Test Drivers in the pipeline or other general details of Test creation, please see :ref:`testdev`.
 
-In the :ref:`first example Test <example1_ref>`, the user provides an initial guess at the equilibrium lattice constant of an (infinite) face-centered cubic lattice of Argon atoms.  Using this initial guess, LAMMPS attempts to compute the equilibrium lattice constant and cohesive energy by performing a static minimization of the potential energy using the Polak-Ribiere conjugate gradient method.
+In the :ref:`first example Test <example1_ref>`, the user provides an initial guess at the equilibrium lattice constant of an (infinite) face-centered cubic lattice of Argon atoms.  Using this initial guess, LAMMPS attempts to compute the equilibrium lattice constant and cohesive energy by performing a static minimization of the potential energy using the Polak-Ribiere conjugate gradient method (see the LAMMPS `minimize <http://lammps.sandia.gov/doc/minimize.html>`_ documentation for more details).
 
 In the :ref:`second example Test <example2_ref>`, the user specifies a type of cubic lattice (bcc, fcc, sc, or diamond), an atomic species (e.g. 'Ar', 'Si', etc.), and a set of parameters which are used to construct a set of lattice spacings at which the cohesive energy will be computed.  In the terminology of the pipeline, this results in a cohesive energy versus lattice constant "curve."
 
@@ -46,7 +46,7 @@ List of files
 
     * :ref:`example1_TD_exec` - the main executable, a bash script
     * :ref:`example1_TD_kimspec` - a file which describes the metadata associated with the Test Driver
-    * :ref:`example1_TD_makefile` - a Makefile
+    * :ref:`example1_TD_makefile` - a Makefile containing compilation instructions for the Test Driver
     * :ref:`example1_TD_lammpstemplate` - a LAMMPS input script template which the Test Driver processes with 'sed'
     * ``README.txt`` - a file which contains a basic explanation of the Test Driver
     * ``LICENSE.CDDL`` - a copy of the `CDDL license <http://opensource.org/licenses/CDDL-1.0>`_
@@ -221,7 +221,7 @@ List of files
     * :ref:`example1_TE_exec` - the main executable, a python script
     * :ref:`example1_TE_kimfile` - a KIM descriptor file which outlines the capabilities of the Test
     * :ref:`example1_TE_kimspec` - a file which describes the metadata associated with the Test
-    * :ref:`example1_TE_makefile` - a Makefile
+    * :ref:`example1_TE_makefile` - a Makefile containing compilation instructions for the Test
     * :ref:`example1_TE_stdin` - a Jinja template file used to provide input on stdin
     * :ref:`example1_TE_results` - a Jinja template file used to report the results of the Test
     * ``README.txt`` - a file which contains a basic explanation of the Test 
@@ -278,6 +278,7 @@ The .kim descriptor file outlines the operational parameters of the Test, includ
     Neigh_BothAccess  flag
     NEIGH_PURE_H      flag
     NEIGH_PURE_F      flag
+    NEIGH_RVEC_H      flag
     NEIGH_RVEC_F      flag
     
     MODEL_INPUT:
@@ -412,7 +413,7 @@ This Jinja template file is used by the Test to report its results.  Separate do
       gamma:
         source-unit: degrees
         source-value: 90
-      kim-ns: tag:staff@noreply.openkim.org,2013-08-03:primitive.crystal-structure
+      kim-ns: tag:staff@noreply.openkim.org,2013-08-03:primitive/crystal-structure
       short-name:
       - fcc
       space-group: Fm-3m
@@ -561,7 +562,7 @@ The JSON dictionary indicates that the cohesive energy returned by the Test is 0
       gamma:
         source-unit: degrees
         source-value: 90
-      kim-ns: tag:staff@noreply.openkim.org,2013-08-03:primitive.crystal-structure
+      kim-ns: tag:staff@noreply.openkim.org,2013-08-03:primitive/crystal-structure
       short-name:
       - fcc
       space-group: Fm-3m
@@ -634,7 +635,7 @@ List of files
 
     * :ref:`example2_TD_exec` - the main executable, a bash script
     * :ref:`example2_TD_kimspec` - a file which describes the metadata associated with the Test Driver
-    * :ref:`example2_TD_makefile` - a Makefile
+    * :ref:`example2_TD_makefile` - a Makefile containing compilation instructions for the Test Driver
     * :ref:`example2_TD_lammpstemplate` - a LAMMPS input script template which the Test Driver processes with 'sed'
     * ``README.txt`` - a file which contains a basic explanation of the Test Driver
     * ``LICENSE.CDDL`` - a copy of the `CDDL license <http://opensource.org/licenses/CDDL-1.0>`_
@@ -878,7 +879,7 @@ This file is processed by :ref:`example2_TD_exec` using the 'sed' command line u
     # Periodic boundary conditions along all three dimensions
     boundary p p p
     
-    # Create an FCC lattice with a spacing specified by the user (referred to as "a_0" in
+    # Create a lattice with type and spacing specified by the user (referred to as "a_0" in
     # README.txt) using a single conventional (orthogonal) unit cell
     lattice sed_latticetype_string ${latticeconst}
     region box block 0 1 0 1 0 1 units lattice
@@ -927,7 +928,7 @@ List of files
     * :ref:`example2_TE_exec` - the main executable, a python script
     * :ref:`example2_TE_kimfile` - a KIM descriptor file which outlines the capabilities of the Test
     * :ref:`example2_TE_kimspec` - a file which describes the metadata associated with the Test
-    * :ref:`example2_TE_makefile` - a Makefile
+    * :ref:`example2_TE_makefile` - a Makefile containing compilation instructions for the Test
     * :ref:`example2_TE_stdin` - a Jinja template file to provide input on stdin
     * :ref:`example2_TE_results` - a Jinja template file for the results
     * ``README.txt`` - a file which contains a basic explanation of the Test
@@ -980,6 +981,7 @@ As always, the .kim descriptor file outlines the essential details of a Test, in
     Neigh_BothAccess  flag
     NEIGH_PURE_H      flag
     NEIGH_PURE_F      flag
+    NEIGH_RVEC_H      flag
     NEIGH_RVEC_F      flag
     
     MODEL_INPUT:

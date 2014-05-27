@@ -131,19 +131,15 @@ Tests
 """""
 A test is all of the extra information that is required to run a test driver.  For the example
 above, we need to be able to locate our test driver, provide it with a lattice type, species,
-and a modelname.  To do this, the tests require 5 files:
+and a modelname.  To do this, the tests require 4 files:
 
 1. An executable which accepts input via stdin and is named the same as the KIMID
 2. A file called pipeline.stdin which describes the input to your test
 3. A file called pipeline.yaml which is a jinja template of the results YAML document
 4. A <KIMID>.kim file
-5. A Makefile (this can be a bare minimum file such as ::
 
-    all:
-        @echo "Nothing to make"
-    
-    clean:
-        @echo "Nothing to clean"
+If your test must compile to a binary, we require that you use the convention that your
+makefile be capitalized as `Makefile`. 
 
 After this, you are all set.  Files 2 and 3 are described at :ref:`pipelineindocs` and :ref:`pipelineoutdocs`. 
 
@@ -290,7 +286,7 @@ recieved for our test is quite special.  This test is very simple, it will run t
 and provide the option ``Ar`` where appropriate.  We need 5 files for our test, they are::
 
     > ls te/energyAr__TE_000000000000_000   
-    energyAr__TE_000000000000_000 energyAr__TE_000000000000_000.kim Makefile
+    energyAr__TE_000000000000_000 energyAr__TE_000000000000_000.kim
     pipeline.stdin pipeline.yaml
 
 The contents of ``pipeline.stdin`` are::
@@ -306,9 +302,7 @@ the pipeline when it is run.  The file ``pipeline.yaml`` contains the properties
 and primitives that have been approved to represent your test output.
 
 The .kim file specifies what requirements your test driver has
-when run with these arguments, it won't be listed here.  The ``Makefile`` can
-be as blank as possible (see :ref:`desctests`) as we will be using a Python
-script as our main executable and it doesn't need to be made.  Finally, our
+when run with these arguments, it won't be listed here.   Finally, our
 Python script runs the path as returned by the ``@PATH`` directive and then
 simply passes along stdin input to our test driver.  The contents of this file
 are::

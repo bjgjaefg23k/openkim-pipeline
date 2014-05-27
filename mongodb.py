@@ -96,6 +96,13 @@ def kimcode_to_dict(kimcode):
                 foo['driver'] = rmbadkeys(kimcode_to_dict(testresult))
         except:
             pass
+        try:
+            pipespecpath = os.path.join(PATH_APPROVED,leader,kimcode,PIPELINESPEC_FILE)
+            pipespec = config_yaml(specpath)
+            foo.update(pipespec)
+        except:
+            logger.info("Test without pipelinespec.yaml")
+
     if foo['type'] == 'mo':
         try:
             modeldriver = spec.get('model-driver')
@@ -160,7 +167,10 @@ def uuid_to_dict(leader,uuid):
 def doc_to_dict(doc,leader,uuid):
     foo = doc
     #copy info about result obj
-    result_obj_doc = uuid_to_dict(leader,uuid)
+    if leader == 'tr':
+        result_obj_doc = uuid_to_dict(leader,uuid)
+    else:
+        result_obj_doc = kimcode_to_dict(uuid)
     meta = rmbadkeys(result_obj_doc)
 
     if leader == 'tr':
@@ -195,21 +205,36 @@ def doc_to_dict(doc,leader,uuid):
     foo['latest'] = True
     return foo
 
-def deprecate_similar_objects(dbname, info, keys):
-    tinfo = flatten(info)
-    query = { key:tinfo[key] for key in keys }
-    query.update({'created_on': {"$lt": tinfo['created_on']}})
+def deprecate_similar_objects(dbname, doc, matchroots=[]):
+    """
+    This function makes older versions hidden in the database.  If
+    there is a tie in the versions, it makes the oldest one in date
+    hidden instead (by created_on).
+    """
+    matchkeys = ['.'.join([root, 'shortcode']) for root in matchroots]
+    versionkeys = ['.'.join([root, 'version']) for root in matchroots]
+    timekeys = ['.'.join([root, 'created_on']) for root in matchroots]
+
+    tinfo = flatten(doc)
+    query = { matchkey : tinfo[matchkey] for matchkey in matchkeys }
+    vquery, tquery = query, query
+    vquery.update({ "$or": [{vk : {"$lt": tinfo[vk]}} for vk in versionkeys]})
+    tquery.update({ "$or": [{tk : {"$lt": tinfo[tk]}} for tk in timekeys]})
+
     update = { "$set": {"latest": False } }
-    status = db[dbname].update(spec=query, document=update, multi=True)
-    if status['n'] > 0:
+    vstatus = db[dbname].update(spec=vquery, document=update, multi=True)
+    tstatus = db[dbname].update(spec=tquery, document=update, multi=True)
+    if vstatus['n'] > 0:
         logger.info("Updated %i existing documents to deprecated" % status['n'])
+    if tstatus['n'] > 0:
+        logger.info("Updated %i existing documents to deprecated (same version)" % status['n'])
 
 def insert_one_object(kimcode):
     logger.info("Inserting object %s", kimcode)
     info = kimcode_to_dict(kimcode)
     try:
         db.obj.insert(info)
-        deprecate_similar_objects('obj', info, ['shortcode'])
+        deprecate_similar_objects('obj', info)
     except:
         logger.error("Already have %s", kimcode)
 
@@ -219,7 +244,7 @@ def insert_one_result(leader, kimcode):
     info = uuid_to_dict(leader, kimcode)
     try:
         resultobj = db.obj.insert(info)
-        deprecate_similar_objects('obj', info, ['runner.kimcode', 'subject.kimcode'])
+        deprecate_similar_objects('obj', info, ['runner', 'subject'])
     except:
         logger.error("Aready have %s", kimcode)
         return
@@ -229,18 +254,19 @@ def insert_one_result(leader, kimcode):
             for doc in yaml_docs:
                 stuff = doc_to_dict(doc,leader,kimcode)
                 db.data.insert(stuff)
-        deprecate_similar_objects('data', stuff, ['meta.runner.kimcode', 'meta.subject.kimcode'])
+        deprecate_similar_objects('data', stuff, ['meta.runner', 'meta.subject'])
     except:
         logger.info("Could not read document for %s/%s", leader, kimcode)
         stuff = doc_to_dict({}, leader, kimcode)
         db.data.insert(stuff)
-        deprecate_similar_objects('data', stuff, ['meta.runner.kimcode', 'meta.subject.kimcode'])
+        deprecate_similar_objects('data', stuff, ['meta.runner', 'meta.subject'])
 
 def insert_one_reference_data(leader, kimcode):
     logger.info("Inserting reference data %s ", kimcode)
     info = kimcode_to_dict(kimcode)
     try:
         resultobj = db.obj.insert(info)
+        deprecate_similar_objects('obj', info)
     except:
         logger.error("Aready have %s", kimcode)
         return
@@ -250,10 +276,12 @@ def insert_one_reference_data(leader, kimcode):
             for doc in yaml_docs:
                 stuff = doc_to_dict(doc,leader,kimcode)
                 db.data.insert(stuff)
+        deprecate_similar_objects('data', stuff, ['meta'])
     except:
         logger.info("Could not read document for %s/%s", leader, kimcode)
         stuff = doc_to_dict({}, leader, kimcode)
         db.data.insert(stuff)
+        deprecate_similar_objects('data', stuff, ['meta'])
 
 def insert_objs():
     logger.info("Filling with objects")

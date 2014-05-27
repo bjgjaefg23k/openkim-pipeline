@@ -24,6 +24,7 @@ import sys
 import time
 import simplejson
 import uuid
+import itertools
 
 from config import *
 import network
@@ -32,6 +33,7 @@ import compute
 import database
 import kimobjects
 import kimapi
+import kimquery
 
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("pipeline")
@@ -188,16 +190,6 @@ class Agent(object):
         self.bean.send_msg(tube, msg)
         self.comm.send_msg(tube, msg)
 
-    def make_object(self, kimid):
-        self.logger.debug("Building the source for %r", kimid)
-        kimobj = kimobjects.KIMObject(kimid)
-        with kimobj.in_dir():
-            try:
-                check_call("make")
-            except CalledProcessError as e:
-                return 1
-            return 0
-
     @contextmanager
     def in_api_dir(self):
         cwd = os.getcwd()
@@ -211,16 +203,15 @@ class Agent(object):
 
     def make_all(self):
         self.logger.debug("Building everything...")
-        with self.in_api_dir():
-            try:
-                with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
-                    check_call(["make clean"], shell=True, stdout=log, stderr=log)
-                with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
-                    check_call(["make"], shell=True, stdout=log, stderr=log)
-            except CalledProcessError as e:
-                self.logger.error("could not make kim")
-                raise RuntimeError, "Could not build entire repository"
-            return 0
+        self.make_api()
+
+        masterlist = [
+            kimobjects.TestDriver.all(), kimobjects.Test.all(),
+            kimobjects.ModelDriver.all(), kimobjects.Model.all(),
+            kimobjects.VerificationModel.all(), kimobjects.VerificationTest.all()
+            ]
+
+        return self.make_object_list(itertools.chain(*masterlist))
 
     def make_api(self):
         self.logger.debug("Building the API...")
@@ -235,6 +226,18 @@ class Agent(object):
                 raise RuntimeError, "Could not make KIM API"
             return 0
 
+    def make_object_list(self, objlist):
+        failedbuilds = []
+        for obj in objlist:
+            try:
+                obj.make()
+            except CalledProcessError as e:
+                failedbuilds.append(obj)
+                continue
+
+        if len(failedbuilds) > 0:
+            self.logger.error("Failed to build %r", failedbuilds)
+        return failedbuilds
 
 #==================================================================
 # director class for the pipeline
@@ -298,10 +301,60 @@ class Director(Agent):
         status = update['status']
         priority_factor = self.priority_to_number(update['priority'])
 
-        name,leader,num,version = database.parse_kim_code(kimid)
+        if isinstance(kimid, list):
+            checkmatch, tests, models = self.find_matches_pair(kimid)
+        elif success(database.parse_result_type, kimid):
+            checkmatch, tests, models = self.find_matches_result(kimid)
+        elif success(database.parse_kim_code, kimid):
+            checkmatch, tests, models = self.find_matches_single(kimid, status)
+        else:
+            logger.error("Got ill-formed update message %r" % update)
+            raise PipelineRuntimeError("Director received ill-formed update %r" % update)
+
+        for test, model in zip(tests,models):
+            if not checkmatch or (checkmatch and kimapi.valid_match(test, model)):
+                if (test.is_latest_version and model.is_latest_version and
+                    not self.results_exist(test, model)):
+                    priority = int(
+                     priority_factor*database.test_model_to_priority(test,model)*1000000
+                    )
+                    self.check_dependencies_and_push(test,model,priority,status)
+
+    def results_exist(self, test, model):
+        query = {
+                "query": {"type": "tr", "runner.kimcode": test, 
+                          "subject.kimcode": model}
+                }
+        return len(simplejson.loads(kimquery.query(query))) > 0
+
+    def find_matches_result(self, uuid):
+        query = {
+                "project": ["runner.shortcode", "subject.kimcode"], 
+                "query":   {"type": "tr", "uuid": uuid}, 
+                "limit": 1, 
+                "database": "obj"
+                }
+        testshort, model = simplejson.loads(kimquery.query(query))
+
+        query2 = {
+                "project": ["kimcode"], 
+                "query": {"dependencies": {"$regex": testshort}, "type": "te"}, 
+                "database": "obj"
+                }
+        tests = simplejson.loads(kimquery.query(query2))
+        models = [model] * ll(tests)
+
+        self.make_object_list(tests + models)
+        return True, tests, models
+
+    def find_matches_pair(self, pair):
+        self.make_object_list(pair)
+        return True, pair[0], pair[1]
+
+    def find_matches_single(self, kimid, status):
+        name, leader, num, version = database.parse_kim_code(kimid)
 
         self.make_all()
-
         checkmatch = False
         if leader=="VT":
             # for every test launch
@@ -360,11 +413,11 @@ class Director(Agent):
 
                 if leader=="TE":
                     # run against all test verifications
-                    tests = list(kimobjects.VertificationTest.all())
+                    tests = list(kimobjects.VerificationTest.all())
                     models = [kimobjects.Test(kimid, search=False)]*ll(tests)
                 elif leader=="MO":
                     # run against all model verifications
-                    tests = list(kimobjects.VertificationModel.all())
+                    tests = list(kimobjects.VerificationModel.all())
                     models = [kimobjects.Model(kimid, search=False)]*ll(tests)
                 elif leader=="TD":
                     # a pending test driver
@@ -376,16 +429,7 @@ class Director(Agent):
                     self.logger.error("Tried to update an invalid KIM ID!: %r",kimid)
                 checkmatch = False
 
-        if checkmatch:
-            for test, model in zip(tests,models):
-                if kimapi.valid_match(test,model):
-                    priority = int(priority_factor*database.test_model_to_priority(test,model) * 1000000)
-                    self.check_dependencies_and_push(test,model,priority,status)
-        else:
-            for test, model in zip(tests,models):
-                priority = int(priority_factor*database.test_model_to_priority(test,model) * 1000000)
-                self.check_dependencies_and_push(test,model,priority,status)
-
+        return checkmatch, tests, models
 
     def check_dependencies_and_push(self, test, model, priority, status, child=None):
         """ Check dependencies, and push them first if necessary """
@@ -514,15 +558,6 @@ class Site(Agent):
         self.bean.send_msg("web_updates", simplejson.dumps({"kimid": kimid, "priority":"normal", "status":"approved"}))
 
 
-class APIAgent(Agent):
-    def __init__(self, num=0):
-        super(APIAgent, self).__init__(name='api')
-
-    def run(self):
-        self.connect()
-        while True:
-            time.sleep(1)
-
 #=======================================================
 # MAIN
 #=======================================================
@@ -589,10 +624,6 @@ if __name__ == "__main__":
             obj = Site()
             obj.run()
             obj.send_update(sys.argv[2])
-
-        elif sys.argv[1] == "agent":
-            obj = APIAgent()
-            obj.run()
 
     else:
         logger.info("Specify {worker|director|site}")

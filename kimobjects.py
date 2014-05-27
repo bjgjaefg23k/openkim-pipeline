@@ -66,8 +66,6 @@ class KIMObject(simplejson.JSONEncoder):
     """
     #the required leader to this classes kim_codes
     required_leader = None
-    #whether or not objects of this type are makeable
-    makeable = False
 
     def __init__(self,kim_code,search=True,subdir=None):
         """ Initialize a KIMObject given the kim_code, where partial kim codes are promoted if possible,
@@ -233,6 +231,10 @@ class KIMObject(simplejson.JSONEncoder):
         else:
             logger.warning("%r:%r is not makeable", self.__class__.__name__, self.kim_code)
 
+    @property
+    def makeable(self):
+        return os.path.isfile(os.path.join(self.path, "Makefile"))
+
     @classmethod
     def all(cls):
         """ Return a generator of all of this type """
@@ -279,7 +281,6 @@ class KIMObject(simplejson.JSONEncoder):
 class Runner(KIMObject):
     """ A Runner, something that runs things
     either a test or a verification check of sorts """
-    makeable = True
     result_leader = "TR"
 
     def __init__(self,kim_code,*args,**kwargs):
@@ -326,7 +327,6 @@ class Runner(KIMObject):
 class Subject(KIMObject):
     """ A subject, something that gets
     run against, usually a model """
-    makeable = True
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Model, with a kim_code """
@@ -350,10 +350,8 @@ class Model(Subject):
 
         Settings:
             required_leader = "MO"
-            makeable = True
     """
     required_leader = "MO"
-    makeable = True
     subject_name = "model"
 
     def __init__(self,kim_code,*args,**kwargs):
@@ -391,7 +389,6 @@ class Test(Runner):
 
         Settings:
             required_leader = "TE"
-            makeable = True
 
         Attributes:
             executable
@@ -405,7 +402,6 @@ class Test(Runner):
                 Property objects
     """
     required_leader = "TE"
-    makeable = True
     subject_type = Model
     result_leader = "TR"
     runner_name = "test"
@@ -453,7 +449,6 @@ class VerificationTest(Test):
 
         Settings:
             required_leader = "VT"
-            makeable = True
 
         Attributes:
             executable
@@ -467,7 +462,6 @@ class VerificationTest(Test):
                 Property objects
     """
     required_leader = "VT"
-    makeable = True
     subject_type = Test
     result_leader = "VR"
     runner_name = "verification-test"
@@ -485,7 +479,6 @@ class VerificationModel(Test):
 
         Settings:
             required_leader = "VM"
-            makeable = True
 
         Attributes:
             executable
@@ -499,7 +492,6 @@ class VerificationModel(Test):
                 Property objects
     """
     required_leader = "VM"
-    makeable = True
     subject_type = Model
     result_leader = "VR"
     runner_name = "verification-model"
@@ -521,14 +513,12 @@ class TestDriver(KIMObject):
 
         Settings:
             required_leader = "TD"
-            makeable = True
 
         Attributes:
             executable
                 the executable for the TestDriver
     """
     required_leader = "TD"
-    makeable = True
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the TestDriver, with a kim_code """
@@ -556,10 +546,8 @@ class ModelDriver(KIMObject):
 
         Settings:
             required_leader = "MD"
-            makeable = True
     """
     required_leader = "MD"
-    makeable = True
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the ModelDriver, with a kim_code """
@@ -578,10 +566,8 @@ class VirtualMachine(KIMObject):
 
         Settings:
             required_leader = "VM"
-            makeable = False
     """
     required_leader = "VM"
-    makeable = False
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize a VirtualMachine with a kim_code """

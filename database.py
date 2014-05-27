@@ -28,6 +28,13 @@ def parse_kim_code(kim_code):
         logger.error("Invalid KIMID on %r", kim_code)
         raise InvalidKIMID, "{}: is not a valid KIMID".format(kim_code)
 
+def parse_result_type(uuid):
+    tries = ['tr', 'vr', 'er']
+    for leader in tries:
+        if os.path.exists(os.path.join(RSYNC_LOCAL_ROOT, leader, uuid)):
+            return leader
+    raise InvalidKIMID("parse_result_type: %r is not a result type" % uuid)
+
 def kim_code_finder(name,leader,num,version):
     """ Do a glob to look for possible matches
         returns a list of possible matches, where the matches are kim_codes """

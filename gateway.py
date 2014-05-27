@@ -1,6 +1,7 @@
 from config import *
 import network
 import rsync_tools
+import database
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("gateway")
 
@@ -29,24 +30,31 @@ class Gateway(object):
             request = self.bean.reserve()
             tube = request.stats()['tube']
             if tube == TUBE_WEB_UPDATES:
+                # let's see what type of update we are receiving,
+                # it could be one of:
+                #   1) we have an update on a single kimid. this means we 
+                #      should only run the matches for this item
+                #   2) we get a single result code. let's insert this result
+                #      and send updates for everything that depends on this result
+                #   3) we get a pair.  just send this along to the director
                 logger.debug("processing %r" % request.body)
                 try:
                     job = simplejson.loads(request.body)
-                    approved = True if job['status'] == 'approved' else False
+                    approved = True if job.get('status') == 'approved' else False
                     rsync_tools.gateway_full_read()
                     insert_one_object(job['kimid'])
                     self.bean.send_msg(TUBE_UPDATES, request.body)
                 except Exception as e:
                     logger.error("%r" % e)
             elif tube == TUBE_RESULTS or tube == TUBE_ERRORS:
+                # on this tube, we simply pass the result along to the webapp
+                # if we are not on debug
                 logger.debug("processing %r" % request.body)
                 try:
                     kimcode = simplejson.loads(request.body)['jobid']
-                    tries = ['tr', 'vr', 'er']
-                    for leader in tries:
-                        if os.path.exists(os.path.join(RSYNC_LOCAL_ROOT, leader, kimcode)):
-                            rsync_tools.gateway_write_result(leader, kimcode)
-                            insert_one_result(leader, kimcode)
+                    leader = database.parse_result_type(kimcode)
+                    rsync_tools.gateway_write_result(leader, kimcode)
+                    insert_one_result(leader, kimcode)
                 except Exception as e:
                     logger.error("%r" % e)
                 self.bean.send_msg(TUBE_WEB_RESULTS, request.body)

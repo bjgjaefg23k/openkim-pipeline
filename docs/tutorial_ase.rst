@@ -24,7 +24,6 @@ of them in order to build our test:
     * :ref:`aseref_exec` - the main executable, a Python script
     * :ref:`aseref_kimfile` - our KIM file which describes our capability
     * :ref:`aseref_kimspec` - file that describes our test meta-data
-    * :ref:`aseref_makefile` - a Makefile
     * :ref:`aseref_stdin` - a Jinja template file to provide input on stdin
     * :ref:`aseref_results` - a Jinja template file for the results
     * ``README.md`` - a basic explanation of the test
@@ -106,19 +105,6 @@ OpenKIM repository.  In our case, it look like::
 
 For more information about these fields, you can look at 
 `kimspec.yaml docs <https://kim-items.openkim.org/kimspec-format>`_.
-
-.. _aseref_makefile:
-
-Makefile
-^^^^^^^^
-
-Since this is a Python script, we include a phony ``Makefile`` with the contents::
-
-    all:
-        @echo "Nothing to make"
-    
-    clean:
-        @echo "Nothing to clean"
 
 .. _aseref_stdin: 
 
