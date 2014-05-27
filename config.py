@@ -61,13 +61,13 @@ KIM_API_CHECK_MATCH_UTIL = os.path.join(KIM_API_LIB_DIR,"openkim-api-descriptor-
 
 OUTPUT_DIR      = "output"
 INPUT_FILE      = "pipeline.stdin.tpl"
-TEMPLATE_FILE   = "results.yaml.tpl"
-CONFIG_FILE     = "kimspec.yaml"
+TEMPLATE_FILE   = "results.edn.tpl"
+CONFIG_FILE     = "kimspec.edn"
 TEMP_INPUT_FILE = os.path.join(OUTPUT_DIR,"pipeline.stdin")
 STDOUT_FILE     = os.path.join(OUTPUT_DIR,"pipeline.stdout")
 STDERR_FILE     = os.path.join(OUTPUT_DIR,"pipeline.stderr")
 KIMLOG_FILE     = os.path.join(OUTPUT_DIR,"kim.log")
-RESULT_FILE     = os.path.join(OUTPUT_DIR,"results.yaml")
+RESULT_FILE     = os.path.join(OUTPUT_DIR,"results.edn")
 TPLENV_JSON_FILE = os.path.join(OUTPUT_DIR,"results.template-env.json")
 TPLENV_YAML_FILE = os.path.join(OUTPUT_DIR,"results.template-env.yaml")
 PIPELINESPEC_FILE = "pipelinespec.yaml"
@@ -181,3 +181,9 @@ class PipelineRuntimeError(Exception):
         else:
             return '%s: %s\n\n%s' % (self._e.__class__.__name__, str(self._e), self.extra)
 
+def success(func, *args, **kwargs):
+    try:
+        func(*args, **kwargs)
+        return 1
+    except Exception as e:
+        return 0

@@ -1,6 +1,5 @@
 """
 Some scripts that let us run tests and the like
-
 """
 import os
 import sys
@@ -14,6 +13,8 @@ import shutil
 from contextlib import contextmanager
 import ConfigParser
 import kimunits
+import clj
+import json
 
 from config import *
 import kimobjects
@@ -154,69 +155,34 @@ class Computation(object):
 
     def process_output(self):
         """ Template the run results into the proper YAML """
-        # Short-circuit if we already have a results.yaml
+        # Short-circuit if we already have a results.edn
         with self.runner_temp.in_dir():
-            if os.path.isfile(RESULT_FILE):
-                return 
-
-        with self.runner_temp.in_dir(), open(STDOUT_FILE) as stdout_file:
-            stdout = stdout_file.readlines()
-
-        # Try to find the first valid bit of json looking backwards in the output.
-        logger.debug('Searching for JSON output...')
-        data = None
-        for data_string in itertools.ifilter(line_filter, reversed(stdout)):
-            try:
-                data = simplejson.loads(data_string)
-            except simplejson.JSONDecodeError:
-                continue
-            else:
-                break
-
-        if data is None or not isinstance(data, dict):
-            # We couldn't find any valid JSON
-            try:
-                try:
-                    with self.runner_temp.in_dir(), open(TPLENV_YAML_FILE) as f:
-                        data = yaml.safe_load(f) 
-                except Exception as e:
-                    with self.runner_temp.in_dir(), open(TPLENV_JSON_FILE) as f:
-                        data = simplejson.loads(f.read())
-            except Exception as e:
-                logger.exception("We didn't get JSON or YAML back!")
-                raise PipelineTemplateError, "Test didn't return JSON or YAML!"
-
-        # sanitize strings by encoding backslashes -> newlines break YAML
-        safe_data = sanitize(data)
-        renderedyaml = self.runner_temp.template.render(**safe_data)
-
-        logger.debug("Writing output.")
-        with self.runner_temp.in_dir(), open(RESULT_FILE,'w') as f:
-            f.write(renderedyaml)
+            if not os.path.isfile(RESULT_FILE):
+                raise KIMRuntimeError, "The test did not produce a %s output file." % RESULT_FILE
 
         # now, let's check whether that was actual a valid test result
-        logger.debug("Checking the output YAML for validity")
+        logger.debug("Checking the output EDN for validity")
         with self.runner_temp.in_dir(), open(RESULT_FILE, 'r') as f:
-            docs = yaml.safe_load_all(f)
-            newdocs = []
             try:
-                # for-loop to reduce memory load
-                for doc in docs:
-                    # insert units business
-                    logger.debug("Attempting to add unit conversions...")
-                    try:
-                        newdoc = kimunits.add_si_units(doc)
-                        newdocs.append(newdoc)
-                    except kimunits.UnitConversion as e:
-                        logger.error("Error in Unit Conversion")
-                        raise PipelineTemplateError("Error in unit conversions")
+                doc = clj.load(f)
+            except Exception as e:
+                raise KIMRuntimeError, "Test did not produce valid EDN %s" % RESULT_FILE
+
+            try:
+                # insert units business
+                logger.debug("Attempting to add unit conversions...")
+                try:
+                    newdoc = kimunits.add_si_units(doc)
+                except kimunits.UnitConversion as e:
+                    logger.error("Error in Unit Conversion")
+                    raise PipelineTemplateError("Error in unit conversions")
             except Exception as e:
                 logger.error("Templated %r did not render valid YAML." % TEMPLATE_FILE)
                 raise PipelineTemplateError("Improperly formatted YAML after templating")
 
         with self.runner_temp.in_dir(), open(RESULT_FILE, 'w') as f:
             logger.debug("Writing unit converted version")
-            yaml.safe_dump_all(newdocs,f,default_flow_style=False, explicit_start=True)
+            json.dump(newdoc, f, separators=(" "," "), indent=4)
 
         logger.debug("Made it through YAML read, everything looks good")
 
@@ -324,9 +290,6 @@ class Computation(object):
 #================================================================
 # helper functions
 #================================================================
-def line_filter(line):
-    return bool(line.strip())
-
 def tail(f, n=5):
     try:
         stdin,stdout = os.popen2("tail -n "+str(n)+" "+f)
@@ -346,14 +309,4 @@ def append_newline(string):
     if len(string) > 0 and string[-1] != '\n':
         string += "\n"
     return string
-
-def sanitize(obj):
-    out = obj
-    if isinstance(obj, str):
-        out = obj.encode('string_escape')
-    if isinstance(obj, dict):
-        out = {k:sanitize(v) for k,v in obj.iteritems()}
-    if isinstance(obj, list):
-        out = [sanitize(t) for t in obj]
-    return out
 
