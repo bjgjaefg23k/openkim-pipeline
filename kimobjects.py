@@ -33,7 +33,7 @@ import shutil
 import subprocess
 import re
 import dircache
-import simplejson, yaml
+import simplejson
 
 #------------------------------------------------
 # Base KIMObject
@@ -250,7 +250,7 @@ class KIMObject(simplejson.JSONEncoder):
         specfile = os.path.join(self.path,CONFIG_FILE)
         spec = {}
         with open(specfile) as f:
-            spec = yaml.safe_load(f) 
+            spec = loadedn(f)
         return spec
 
     @property

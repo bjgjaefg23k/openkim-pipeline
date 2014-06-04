@@ -229,7 +229,7 @@ class Agent(object):
                 with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
                     check_call(["make", "clean"], shell=True, stdout=log, stderr=log)
                 with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
-                    check_call(["make openkim-api"], shell=True, stdout=log, stderr=log)
+                    check_call(["make", "openkim-api"], shell=True, stdout=log, stderr=log)
             except CalledProcessError as e:
                 self.logger.error("Could not make KIM API")
                 raise RuntimeError, "Could not make KIM API"

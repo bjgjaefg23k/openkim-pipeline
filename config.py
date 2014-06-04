@@ -68,12 +68,10 @@ STDOUT_FILE     = os.path.join(OUTPUT_DIR,"pipeline.stdout")
 STDERR_FILE     = os.path.join(OUTPUT_DIR,"pipeline.stderr")
 KIMLOG_FILE     = os.path.join(OUTPUT_DIR,"kim.log")
 RESULT_FILE     = os.path.join(OUTPUT_DIR,"results.edn")
-TPLENV_JSON_FILE = os.path.join(OUTPUT_DIR,"results.template-env.json")
-TPLENV_YAML_FILE = os.path.join(OUTPUT_DIR,"results.template-env.yaml")
-PIPELINESPEC_FILE = "pipelinespec.yaml"
+PIPELINESPEC_FILE = "pipelinespec.edn"
 
-INTERMEDIATE_FILES = [TEMP_INPUT_FILE, STDOUT_FILE, STDERR_FILE, KIMLOG_FILE,
-        TPLENV_JSON_FILE, TPLENV_YAML_FILE, RESULT_FILE]
+INTERMEDIATE_FILES = [TEMP_INPUT_FILE, STDOUT_FILE, STDERR_FILE, 
+        KIMLOG_FILE, RESULT_FILE]
 #==============================
 # Settings for remote access
 #==============================
@@ -187,3 +185,17 @@ def success(func, *args, **kwargs):
         return 1
     except Exception as e:
         return 0
+
+#=======================================
+# FIXME - this is by no means long-term
+# temporary loc for edn2json
+#=======================================
+def loadedn(f):
+    import json
+    import subprocess
+    import os
+
+    if isinstance(f, file):
+        f = os.path.abspath(f.name)
+    js = subprocess.check_output(['edn2json', '-i', f])
+    return json.loads(js)

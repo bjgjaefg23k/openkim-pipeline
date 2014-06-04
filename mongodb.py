@@ -1,6 +1,6 @@
 import pymongo
 import os, re
-import yaml
+import kimunits
 import datetime
 from ConfigParser import ConfigParser
 
@@ -18,9 +18,9 @@ PATH_APPROVED = RSYNC_LOCAL_ROOT
 #PATH_RESULT = os.path.join(RSYNC_LOCAL_ROOT, "results")
 #PATH_APPROVED = os.path.join(RSYNC_LOCAL_ROOT, "approved")
 
-def config_yaml(flname):
+def config_edn(flname):
     with open(flname) as f:
-        doc = yaml.load(f)
+        doc = loadedn(f)
         doc.setdefault("created_on", str(datetime.datetime.fromtimestamp(os.path.getctime(flname))))
         return doc
 
@@ -87,7 +87,7 @@ def kimcode_to_dict(kimcode):
         foo['driver'] = False
 
     specpath = os.path.join(PATH_APPROVED,leader,kimcode,CONFIG_FILE)
-    spec = config_yaml(specpath)
+    spec = config_edn(specpath)
 
     if foo['type'] == 'te':
         try:
@@ -117,12 +117,12 @@ def uuid_to_dict(leader,uuid):
             }
 
     specpath = os.path.join(PATH_RESULT,leader,uuid,CONFIG_FILE)
-    spec = config_yaml(specpath)
+    spec = config_edn(specpath)
 
     pipespec = {}
     try:
         pipespecpath = os.path.join(PATH_RESULT,leader,uuid,PIPELINESPEC_FILE)
-        pipespec = config_yaml(pipespecpath)
+        pipespec = config_edn(pipespecpath)
     except:
         pass
 
@@ -224,11 +224,12 @@ def insert_one_result(leader, kimcode):
         logger.error("Aready have %s", kimcode)
         return
     try:
-        with open(os.path.join(PATH_RESULT,leader,kimcode,'results.yaml')) as f:
-            yaml_docs = yaml.load_all(f)
-            for doc in yaml_docs:
+        with open(os.path.join(PATH_RESULT,leader,kimcode,'results.edn')) as f:
+            edn_docs = loadedn(f)
+            edn_docs = edn_docs if isinstance(edn_docs, list) else [edn_docs]
+            for doc in edn_docs:
                 stuff = doc_to_dict(doc,leader,kimcode)
-                db.data.insert(stuff)
+                db.data.insert(kimunits.add_si_units(stuff))
         deprecate_similar_objects('data', stuff, ['meta.runner.kimcode', 'meta.subject.kimcode'])
     except:
         logger.info("Could not read document for %s/%s", leader, kimcode)
@@ -245,11 +246,12 @@ def insert_one_reference_data(leader, kimcode):
         logger.error("Aready have %s", kimcode)
         return
     try:
-        with open(os.path.join(PATH_APPROVED,leader,kimcode,kimcode+'.yaml')) as f:
-            yaml_docs = yaml.load_all(f)
-            for doc in yaml_docs:
+        with open(os.path.join(PATH_APPROVED,leader,kimcode,kimcode+'.edn')) as f:
+            edn_docs = loadedn(f)
+            edn_docs = edn_docs if isinstance(edn_docs, list) else [edn_docs]
+            for doc in edn_docs:
                 stuff = doc_to_dict(doc,leader,kimcode)
-                db.data.insert(stuff)
+                db.data.insert(kimunits.add_si_units(stuff))
     except:
         logger.info("Could not read document for %s/%s", leader, kimcode)
         stuff = doc_to_dict({}, leader, kimcode)

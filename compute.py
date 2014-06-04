@@ -8,12 +8,10 @@ import simplejson
 import signal
 import itertools
 import subprocess, threading
-import yaml
 import shutil
 from contextlib import contextmanager
 import ConfigParser
 import kimunits
-import clj
 import json
 
 from config import *
@@ -164,27 +162,11 @@ class Computation(object):
         logger.debug("Checking the output EDN for validity")
         with self.runner_temp.in_dir(), open(RESULT_FILE, 'r') as f:
             try:
-                doc = clj.load(f)
+                doc = loadedn(f)
             except Exception as e:
                 raise KIMRuntimeError, "Test did not produce valid EDN %s" % RESULT_FILE
 
-            try:
-                # insert units business
-                logger.debug("Attempting to add unit conversions...")
-                try:
-                    newdoc = kimunits.add_si_units(doc)
-                except kimunits.UnitConversion as e:
-                    logger.error("Error in Unit Conversion")
-                    raise PipelineTemplateError("Error in unit conversions")
-            except Exception as e:
-                logger.error("Templated %r did not render valid YAML." % TEMPLATE_FILE)
-                raise PipelineTemplateError("Improperly formatted YAML after templating")
-
-        with self.runner_temp.in_dir(), open(RESULT_FILE, 'w') as f:
-            logger.debug("Writing unit converted version")
-            json.dump(newdoc, f, separators=(" "," "), indent=4)
-
-        logger.debug("Made it through YAML read, everything looks good")
+        logger.debug("Made it through EDN read, everything looks good")
 
 
     def gather_profiling_info(self, extrainfo=None):
@@ -220,7 +202,7 @@ class Computation(object):
             if os.path.exists("./kim.log"):
                 shutil.copy2("./kim.log", KIMLOG_FILE)
 
-        # create the kimspec.yaml file for the test results
+        # create the kimspec.edn file for the test results
         logger.debug("Create %s file" % CONFIG_FILE)
         kimspec = {}
         kimspec[self.runner.runner_name] = self.runner.kim_code
@@ -234,9 +216,9 @@ class Computation(object):
             pipelinespec['UUID'] = self.result_code
 
         with self.runner_temp.in_dir(), open(os.path.join(OUTPUT_DIR,CONFIG_FILE),'w') as f:
-            yaml.dump(kimspec, f, default_flow_style=False)
+            json.dump(kimspec, f, separators=(' ', ' '), indent=4)
         with self.runner_temp.in_dir(), open(os.path.join(OUTPUT_DIR,PIPELINESPEC_FILE),'w') as f:
-            yaml.dump(pipelinespec, f, default_flow_style=False)
+            json.dump(pipelinespec, f, separators=(' ', ' '), indent=4)
 
         logger.debug("Result path = %s", self.full_result_path)
         outputdir = os.path.join(self.runner_temp.path,OUTPUT_DIR)
