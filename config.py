@@ -191,11 +191,7 @@ def success(func, *args, **kwargs):
 # temporary loc for edn2json
 #=======================================
 def loadedn(f):
-    import json
-    import subprocess
-    import os
-
-    if isinstance(f, file):
-        f = os.path.abspath(f.name)
-    js = subprocess.check_output(['edn2json', '-i', f])
-    return json.loads(js)
+    import clj
+    if isinstance(f, basestring):
+        f = open(f)
+    return clj.load(f)
