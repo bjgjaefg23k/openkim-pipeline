@@ -44,11 +44,14 @@ Or you can verify them all
 import argparse
 VERSION = 0.1
 
+import kimquery
+import kimobjects
+import database
+from config import *
 from logger import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("testgenie")
 
-from config import *
 import os
 import ConfigParser
 import jinja2
@@ -57,7 +60,6 @@ import shutil
 import re
 import random
 import json
-import kimobjects
 import sys
 import clj
 
@@ -80,24 +82,29 @@ FILENAME_REGEX = re.compile(r"""
     (\S+)       # name
     """, re.VERBOSE)
 
+template_environment = jinja2.Environment(loader=jinja2.FileSystemLoader('/'))
+template_environment.globals.update({
+    "query": kimquery.query, "stripversion": database.strip_version
+})
+
 def maketest(folder, variable_dict, dest=TEDIR, dry_run=False,
         filename_prefix=None,
         filename_extension=None):
     """ Make a test given the input folder """
     tempdir = tempfile.mkdtemp()
     # First parse the kimspec file
-    CONFIG_FILE_TEMP = CONFIG_FILE + ".template"
-    with open(os.path.join(folder, CONFIG_FILE_TEMP)) as f:
-        kimspec_template = jinja2.Template(f.read())
-        kimspec = kimspec_template.render(**variable_dict)
-    tmp_kimspec = os.path.join(tempdir, CONFIG_FILE)
-    with open(tmp_kimspec,'w') as f:
+    CONFIG_FILE_TEMP = CONFIG_FILE + ".genie"
+
+    file_newconf = os.path.join(folder, CONFIG_FILE_TEMP)
+    kimspec_template = template_environment.get_template(file_newconf)
+    kimspec = kimspec_template.render(**variable_dict)
+
+    with open(os.path.join(tempdir, CONFIG_FILE), 'w') as f:
         f.write(kimspec)
 
     #extend variable_dict with everything defined in kimspec
-    with open(tmp_kimspec) as f:
-        kimspeckeys = clj.load(f)
-        variable_dict.update({'kimspec': kimspeckeys})
+    kimspeckeys = clj.loads(kimspec)
+    variable_dict.update({'kimspec': kimspeckeys})
 
     # test name from kimspec
     test_name = variable_dict['kimspec']['extended-id']
@@ -133,8 +140,9 @@ def maketest(folder, variable_dict, dest=TEDIR, dry_run=False,
             if filename_search:
                 filename_template = FILENAME_REGEX.search(contents).group(1)
                 filename = jinja2.Template(filename_template).render(**variable_dict)
+
             logger.debug("new filename: %r", filename)
-            template = jinja2.Template(contents)
+            template = template_environment.get_template(filepath)
             new_contents = template.render(**variable_dict)
 
             newfilepath = os.path.join(basepath, filename)

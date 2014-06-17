@@ -69,9 +69,11 @@ STDERR_FILE     = os.path.join(OUTPUT_DIR,"pipeline.stderr")
 KIMLOG_FILE     = os.path.join(OUTPUT_DIR,"kim.log")
 RESULT_FILE     = os.path.join(OUTPUT_DIR,"results.edn")
 PIPELINESPEC_FILE = "pipelinespec.edn"
+DEPENDENCY_FILE   = "pipelinedeps.edn"
 
 INTERMEDIATE_FILES = [TEMP_INPUT_FILE, STDOUT_FILE, STDERR_FILE, 
         KIMLOG_FILE, RESULT_FILE]
+
 #==============================
 # Settings for remote access
 #==============================
@@ -191,7 +193,11 @@ def success(func, *args, **kwargs):
 # temporary loc for edn2json
 #=======================================
 def loadedn(f):
+    """ this function tries to load something as edn: file, filename, string """
     import clj
     if isinstance(f, basestring):
-        f = open(f)
+        try:
+            f = open(f)
+        except IOError as e:
+            return clj.loads(f)
     return clj.load(f)

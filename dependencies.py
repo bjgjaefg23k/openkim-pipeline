@@ -1,50 +1,109 @@
 #! /usr/bin/env python
 """
-dependencies.py handles the tracking of dependencies throughout the
-repository and mongodb database.
+The idea of these function is to get the immediate dependencies surrounding
+this particular item that we have heard has been updated (is incoming on the
+pipeline)
+
+Note: there are two types of dependencies - static and runtime
+
+* static - things that it must compile against / have on the file system in
+    order to run properly (denoted sdeps)
+* runtime - these are data / files drawn from other results / reference that
+    are pulled in while running (denoted rdeps)
+
+This is a kind of two sided mechanism in which both new objects and results of
+computations both trigger update messages.  In this way, we can cut down on
+tree-building and resolution before submitting.  It's a bit more robust and
+free-form: just care about your neighbors.
+
+If this is a test / model / test driver / model driver, then
+the action is:
+
+    * Get all runtime dependencies that this test result depends on
+        - ignore the sdeps since they will be handled later
+    * Check to see if the other dependencies are in place:
+        - see if a particular result is at its latest.  if not, add that to
+          the list of pairs to run (at higher priority) if it is not running
+          already
+        - if there are results outstanding, do not submit the original pair
+          (since the acceptance of the test result will trigger it again)
+
+If we are told that a new test result has come in:
+
+    * Get all (te, mo) pairs that depend on this result
+    * See if they need to be updated (are they latest?)
+    * Send these updates through the original channels
+
 """
-import simplejson
 
 from config import *
 import kimobjects
 import kimquery
-from database import RE_KIMID
-
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("dependencies")
 
-def dependency_check(inp, model=True):
-    """ Given an input file
-        find all of the data directives and obtain the pointers to the relevant data if it exists
-        if it doesn't exist, return a false and a list of dependent tests
+import json
+from collections import Iterable
 
-        outputs:
-            ready - bool
-            dependencies_good_to_go - list of kids
-            dependencies_needed - tuple of tuples
-    """
-    logger.debug("running a dependancy check for %r", os.path.basename(os.path.dirname(inp.name)))
-    ready, dependencies = (True, [])
+def result_isrunning(test, model):
+    query = {"test": test, "model": model, "project": ["tube"], "limit": 1}
 
-    cands = []
-    #try to find all of the possible dependencies
-    for line in inp:
-        matches = re.finditer(RE_KIMID, line)
-        for match in matches:
-            matched_code = match.string[match.start():match.end()]
-            # cands.append((True, kimobjects.kim_obj(matched_code)))
-            cands.append(matched_code)
+    tube = kimquery.query(query, decode=True)
+    return len(tube) > 0 and tube != 'results'
 
-    if not cands:
-        return (True, None, None)
+def result_exists(test, model):
+    query = {"project": ["uuid"], "database": "obj", "query":
+                {
+                    "runner.kimcode": test,
+                    "subject.kimcode": model,
+                },
+            "limit": 1}
+    result = kimquery.query(query, decode=True)
+    return len(result) > 0
 
-    #cheap transpose
-    candstranspose = zip(*cands)
-    allready = all(candstranspose[0])
+def result_pair(uuid):
+    query = {"database": "obj", "limit": 1,
+             "query": {"uuid": uuid},
+             "project": ["runner.kimcode", "subject.kimcode"]}
+    return (kimobjects.kim_obj(a) for a in kimquery.query(query, decode=True))
 
-    if allready:
-        return (allready, candstranspose[1], None)
+def get_run_list(target, status):
+    if hasattr(target, '__iter__'):
+        # we have a (test,model) pair which needs updating
+        torun = set()
+        satisfied = True
+
+        te, mo = target
+        deps = te.processed_depfile(mo)
+
+        for dep in deps:
+            if hasattr(dep, '__iter__'):
+                tmp_te = kimobjects.kim_obj(dep[0])
+                tmp_mo = kimobjects.kim_obj(dep[1])
+
+                if not result_exists(tmp_te, tmp_mo):
+                    # there are results that need be collected, wait for them
+                    satisfied = False
+
+                    if not result_isrunning(tmp_te, tmp_mo):
+                        # they are not on the queue, let's get around to run
+                        for dep in get_run_list((tmp_te, tmp_mo)):
+                            torun.add(dep)
+
+        if satisfied:
+            return (te, mo)
+        return torun
+
     else:
-        return (allready, 
-                (kid for ready,kid in cands if ready), 
-                (pair for ready, pair in cands if not ready))
+        # we have a test result that has come in
+        te, mo = result_pair(target)
+
+        torun = set()
+        for test in kimobjects.Test.all():
+            deps = test.processed_depfile(mo)
+
+            for dep in deps:
+                if (hasattr(dep, '__iter__') and
+                        te == dep[0] and tm == dep[1]):
+                    torun.add(dep)
+        return torun

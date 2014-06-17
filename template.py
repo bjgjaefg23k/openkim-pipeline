@@ -92,7 +92,7 @@ template_environment.globals.update(
             "formatkimcode": database.format_kim_code,
         })
 
-def process(inppath, model, test, modelonly = False):
+def process(inppath, model, test, modelonly=False, outfile=TEMP_INPUT_FILE):
     """ Takes in a path (relative to test directory)
     and writes a processed copy to TEMP_INPUT_FILE """
     logger.info("attempting to process %r for (%r,%r)", inppath, test.kim_code, model.kim_code)
@@ -108,6 +108,8 @@ def process(inppath, model, test, modelonly = False):
             }
         output = template.render(**extrainfo)
 
-        with open(TEMP_INPUT_FILE,'w') as out:
-            out.write(output)
+        if not outfile:
+            return output
 
+        with open(outfile, 'w') as out:
+                out.write(output)

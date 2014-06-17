@@ -89,10 +89,17 @@ def format_kim_code(name,leader,num,version):
     assert num, "we need a number"
     assert version, "we need a version"
     if name:
-        return "{}__{}_{}_{}".format(name,leader,num,version)
+        if version:
+            return "{}__{}_{}_{}".format(name,leader,num,version)
+        else:
+            return "{}__{}_{}".format(name,leader,num)
     else:
         return "{}_{}_{}".format(leader,num,version)
 
+
+def strip_version(kimcode):
+    name, leader, num, version = parse_kim_code(kimcode)
+    return "{}__{}_{}".format(name, leader, num)
 
 #--------------------------------
 # some list generators 

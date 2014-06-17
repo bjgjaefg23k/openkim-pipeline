@@ -1,9 +1,8 @@
 import urllib
 import urllib2
-import simplejson
 import itertools
 from config import PipelineQueryError
-import simplejson
+import json
 
 def query_datomic(querydata, queryrules="", keys=None):
     # set up the globals for how to interact with the website
@@ -27,18 +26,18 @@ def query_datomic(querydata, queryrules="", keys=None):
         raise PipelineQueryError("No response")
 
     # we got back JSON, let's convert and apply labels if requested
-    arr = simplejson.loads(answer)
+    arr = json.loads(answer)
     if keys:
         result = [ { k:v for k,v in itertools.izip(keys, elem) } for elem in arr ]
         return result
     return arr
 
-def query_mongo(query, url=""):
+def query_mongo(query, url="", decode=False):
     # set up the globals for how to interact with the website
-    url = url or 'https://query.openkim.org/api'
+    url = url or 'http://query.openkim.org:8081/api'
     user_agent = "OpenKIM Pipeline (http://pipeline.openkim.org/)"
     header = {'User-Agent' : user_agent, "Content-type": "application/x-www-form-urlencoded"}
-    data = urllib.urlencode( dict( (key,simplejson.dumps(val)) for (key,val) in query.iteritems() ) )
+    data = urllib.urlencode(dict((key,json.dumps(val)) for (key,val) in query.iteritems()))
     request  = urllib2.Request(url, data, header)
     response = urllib2.urlopen(request)
     answer = response.read()
@@ -47,8 +46,13 @@ def query_mongo(query, url=""):
     if not answer:
         raise PipelineQueryError("No response")
 
-    # we got back JSON, let's convert and apply labels if requested
-    # arr = loads(answer)
+    # we got back JSON, let's check if we got errors back
+    check = json.loads(answer)
+    if len(check) == 1 and check.get('error'):
+        raise PipelineQueryError("Error received: %r" % check['error'])
+
+    if decode:
+        return json.loads(answer)
     return answer
 
 query = query_mongo

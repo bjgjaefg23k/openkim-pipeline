@@ -128,6 +128,7 @@ class KIMObject(simplejson.JSONEncoder):
             self.kim_code_version = version
             self.kim_code = database.format_kim_code(name,leader,num,version)
 
+        self.kim_code_short = database.strip_version(self.kim_code)
         self.parent_dir = os.path.join(KIM_REPOSITORY_DIR, self.kim_code_leader.lower())
         if subdir is not None:
             self.path = os.path.join(self.parent_dir, subdir)
@@ -286,6 +287,7 @@ class Runner(KIMObject):
         super(Runner,self).__init__(kim_code,*args,**kwargs)
         self.executable = os.path.join(self.path,self.kim_code)
         self.infile_path = os.path.join(self.path,INPUT_FILE)
+        self.depfile_path = os.path.join(self.path,DEPENDENCY_FILE)
 
     def __call__(self,*args,**kwargs):
         """ Calling a runner object executes its executable in
@@ -304,6 +306,13 @@ class Runner(KIMObject):
         return open(self.infile_path)
 
     @property
+    def depfile(self):
+        """ return a file object for DEPENDENCY_FILE """
+        if os.path.isfile(self.depfile_path):
+            return open(self.depfile_path)
+        return None
+
+    @property
     def subjects(self):
         """ Return a generator for all of the valid subjects """
         return (subject for subject in self.subject_type.all() if kimapi.valid_match(self,subject) )
@@ -316,6 +325,12 @@ class Runner(KIMObject):
     def subjectname_processed_infile(self,subject):
         template.process(self.infile_path, subject, self, modelonly=True)
         return open(os.path.join(self.path, TEMP_INPUT_FILE))
+
+    def processed_depfile(self, subject):
+        if self.depfile:
+            tpl = template.process(self.depfile_path, subject, self, outfile=None)
+            return loadedn(tpl)
+        return []
 
     @property
     def template(self):
