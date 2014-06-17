@@ -46,7 +46,8 @@ import json
 from collections import Iterable
 
 def result_isrunning(test, model):
-    query = {"test": test, "model": model, "project": ["tube"], "limit": 1}
+    query = {"database": "job", "test": str(test), "model": str(model),
+             "project": ["tube"], "limit": 1}
 
     tube = kimquery.query(query, decode=True)
     return len(tube) > 0 and tube != 'results'
@@ -54,10 +55,11 @@ def result_isrunning(test, model):
 def result_exists(test, model):
     query = {"project": ["uuid"], "database": "obj", "query":
                 {
-                    "runner.kimcode": test,
-                    "subject.kimcode": model,
+                    "runner.kimcode": str(test),
+                    "subject.kimcode": str(model),
                 },
             "limit": 1}
+
     result = kimquery.query(query, decode=True)
     return len(result) > 0
 
@@ -67,7 +69,7 @@ def result_pair(uuid):
              "project": ["runner.kimcode", "subject.kimcode"]}
     return (kimobjects.kim_obj(a) for a in kimquery.query(query, decode=True))
 
-def get_run_list(target, status):
+def get_run_list(target):
     if hasattr(target, '__iter__'):
         # we have a (test,model) pair which needs updating
         torun = set()
@@ -78,8 +80,8 @@ def get_run_list(target, status):
 
         for dep in deps:
             if hasattr(dep, '__iter__'):
-                tmp_te = kimobjects.kim_obj(dep[0])
-                tmp_mo = kimobjects.kim_obj(dep[1])
+                tmp_te = kimobjects.kim_obj(dep[0], search=True)
+                tmp_mo = kimobjects.kim_obj(dep[1], search=True)
 
                 if not result_exists(tmp_te, tmp_mo):
                     # there are results that need be collected, wait for them
@@ -91,7 +93,7 @@ def get_run_list(target, status):
                             torun.add(dep)
 
         if satisfied:
-            return (te, mo)
+            return [(te, mo)]
         return torun
 
     else:

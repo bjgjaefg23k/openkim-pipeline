@@ -201,3 +201,9 @@ def loadedn(f):
         except IOError as e:
             return clj.loads(f)
     return clj.load(f)
+
+#=======================================
+# FIXME - now, this is bad.  check that
+# the box has the correct dns settings
+#=======================================
+

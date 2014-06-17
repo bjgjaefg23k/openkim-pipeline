@@ -101,7 +101,6 @@ class KIMObject(simplejson.JSONEncoder):
         self.kim_code_leader = leader
         self.kim_code_number = num
         self.kim_code_version = version
-        self.kim_code_id = leader+"_"+num+"_"+version
 
         if not search:
             self.kim_code = kim_code
@@ -128,6 +127,7 @@ class KIMObject(simplejson.JSONEncoder):
             self.kim_code_version = version
             self.kim_code = database.format_kim_code(name,leader,num,version)
 
+        self.kim_code_id = leader+"_"+num+"_"+version
         self.kim_code_short = database.strip_version(self.kim_code)
         self.parent_dir = os.path.join(KIM_REPOSITORY_DIR, self.kim_code_leader.lower())
         if subdir is not None:

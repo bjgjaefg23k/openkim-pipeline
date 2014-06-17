@@ -48,7 +48,7 @@ def query_mongo(query, url="", decode=False):
 
     # we got back JSON, let's check if we got errors back
     check = json.loads(answer)
-    if len(check) == 1 and check.get('error'):
+    if isinstance(check, dict) and check.get('error'):
         raise PipelineQueryError("Error received: %r" % check['error'])
 
     if decode:
