@@ -32,6 +32,7 @@ import compute
 import database
 import kimobjects
 import kimapi
+import dependencies
 
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("pipeline")
@@ -294,13 +295,18 @@ class Director(Agent):
 
     def push_jobs(self, update):
         """ Push all of the jobs that need to be done given an update """
+        self.make_all()
+
         kimid = update['kimid']
         status = update['status']
         priority_factor = self.priority_to_number(update['priority'])
 
-        name,leader,num,version = database.parse_kim_code(kimid)
+        if database.isuuid(kimid):
+            priority = int(priority_factor*1000000)
+            self.check_dependencies_and_push(kimid, priority, status)
+            return
 
-        self.make_all()
+        name,leader,num,version = database.parse_kim_code(kimid)
 
         checkmatch = False
         if leader=="VT":
@@ -376,30 +382,24 @@ class Director(Agent):
                     self.logger.error("Tried to update an invalid KIM ID!: %r",kimid)
                 checkmatch = False
 
-        if checkmatch:
-            for test, model in zip(tests,models):
-                if kimapi.valid_match(test,model):
-                    priority = int(priority_factor*database.test_model_to_priority(test,model) * 1000000)
-                    self.check_dependencies_and_push(test,model,priority,status)
-        else:
-            for test, model in zip(tests,models):
-                priority = int(priority_factor*database.test_model_to_priority(test,model) * 1000000)
-                self.check_dependencies_and_push(test,model,priority,status)
+        for test, model in zip(tests, models):
+            if not checkmatch or (checkmatch and kimapi.valid_match(test, model)):
+                priority = int(priority_factor*database.test_model_to_priority(test, model) * 1000000)
+                self.check_dependencies_and_push((test,model), priority, status)
 
-
-    def check_dependencies_and_push(self, test, model, priority, status, child=None):
+    def check_dependencies_and_push(self, target, priority, status):
         """ Check dependencies, and push them first if necessary """
         # run the test in its own directory
-        depids = (str(item) for item in test.dependencies + model.dependencies)
-        with test.in_dir():
+        for te, mo in dependencies.get_run_list(target):
             trid = self.get_result_code()
-            self.logger.info("Submitting job <%s, %s, %s> priority %i" % (test, model, trid, priority))
+            depids = (str(item) for item in te.dependencies + mo.dependencies)
 
-            msg = network.Message(job=(str(test),str(model)),jobid=trid,
-                    child=child, depends=tuple(depids), status=status)
+            self.logger.info("Submitting job <%s, %s, %s> priority %i" % (te, mo, trid, priority))
+
+            msg = network.Message(job=(str(te),str(mo)), jobid=trid,
+                        depends=tuple(depids), status=status)
             self.job_message(msg, tube=TUBE_JOBS)
 
-        return depids
 
     def get_result_code(self):
         return str(uuid.uuid1( uuid.UUID(self.boxinfo['uuid']).int >> 80 ))

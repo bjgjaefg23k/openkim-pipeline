@@ -34,6 +34,7 @@ If we are told that a new test result has come in:
     * See if they need to be updated (are they latest?)
     * Send these updates through the original channels
 
+Local dependency resolution
 """
 
 from config import *
@@ -93,8 +94,10 @@ def get_run_list(target):
                             torun.add(dep)
 
         if satisfied:
-            return [(te, mo)]
-        return torun
+            if not result_exists(te, mo):
+                return [(te, mo)]
+            return []
+        return list(torun)
 
     else:
         # we have a test result that has come in
@@ -105,7 +108,10 @@ def get_run_list(target):
             deps = test.processed_depfile(mo)
 
             for dep in deps:
-                if (hasattr(dep, '__iter__') and
-                        te == dep[0] and tm == dep[1]):
-                    torun.add(dep)
-        return torun
+                if hasattr(dep, '__iter__'):
+                    tmpte = kimobjects.kim_obj(dep[0], search=True)
+                    tmpmo = kimobjects.kim_obj(dep[1], search=True)
+
+                    if te == tmpte and mo == tmpmo:
+                        [torun.add(m) for m in get_run_list((test,mo))]
+        return list(torun)

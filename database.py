@@ -17,6 +17,7 @@ logger = logging.getLogger("pipeline").getChild("database")
 #-------------------------------------------------
 #KIMID matcher  ( optional name             __) (prefix  ) ( number  )( opt version )
 RE_KIMID    = r"(?:([_a-zA-Z][_a-zA-Z0-9]*?)__)?([A-Z]{2})_([0-9]{12})(?:_([0-9]{3}))?"
+RE_UUID     = r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"
 
 def parse_kim_code(kim_code):
     """ Parse a kim code into it's pieces,
@@ -25,8 +26,15 @@ def parse_kim_code(kim_code):
         logger.debug("attempting to parse %r",kim_code)
         return re.match(RE_KIMID,kim_code).groups()
     except AttributeError:
-        logger.error("Invalid KIMID on %r", kim_code)
-        raise InvalidKIMID, "{}: is not a valid KIMID".format(kim_code)
+        try:
+            logger.debug("attempting to parse uuid %r", kim_code)
+            return re.match(RE_UUID, kim_code).groups()
+        except AttributeError:
+            logger.error("Invalid KIMID on %r", kim_code)
+            raise InvalidKIMID, "{}: is not a valid KIMID".format(kim_code)
+
+def isuuid(kimcode):
+    return len(parse_kim_code(kimcode)) == 1
 
 def kim_code_finder(name,leader,num,version):
     """ Do a glob to look for possible matches
@@ -96,6 +104,11 @@ def format_kim_code(name,leader,num,version):
     else:
         return "{}_{}_{}".format(leader,num,version)
 
+def uuid_type(uuid):
+    tries = ['tr', 'vr', 'er']
+    for leader in tries:
+        if os.path.exists(os.path.join(RSYNC_LOCAL_ROOT, leader, uuid)):
+            return leader
 
 def strip_version(kimcode):
     name, leader, num, version = parse_kim_code(kimcode)
