@@ -1,5 +1,6 @@
 from config import *
 import network
+import database
 import rsync_tools
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("gateway")
