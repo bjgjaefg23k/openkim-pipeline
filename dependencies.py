@@ -70,7 +70,7 @@ def result_pair(uuid):
              "project": ["runner.kimcode", "subject.kimcode"]}
     return (kimobjects.kim_obj(a) for a in kimquery.query(query, decode=True))
 
-def get_run_list(target):
+def get_run_list(target, depth=0, tree=False):
     if hasattr(target, '__iter__'):
         # we have a (test,model) pair which needs updating
         torun = set()
@@ -90,7 +90,8 @@ def get_run_list(target):
 
                     if not result_isrunning(tmp_te, tmp_mo):
                         # they are not on the queue, let's get around to run
-                        for dep in get_run_list((tmp_te, tmp_mo)):
+                        for dep in get_run_list((tmp_te, tmp_mo),
+                                        depth=depth+1, display=display):
                             torun.add(dep)
 
         if satisfied:
@@ -113,5 +114,7 @@ def get_run_list(target):
                     tmpmo = kimobjects.kim_obj(dep[1], search=True)
 
                     if te == tmpte and mo == tmpmo:
-                        [torun.add(m) for m in get_run_list((test,mo))]
+                        for m in get_run_list((test,mo),
+                                depth=depth+1, display=display):
+                            torun.add(m)
         return list(torun)

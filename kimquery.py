@@ -55,4 +55,28 @@ def query_mongo(query, url="", decode=False):
         return json.loads(answer)
     return answer
 
+def query_property_validator(filename, url=""):
+    url = url or "http://pipeline.openkim.org:5005/"
+    user_agent = "OpenKIM Pipeline (http://pipeline.openkim.org/)"
+    header = {'User-Agent' : user_agent, "Content-type": "application/x-www-form-urlencoded"}
+    #data = urllib.urlencode(open(filename).read())
+    data = open(filename).read()
+    request  = urllib2.Request(url, data, header)
+    response = urllib2.urlopen(request)
+    answer = response.read()
+    response.close()
+
+    if not answer:
+        raise PipelineQueryError("No response")
+
+    return answer
+
+def test_result_valid(flname):
+    reply = query_property_validator(flname)
+    try:
+        re.match(r"Errors", reply).groups()
+        return (False, reply)
+    except AttributeError as e:
+        return (True, "Passed")
+
 query = query_mongo

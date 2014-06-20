@@ -12,6 +12,7 @@ import shutil
 from contextlib import contextmanager
 import ConfigParser
 import kimunits
+import kimquery
 import json
 
 from config import *
@@ -166,6 +167,10 @@ class Computation(object):
             except Exception as e:
                 raise KIMRuntimeError, "Test did not produce valid EDN %s" % RESULT_FILE
 
+            valid, reply = test_result_valid(RESULT_FILE)
+            if not valid:
+                raise KIMRuntimeError, "Test result did not conform to property definition\n%r" % reply
+
         logger.debug("Made it through EDN read, everything looks good")
 
 
@@ -292,3 +297,10 @@ def append_newline(string):
         string += "\n"
     return string
 
+def test_result_valid(flname):
+    reply = kimquery.query_property_validator(flname)
+    try:
+        re.match(r"Errors", reply).groups()
+        return (False, reply)
+    except AttributeError as e:
+        return (True, reply)
