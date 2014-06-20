@@ -71,12 +71,4 @@ def query_property_validator(filename, url=""):
 
     return answer
 
-def test_result_valid(flname):
-    reply = query_property_validator(flname)
-    try:
-        re.match(r"Errors", reply).groups()
-        return (False, reply)
-    except AttributeError as e:
-        return (True, "Passed")
-
 query = query_mongo
