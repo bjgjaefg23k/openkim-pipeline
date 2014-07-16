@@ -21,8 +21,8 @@ from subprocess import check_output
 def valid_match_util(test,model):
     """ Check to see if a test and model mach by using Ryan's utility """
     logger.debug("invoking Ryan's utility for (%r,%r)",test,model)
-    test_dotkim = os.path.join(test.path,test.kim_code+".kim")
-    model_dotkim = os.path.join(model.path,model.kim_code+".kim")
+    test_dotkim = os.path.join(test.path, DOTKIM_FILE)
+    model_dotkim = os.path.join(model.path, DOTKIM_FILE)
     out = check_output([KIM_API_CHECK_MATCH_UTIL,test_dotkim,model_dotkim])
     if out == "MATCH\n":
         return True

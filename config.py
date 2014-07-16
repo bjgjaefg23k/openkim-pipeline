@@ -60,6 +60,8 @@ KIM_API_LIB_DIR    = os.path.join(KIM_API_DIR,"KIM_API")
 KIM_API_CHECK_MATCH_UTIL = os.path.join(KIM_API_LIB_DIR,"openkim-api-descriptor-file-match")
 
 OUTPUT_DIR      = "output"
+TEST_EXECUTABLE = "runner"
+DOTKIM_FILE     = "descriptor.kim"
 INPUT_FILE      = "pipeline.stdin.tpl"
 TEMPLATE_FILE   = "results.edn.tpl"
 CONFIG_FILE     = "kimspec.edn"

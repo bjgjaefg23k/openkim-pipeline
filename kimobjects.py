@@ -284,7 +284,7 @@ class Runner(KIMObject):
 
     def __init__(self,kim_code,*args,**kwargs):
         super(Runner,self).__init__(kim_code,*args,**kwargs)
-        self.executable = os.path.join(self.path,self.kim_code)
+        self.executable = os.path.join(self.path,TEST_EXECUTABLE)
         self.infile_path = os.path.join(self.path,INPUT_FILE)
         self.depfile_path = os.path.join(self.path,DEPENDENCY_FILE)
 
@@ -547,7 +547,7 @@ class TestDriver(KIMObject):
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the TestDriver, with a kim_code """
         super(TestDriver,self).__init__(kim_code,*args,**kwargs)
-        self.executable = os.path.join(self.path, self.kim_code)
+        self.executable = os.path.join(self.path, TEST_EXECUTABLE)
 
     def __call__(self,*args,**kwargs):
         """ Make the TestDriver callable, executing its executable in its own directory,
