@@ -21,7 +21,6 @@ classes, all of which inherit from ``KIMObject`` and aim to know how to handle t
 """
 from template import template_environment
 import database
-import dependencies
 import kimapi
 from config import *
 from logger import logging

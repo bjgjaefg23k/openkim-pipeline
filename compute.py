@@ -164,12 +164,17 @@ class Computation(object):
         with self.runner_temp.in_dir(), open(RESULT_FILE, 'r') as f:
             try:
                 doc = loadedn(f)
+                doc = kimunits.add_si_units(doc)
             except Exception as e:
                 raise KIMRuntimeError, "Test did not produce valid EDN %s" % RESULT_FILE
 
             valid, reply = test_result_valid(RESULT_FILE)
             if not valid:
                 raise KIMRuntimeError, "Test result did not conform to property definition\n%r" % reply
+
+        logger.debug("Adding units to result file")
+        with self.runner_temp.in_dir(), open(RESULT_FILE, 'w') as f:
+            json.dump(doc, f, separators=(' ', ' '), indent=4)
 
         logger.debug("Made it through EDN read, everything looks good")
 
@@ -298,9 +303,7 @@ def append_newline(string):
     return string
 
 def test_result_valid(flname):
-    reply = kimquery.query_property_validator(flname)
-    try:
-        re.match(r"Errors", reply).groups()
-        return (False, reply)
-    except AttributeError as e:
-        return (True, reply)
+    reply = json.loads(kimquery.query_property_validator(flname))
+    valid = all([ rep['valid'] for rep in reply ])
+    return (valid, reply)
+

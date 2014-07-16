@@ -69,7 +69,7 @@ STDERR_FILE     = os.path.join(OUTPUT_DIR,"pipeline.stderr")
 KIMLOG_FILE     = os.path.join(OUTPUT_DIR,"kim.log")
 RESULT_FILE     = os.path.join(OUTPUT_DIR,"results.edn")
 PIPELINESPEC_FILE = "pipelinespec.edn"
-DEPENDENCY_FILE   = "pipelinedeps.edn"
+DEPENDENCY_FILE   = "dependencies.edn.tpl"
 
 INTERMEDIATE_FILES = [TEMP_INPUT_FILE, STDOUT_FILE, STDERR_FILE, 
         KIMLOG_FILE, RESULT_FILE]
