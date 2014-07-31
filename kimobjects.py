@@ -268,6 +268,7 @@ class KIMObject(simplejson.JSONEncoder):
         logger.warning("REMOVING the kim object %r", self)
         shutil.rmtree(self.path)
 
+
 #=============================================
 # Actual KIM Models
 #=============================================
@@ -325,10 +326,20 @@ class Runner(KIMObject):
         template.process(self.infile_path, subject, self, modelonly=True)
         return open(os.path.join(self.path, TEMP_INPUT_FILE))
 
-    def processed_depfile(self, subject):
+    def dependencies(self, subject=None):
+        """ go ahead and append the subject to single test items """
         if self.depfile:
-            tpl = template.process(self.depfile_path, subject, self, outfile=None)
-            return loadedn(tpl)
+            raw, out = loadedn(self.depfile), []
+            for dep in raw:
+                newdep = dep
+
+                if subject and isinstance(dep, basestring):
+                    tt = kim_obj(dep)
+                    if isinstance(tt, Test):
+                        newdep = [str(tt), str(subject)]
+
+                out.append(newdep)
+            return out
         return []
 
     @property

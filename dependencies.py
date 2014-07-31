@@ -77,7 +77,7 @@ def get_run_list(target, depth=0, tree=False):
         satisfied = True
 
         te, mo = target
-        deps = te.processed_depfile(mo)
+        deps = te.dependencies(mo)
 
         for dep in deps:
             if hasattr(dep, '__iter__'):
@@ -106,7 +106,7 @@ def get_run_list(target, depth=0, tree=False):
 
         torun = set()
         for test in kimobjects.Test.all():
-            deps = test.processed_depfile(mo)
+            deps = test.dependencies(mo)
 
             for dep in deps:
                 if hasattr(dep, '__iter__'):

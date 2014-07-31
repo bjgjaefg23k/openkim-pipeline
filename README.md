@@ -1,16 +1,19 @@
 Openkim Pipeline
-----------------
+================
 
-This contains the code for the [openkim](http://openkim.org) pipeline environment.
+This contains the code for the [OpenKIM](https://openkim.org) pipeline
+environment whose front-end can be viewed at the
+[Pipeline](https://pipeline.openkim.org) subheading.
 
-The goal of the pipline is to attempt to run all of the models against all of the valid tests.
+The goal of the pipline is to attempt to run all of the Tests in the OpenKIM
+repository using all of the relevant Models.
 
-Directory outline
+Directory outline:
 
  * docs - sphinx documentation
- * dump - old code
  * logs - directory logs are written to
- * proliferate - scripts to create tests and models
- * tests - test scripts
+ * tests - test scripts (mostly out of date)
+ * tools - a group of tools to help with development
 
-Documentation available soon...
+For up-to-date documentation, please visit the official documentation page
+[here](https://pipeline.openkim.org/docs).

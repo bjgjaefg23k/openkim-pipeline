@@ -12,6 +12,11 @@ and this module is imported in star from at the top of all of the scripts::
 import os
 import re
 
+__version__ = ".".join(map(str, (1, 0)))
+#__release__ = "".join([__version__, "+", githash])
+#    info['setuphash'] = Popen("cd "+CONF["PIPELINEDIR"]+"; git log -n 1 | grep commit | sed s/commit\ //", 
+#        stdout=PIPE, shell=True).communicate()[0]
+
 #======================================
 # the environment parser
 #======================================
@@ -71,7 +76,8 @@ STDERR_FILE     = os.path.join(OUTPUT_DIR,"pipeline.stderr")
 KIMLOG_FILE     = os.path.join(OUTPUT_DIR,"kim.log")
 RESULT_FILE     = os.path.join(OUTPUT_DIR,"results.edn")
 PIPELINESPEC_FILE = "pipelinespec.edn"
-DEPENDENCY_FILE   = "dependencies.edn.tpl"
+PIPELINESPEC_TPL_FILE = "pipelinespec.edn.tpl"
+DEPENDENCY_FILE = "dependencies.edn"
 
 INTERMEDIATE_FILES = [TEMP_INPUT_FILE, STDOUT_FILE, STDERR_FILE, 
         KIMLOG_FILE, RESULT_FILE]
