@@ -19,7 +19,6 @@ across this tunnel.
 from subprocess import check_call, CalledProcessError, Popen, PIPE
 from multiprocessing import cpu_count, Process, Lock
 from multiprocessing.managers import BaseManager
-from contextlib import contextmanager
 import sys
 import time
 import simplejson
@@ -189,35 +188,11 @@ class Agent(object):
         self.bean.send_msg(tube, msg)
         self.comm.send_msg(tube, msg)
 
-    def make_object(self, kimid):
-        self.logger.debug("Building the source for %r", kimid)
-        kimobj = kimobjects.KIMObject(kimid)
-        with kimobj.in_dir():
-            try:
-                check_call("make")
-            except CalledProcessError as e:
-                return 1
-            return 0
-
-    @contextmanager
-    def in_api_dir(self):
-        cwd = os.getcwd()
-        os.chdir(KIM_API_DIR)
-        try:
-            yield
-        except Exception as e:
-            raise e
-        finally:
-            os.chdir(cwd)
-
     def make_all(self):
         self.logger.debug("Building everything...")
-        with self.in_api_dir():
+        with kimapi.in_api_dir():
             try:
-                with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
-                    check_call(["make clean"], shell=True, stdout=log, stderr=log)
-                with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
-                    check_call(["make"], shell=True, stdout=log, stderr=log)
+                kimapi.make_all()
             except CalledProcessError as e:
                 self.logger.error("could not make kim")
                 raise RuntimeError, "Could not build entire repository"
@@ -225,12 +200,9 @@ class Agent(object):
 
     def make_api(self):
         self.logger.debug("Building the API...")
-        with self.in_api_dir():
+        with kimapi.in_api_dir():
             try:
-                with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
-                    check_call(["make", "clean"], shell=True, stdout=log, stderr=log)
-                with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
-                    check_call(["make", "openkim-api"], shell=True, stdout=log, stderr=log)
+                kimapi.make_api()
             except CalledProcessError as e:
                 self.logger.error("Could not make KIM API")
                 raise RuntimeError, "Could not make KIM API"

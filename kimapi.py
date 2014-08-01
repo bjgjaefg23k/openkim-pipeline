@@ -1,22 +1,52 @@
 """
-Set of methods for querying the database in one form or the other
-
-As well as parsing and handling kim_codes
-
-Currently these calls mostly glob on the database, could be replaced by something more elegant later
-
+Methods that deal with the KIM API directly.  Currently these are methods
+that build the libraries and use the Python interface kimservice
+to test if tests and models match.
 """
 from config import *
-import kimservice
-
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("kimapi")
 
-from subprocess import check_output
+from subprocess import check_output, check_call
+from contextlib import contextmanager
+
+#======================================
+# API build utilities
+#======================================
+@contextmanager
+def in_api_dir():
+    cwd = os.getcwd()
+    os.chdir(KIM_API_DIR)
+    try:
+        yield
+    except Exception as e:
+        raise e
+    finally:
+        os.chdir(cwd)
+
+def make_all():
+    logger.debug("Building everything...")
+    with in_api_dir():
+        with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
+            check_call(["make clean"], stdout=log, stderr=log)
+            check_call(["make"], stdout=log, stderr=log)
+
+def make_api():
+    logger.debug("Building the API...")
+    with in_api_dir():
+        with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
+            check_call(["make", "kim-api-clean"], stdout=log, stderr=log)
+            check_call(["make", "config"], stdout=log, stderr=log)
+            check_call(["make", "kim-api-libs"], stdout=log, stderr=log)
 
 #======================================
 # Some kim api wrapped things
 #======================================
+try:
+    import kimservice
+except ImportError as e:
+    make_api()
+    import kimservice
 
 def valid_match_util(test,model):
     """ Check to see if a test and model mach by using Ryan's utility """
