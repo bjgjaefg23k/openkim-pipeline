@@ -26,14 +26,14 @@ of them in order to build our test:
     * :ref:`aseref_kimspec` - file that describes our test meta-data
     * :ref:`aseref_makefile` - a Makefile
     * :ref:`aseref_stdin` - a Jinja template file to provide input on stdin
-    * :ref:`aseref_results` - a Jinja template file for the results
+    * :ref:`aseref_depsfile` - a file that describes our test's dependencies
     * ``README.md`` - a basic explanation of the test
     * ``LICENSE.CDDL`` - a copy of the standard license
 
 .. _aseref_exec:
 
-ASECohesiveEnergyFromQuery_fcc_Ar__TE_102111117114_000
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+runner
+^^^^^^
 
 This is the standalone Python script that takes as input a model name
 and lattice constant and calculates the energy at that constant.
@@ -42,14 +42,15 @@ The script is short enough that we should take a look at it here::
 
     #!/usr/bin/env python
     """
-    ASE cohesive energy example test
+    ASE cohesive energy example test with dependencies
     
-    Date: 2013/09/20
+    Date: 2014/08/05
     Author: Matt Bierbaum
     """
     from ase.structure import bulk
     from kimcalculator import KIMCalculator
-    import json
+    from string import Template
+    import os
     
     #grab from stdin (or a file)
     model = raw_input("modelname=")
@@ -66,9 +67,34 @@ The script is short enough that we should take a look at it here::
     results = {'lattice_constant': lattice_constant,
                 'cohesive_energy': energy}
     
-    #print json output
-    print "\n", json.dumps(results)
-
+    output = Template("""
+    [{
+        "property-id" "tag:staff@noreply.openkim.org,2014-04-15:property/cohesive-potential-energy-cubic-crystal"
+        "instance-id" 0
+        "short-name" {
+            "source-value"  ["fcc"]
+        }
+        "species" {
+            "source-value"  ["Ar"]
+        }
+        "a" {
+            "source-value"  $lattice_constant
+            "source-unit"   "angstrom"
+        }
+        "basis-atom-coordinates" {
+            "source-value"  [[0.0 0.0 0.0] [0.0 0.5 0.5] [0.5 0.0 0.5] [0.5 0.5 0.0]]
+        }
+        "space-group" {
+            "source-value"  "Fm-3m"
+        }
+        "cohesive-potential-energy" {
+            "source-value"  $cohesive_energy
+            "source-unit"   "eV"
+        }
+    }]""").substitute(**results)
+    
+    with open(os.path.abspath("output/results.edn"), "w") as f:
+        f.write(output)
 
 It begins by grabbing the model name and lattice constant from standard input.
 The test assumes that the lattice constant will be input in SI units, so we
@@ -76,13 +102,13 @@ convert it to angstroms and make sure it's a float.   Next, we initialize an
 ASE calculator that integrates with KIM using the model name that was provided.
 We set up a single atom unit cell of fcc Ar with the given lattice constant,
 and ask for the potential energy.  Finally, we pack the results into a dictionary
-which we output in JSON format to stdout.  This output will be used to supplement
-the standard Jinja templating environment when filling in the blanks for the
-file :ref:`aseref_results`.
+which we format into the final results.edn file. We directly write our formatted
+property to ``output/results.edn``, a folder that is created automatically
+in the pipeline framework.
 
 .. _aseref_kimfile:
 
-ASECohesiveEnergyFromQuery_fcc_Ar__TE_102111117114_000.kim
+descriptor.kim
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This is our KIM file as specified by the standards of the KIM project.  
@@ -91,21 +117,27 @@ employ a parallelpiped boundary cell with only one atom.
 
 .. _aseref_kimspec:
 
-kimspec.yaml
+kimspec.edn
 ^^^^^^^^^^^^
 
 This file contains meta-data which makes it a valid KIM test in the
 OpenKIM repository.  In our case, it look like::
 
-    title: ASE cohesive energy test example
-    test-driver: 
-    species: Ar
-    extended-id: ASECohesiveEnergyFromQuery_fcc_Ar__TE_102111117114_000
-    disclaimer: Tutorial test using the Atomic Simulation Environment which calculates the cohesive energy
-    domain: openkim.org
+    {
+        "extended-id" "ASECohesiveEnergyFromQueryExample_fcc_Ar__TE_102111117114_000" 
+        "domain" "openkim.org" 
+        "title" "ASE cohesive energy test example" 
+        "species" ["Ar"]
+        "executables" ["runner"]
+        "disclaimer" "Tutorial test using the Atomic Simulation Environment which calculates the cohesive energy"
+        "resources" "mp-none"
+        "kim-api-version" "1.5"
+        "pipeline-api-version" "1.0"
+        "properties" ["tag:staff@noreply.openkim.org,2014-04-15:property/cohesive-potential-energy-cubic-crystal"]
+    }
 
 For more information about these fields, you can look at 
-`kimspec.yaml docs <https://kim-items.openkim.org/kimspec-format>`_.
+`kimspec.edn docs <https://openkim.org/about-kimspec-edn/>`_.
 
 .. _aseref_makefile:
 
@@ -137,15 +169,24 @@ of the pipeline.  You can find a description of them here :ref:`pipelineindocs`.
 Let's look at this stdin as an example::
 
     @< MODELNAME >@
-    @< query({"database": "data", "fields": {"crystal-structure.a.si-value":1}, "project": ["crystal-structure.a.si-value"], "limit": 1, "query": {"kim-namespace": {"$regex": "equilibrium-crystal-structure"}, "crystal-structure.short-name": "fcc","meta.subject.kimcode": MODELNAME,"meta.runner.kimcode": {"$regex":"LatticeConstantCubicEnergy"}}}) >@
-
+    @< query({
+        "project": ["a.si-value"], 
+        "query": {
+            "property-id": "tag:staff@noreply.openkim.org,2014-04-15:property/structure-cubic-crystal-npt", 
+            "short-name.source-value": "fcc", 
+            "meta.subject.kimcode": MODELNAME, 
+            "meta.runner.kimcode": {"$options": "", "$regex": "LatticeConstantCubicEnergy_fcc_Ar__TE_206669103745"}
+        },
+        "limit": 1,
+        "database": "data"
+    }) >@
 
 In the first line, the global variable that defines the current model that is
 paired with our test is templated into a string.  The second line is a bit more
 involved.  It is a query to the query `page <https://query.openkim.org/>`_ that
 holds all of the data from the OpenKIM project.  In this line, we are
-requesting the lattice constant (``crystal-structure.a.si-value``) from the
-``equilibrium-crystal-structure`` property where the subject is the model that
+requesting the lattice constant (``a.si-value``) from the
+``structure-cubic-crystal-npt`` property where the subject is the model that
 we are running and the result came from the ``LatticeConstantCubicEnergy``
 test.  We employ the ``project`` operator to get a single number returned. 
 
@@ -158,51 +199,44 @@ Crafting the appropriate query can take some work.  To help with this, the
 query page has an interactive form where you can hone the question you are
 asking.  When you are done, the query page itself has a section which tells you
 exactly what to copy paste into your code after your find the right one. For 
-this example, I filled in the page like `this <https://query.openkim.org/?project=[%22crystal-structure.a.si-value%22]&fields={%22crystal-structure.a.si-value%22:1}&database=data&limit=1&query={%22kim-namespace%22:{%22$regex%22:%22equilibrium-crystal-structure%22},%22crystal-structure.short-name%22:%22fcc%22,%22meta.subject.kimcode%22:%22ex_model_Ar_P_Morse__MO_831902330215_000%22,%22meta.runner.kimcode%22:{%22$regex%22:%22LatticeConstantCubicEnergy%22}}>`_.  
+this example, I filled in the page like `this <https://query.openkim.org/?project=[%22a.si-value%22]&query={%22property-id%22:%22tag:staff@noreply.openkim.org,2014-04-15:property/structure-cubic-crystal-npt%22,%22short-name.source-value%22:%22fcc%22,%22meta.runner.kimcode%22:{%22$regex%22:%22LatticeConstantCubicEnergy_fcc_Ar__TE_206669103745%22},%22meta.subject.kimcode%22:%22Pair_Morse_Shifted_Jelinek_Ar__MO_831902330215_000%22}&limit=1&database=data>`_.
+
 At you bottom, you can see that the last howto (`pipeline.stdin.tpl`) 
 is the exact line used in our test.
 
-.. _aseref_results:
 
-results.yaml.tpl
+.. _aseref_depsfile:
+
+dependencies.edn
 ^^^^^^^^^^^^^^^^
 
-The last file is just as important as the executable itself.  It describes 
-where your data fits into the OpenKIM database and tells other users what
-exactly was calculated.  This starts as a YAML file provided by the main KIM
-website.  Next, we connect this to the output of our test by leaving blanks 
-for the templating system to fill in.  
+This files describes the type of data that we want to receive in the file
+:ref:`aseref_depsfile`. The format of this file is described in full in
+these documentation pages at :ref:`pipelinedeps`.  In this example, we only
+want to retrieve the lattice constant as computed by the lattice constant
+test while coupled with the current model.  To indicate this, our dependency
+file simply lists the lattice test indicating that we want the result of
+the lattice test with the current model::
 
-Recall that our output looks like::
+    [ "LatticeConstantCubicEnergy_fcc_Ar__TE_206669103745" ]
 
-    {"lattice_constant": 2.86652799316, "cohesive_energy": 4.3160000438565636}
 
-In the file ``results.yaml``, we need to leave placeholders for these variables
-for the pipeline to fill in after the test has completed.
-
-The section::
-
-    energy:
-        kim-namespace:  tag:staff@noreply.openkim.org,2013-08-03:primitive/cohesive-energy
-        source-value: 
-        source-unit: 
-
-with::
-
-    energy:
-        kim-namespace:  tag:staff@noreply.openkim.org,2013-08-03:primitive/cohesive-energy
-        source-value: @<cohesive_energy>@
-        source-unit:  eV
+.. _aseref_results:
 
 
 Testing everything
 -------------------
 
 Checkout the full source code in this :download:`archive
-<./ASECohesiveEnergyFromQuery_fcc_Ar__TE_102111117114_000.tar.gz>`.  To use,
-place in the folder ``~/openkim-repository/te``.  We can then test out our new
-test using the tools provided by the pipeline.  They are on path, so you can
-simply call them like other Linux utilities.  
+<./ASECohesiveEnergyFromQuery_fcc_Ar__TE_102111117114_000.tar.gz>` or use the
+``kimitems`` utility to install it from the command line by::
+
+    kimitems install ASECohesiveEnergyFromQueryExample_fcc_Ar__TE_102111117114_000
+
+If you directly downloaded the source, to use, place in the folder
+``~/openkim-repository/te``.  We can then test out our new test using the tools
+provided by the pipeline.  They are on path, so you can simply call them like
+other Linux utilities.  
 
 To run every possible combination involving the test::
 
@@ -210,7 +244,7 @@ To run every possible combination involving the test::
 
 or if you want to try only one run with a specific model, run::
 
-    pipeline_runpair <testname> <modelname> inplace
+    pipeline_runpair [--inplace] <testname> <modelname>
 
 
 Installing ASE Interface Locally

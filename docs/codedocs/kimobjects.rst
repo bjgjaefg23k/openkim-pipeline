@@ -1,9 +1,9 @@
-models.py
+kimobjects.py
 ----------------------
 
-`[source code] <../_modules/models.html>`_ :download:`[download] <../../models.py>`
+`[source code] <../_modules/models.html>`_ :download:`[download] <../../kimobjects.py>`
 
-.. automodule:: models
+.. automodule:: kimobjects
 
 
 KIMObject
@@ -28,15 +28,6 @@ Model
     :members:
 
 
-TestResult
-^^^^^^^^^^
-
-.. autoclass:: TestResult
-    :members:
-
-    .. automethod:: __getitem__
-    .. automethod:: __getattr__
-
 TestDriver
 ^^^^^^^^^^
 
@@ -52,30 +43,12 @@ ModelDriver
     :members:
 
 
-Property
-^^^^^^^^
-
-.. autoclass:: Property
-    :members:
-
-
 VerificationTest
 ^^^^^^^^^^^^^^^^^
 
 .. autoclass:: VerificationTest
 
     .. automethod:: __call__
-
-VerificationResult
-^^^^^^^^^^^^^^^^^^
-
-.. autoclass:: VerificationResult
-
-ReferenceDatum
-^^^^^^^^^^^^^^
-
-.. autoclass:: ReferenceDatum
-
 
 VirtualMachine
 ^^^^^^^^^^^^^^

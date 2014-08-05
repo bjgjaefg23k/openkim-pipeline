@@ -86,13 +86,16 @@ Below is some detailed descriptions of the code itself
 
 .. toctree::
     
+    codedocs/compute
     codedocs/config
-    codedocs/models
-    codedocs/pipeline
-    codedocs/runner
-    codedocs/kimapi
     codedocs/database
+    codedocs/dependencies
+    codedocs/kimapi
+    codedocs/kimquery
+    codedocs/kimobjects
+    codedocs/kimunits
+    codedocs/network
+    codedocs/pipeline
     codedocs/rsync_tools
     codedocs/template
-    codedocs/persistentdict
 

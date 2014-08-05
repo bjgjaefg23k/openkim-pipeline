@@ -38,7 +38,7 @@ def build_query(args):
     if args['search-term']:
         q['query'].update({"kimcode": {"$regex": args['search-term']}})
 
-    if args['info']:
+    if args['action'] == 'search' and args['info']:
         q.pop('project')
 
     if args.get('debug'):

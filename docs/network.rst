@@ -15,7 +15,7 @@ and implementation in C, Python, and Ruby.
 
 Diagram
 --------
-.. image:: network.png
+.. image:: img/overview-diagram-wide.png
 
 
 Description

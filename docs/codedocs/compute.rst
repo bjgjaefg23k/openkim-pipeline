@@ -1,6 +1,6 @@
-runner.py
+compute.py
 ---------------
-`[source code] <../_modules/runner.html>`_ :download:`[download] <../../runner.py>`
+`[source code] <../_modules/runner.html>`_ :download:`[download] <../../compute.py>`
 
-.. automodule:: runner
+.. automodule:: compute
     :members:
