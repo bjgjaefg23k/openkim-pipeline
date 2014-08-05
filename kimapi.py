@@ -28,7 +28,7 @@ def make_all():
     logger.debug("Building everything...")
     with in_api_dir():
         with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
-            check_call(["make clean"], stdout=log, stderr=log)
+            check_call(["make", "clean"], stdout=log, stderr=log)
             check_call(["make"], stdout=log, stderr=log)
 
 def make_api():

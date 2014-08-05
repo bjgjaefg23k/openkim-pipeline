@@ -10,6 +10,7 @@ import uuid
 
 import kimquery
 import database
+import kimapi
 
 from config import *
 from logger import logging
@@ -31,8 +32,19 @@ def build_query(args):
     else:
         q['query'].update({"latest": True})
 
+    if args['desc']:
+        q['query'].update({"description": {"$regex": args['desc']}})
+
     if args['search-term']:
         q['query'].update({"kimcode": {"$regex": args['search-term']}})
+
+    if args['info']:
+        q.pop('project')
+
+    if args.get('debug'):
+        print "Arguments: \n", args, "\n"
+        print "Query: \n", q 
+        sys.exit(0)
 
     return q
 
@@ -69,16 +81,19 @@ def install(obj):
 
         if not os.path.exists(install_dir):
             os.makedirs(install_dir)
+            tar.extractall(path=leader_dir)
+            tar.close()
         else:
             print "%s already exists, skipping" % install_dir
-            return
 
-        tar.extractall(path=leader_dir)
-        tar.close()
         os.remove(fn)
 
     except Exception as e:
         pass
+
+def action_build():
+    print "Building all packages..."
+    kimapi.make_all()
 
 def action_install(query):
     for s in search(query):
@@ -92,7 +107,10 @@ def action_download(query):
 
 def action_search(query):
     for s in search(query):
-        print s
+        if isinstance(s, basestring):
+            print s
+        else:
+            print json.dumps(s, indent=4)
 
 def action_remove(args):
     for s in args.get('packages'):
@@ -124,27 +142,34 @@ if __name__ == "__main__":
     )
     shared.add_argument("-v", "--version", type=str, default='',
         help="specify the version of the packages, else latest only", metavar='')
-    shared.add_argument("-d", "--debug", action='store_true',
+    shared.add_argument("-d", "--desc", type=str, default='',
+        help="filter by search terms in the object description", metavar='')
+    shared.add_argument("-g", "--debug", action='store_true',
         help="show the query and quit for debug purposes")
-    shared.add_argument("search-term", type=str, nargs='?', metavar='',
+    shared.add_argument("search-term", type=str, nargs='?',
         help="Search terms to narrow down search results. Regex accepted"
     )
 
 
-    parse_install = sub.add_parser(name='install', parents=[shared],
-        help="install the particular KIM objects found")
+    parse_build = sub.add_parser(name='build',
+        help="build the current KIM packages using the API")
     parse_download = sub.add_parser(name='download', parents=[shared],
         help="download the source for the searched packages")
+    parse_install = sub.add_parser(name='install', parents=[shared],
+        help="install the particular KIM objects found")
     parse_search = sub.add_parser(name='search', parents=[shared],
         help="list the packages that match arguments")
     parse_remove = sub.add_parser(name='remove',
         help="remove the packages that match arguments")
 
+    parse_build.set_defaults(action='build')
     parse_install.set_defaults(action='install')
     parse_download.set_defaults(action='download')
     parse_search.set_defaults(action='search')
     parse_remove.set_defaults(action='remove')
 
+    parse_search.add_argument("-i", "--info", action='store_true',
+        help="show verbose information about the packages found")
     parse_remove.add_argument("packages", type=str, nargs='*',
         help="Packages to remove. Must be full name, no regex.")
     parse_remove.add_argument("-d", "--debug", action='store_true',
@@ -152,24 +177,17 @@ if __name__ == "__main__":
 
     args = vars(parser.parse_args())
 
-    if args.get('action') != 'remove':
+    if args.get('action') == "build":
+        action_build()
+    if args.get('action') == "install":
         query = build_query(args)
-        
-        if args.get('debug'):
-            print "Arguments: \n", args, "\n"
-            print "Query: \n", query
-            sys.exit(0)
-
-        if args.get('action') == "install":
-            action_install( query )
-        if args.get('action') == "download":
-            action_download( query )
-        if args.get('action') == "search":
-            action_search( query )
-    else:
-        if args.get('debug'):
-            print "Arguments: \n", args
-            sys.exit(0)
-
+        action_install( query )
+    if args.get('action') == "download":
+        query = build_query(args)
+        action_download( query )
+    if args.get('action') == "search":
+        query = build_query(args)
+        action_search( query )
+    if args.get('action') == "remove":
         action_remove( args )
 

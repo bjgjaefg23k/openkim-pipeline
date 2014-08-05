@@ -14,10 +14,10 @@ _getall(){
     
     for folder in ${folders}; do
         if [ ! -n "$part" ]; then
-            temp=$(find $REPODIR/$folder/* -maxdepth 1 -type d -printf "%f ")
+            temp=$(find $REPODIR/$folder/* -maxdepth 1 -type d -printf "%f " 2>/dev/null)
             echo $temp
         else
-            temp=$(find $REPODIR/$folder/* -maxdepth 1 -type d -name "$part*" -printf "%f ")
+            temp=$(find $REPODIR/$folder/* -maxdepth 1 -type d -name "$part*" -printf "%f " 2>/dev/null)
             echo $temp
         fi
     done
@@ -58,7 +58,7 @@ _kimitems_complete()
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     # The basic options we'll complete.
-    opts="install download search remove"
+    opts="build install download search remove"
 
     # Complete the arguments to some of the basic commands.
     case "${prev}" in
