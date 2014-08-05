@@ -116,8 +116,8 @@ _complete_pipeline_td(){
 }
 
 complete -F _complete_pipeline     pipeline
+complete -F _complete_kimitems     kimitems
+complete -F _complete_pipeline_td  testgenie
 complete -F _complete_pipeline_all pipeline_runpair
 complete -F _complete_pipeline_all pipeline_runmatches
 complete -F _complete_pipeline_all pipeline_verify
-complete -F _complete_kimitems     pipeline_kimitems
-complete -F _complete_pipeline_td  testgenie
