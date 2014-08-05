@@ -9,11 +9,16 @@ from compute import test_result_valid
 logger = logging.getLogger("pipeline")
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        name = sys.argv[1]
-    else:
-        name = "results.edn"
+    import argparse
+    parser = argparse.ArgumentParser(description=
+        """Utility to validate a KIM test result.  Checks with the central
+        property authority via web API call."""
+    )
+    parser.add_argument("filename", type=str, default='results.edn', nargs='?',
+        help="File name of the test result to check [default=results.edn]")
+    args = vars(parser.parse_args())
 
+    name = args['filename']
     valid, reply = test_result_valid(name)
     if valid:
         logger.info("Test result valid")

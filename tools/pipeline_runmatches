@@ -9,9 +9,20 @@ from pipeline import Director
 logger = logging.getLogger("pipeline").getChild("development")
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
+    import argparse
+    parser = argparse.ArgumentParser(description=
+        """Utility to run all relevant matches for a particular kimcode. These
+        KIM codes may be for any exectuble object, its matches will be found
+        automatically and the results stored in the appropriate results
+        directory"""
+    )
+    parser.add_argument('kimcode', type=str,
+        help="KIM code of the item to run matches for.")
+    args = vars(parser.parse_args())
+
+    if args['kimcode']:
         d = Director()
-        testname = sys.argv[1]
+        testname = args['kimcode']
         name,leader,num,version = database.parse_kim_code(testname)
         if leader == "TE":
             test = kimobjects.Test(testname)
@@ -23,7 +34,7 @@ if __name__ == "__main__":
                     except Exception as e:
                         pass
             else:
-                logger.info("No matches found for your test")
+                logger.info("No matches found for your test %r", test)
         if leader == "TD":
             test = kimobjects.TestDriver(testname)
             if len(list(test.tests)) > 0:
@@ -35,7 +46,7 @@ if __name__ == "__main__":
                         except Exception as e:
                             pass
             else:
-                logger.info("No matches found for your test driver")
+                logger.info("No matches found for your test driver %r", test)
         if leader == "MO":
             model = kimobjects.Model(testname)
             if len(list(model.tests)) > 0:
@@ -43,7 +54,7 @@ if __name__ == "__main__":
                     logger.info("Running combination <%r, %r" % (t, model))
                     Computation(t, model, d.get_result_code()).run()
             else:
-                logger.info("No matches found for your test driver")
+                logger.info("No matches found for your test driver %r", model)
         if leader == "MD":
             driver = kimobjects.ModelDriver(testname)
             if len(list(driver.models)) > 0:
@@ -52,7 +63,5 @@ if __name__ == "__main__":
                         logger.info("Running combination <%r, %r" % (t, m))
                         Computation(t, m, d.get_result_code()).run()
             else:
-                logger.info("No matches found for your test driver")
+                logger.info("No matches found for your test driver %r", driver)
     
-    else:
-        logger.info("Usage: pipeline_runmatches <testname>")

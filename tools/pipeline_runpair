@@ -9,16 +9,27 @@ from pipeline import Director
 logger = logging.getLogger("pipeline").getChild("development")
 
 if __name__ == "__main__":
-    if len(sys.argv) == 3:
+    import argparse
+    parser = argparse.ArgumentParser(description=
+        """A utility to run a runner (Test, Verification check) against
+        a particular subject (Model, Test).  This utility operates through
+        the pipeline APIs and as such emulates pipeline runtime behavior."""
+    )
+    parser.add_argument('runner-name', type=str,
+        help="The KIM code of the runner. Can be a test or verification check.")
+    parser.add_argument('subject-name', type=str,
+        help="KIM code for the subject which can be a model or test.")
+    parser.add_argument('-i', '--inplace', action='store_true', default=False,
+        help="""Run the test in the runner's absolute directory instead of a 
+        temporary working directory and copying the results to the result folder""")
+    args = vars(parser.parse_args())
+
+    runner = kimobjects.kim_obj(args['runner-name'])
+    subject = kimobjects.kim_obj(args['subject-name'])
+    logger.info("Running combination <%r, %r" % (runner, subject))
+    
+    if not args['inplace']:
         d = Director()
-        runner = kimobjects.kim_obj(sys.argv[1])
-        subject = kimobjects.kim_obj(sys.argv[2])
-        logger.info("Running combination <%r, %r" % (runner, subject))
         Computation(runner, subject, d.get_result_code()).run()
-    elif len(sys.argv) == 4:
-        runner = kimobjects.kim_obj(sys.argv[1])
-        subject = kimobjects.kim_obj(sys.argv[2])
-        logger.info("Running combination <%r, %r" % (runner, subject))
-        Computation(runner, subject).run()
     else:
-        logger.info("Usage: pipeline_runpair <runner> <subject> [inplace]")
+        Computation(runner, subject).run()

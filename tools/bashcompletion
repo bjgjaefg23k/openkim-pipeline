@@ -49,6 +49,32 @@ _pipeline_complete()
     return 0
 }
 
+_kimitems_complete() 
+{
+    . /pipeline/environment
+    local cur prev opts base
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    # The basic options we'll complete.
+    opts="install download search remove"
+
+    # Complete the arguments to some of the basic commands.
+    case "${prev}" in
+        remove)
+            local objs=$(_getall "te td mo md" "$cur") 
+            COMPREPLY=( $(compgen -W "${objs}" -- ${cur}) )
+            return 0
+            ;;
+        *)
+            ;;
+    esac
+
+    COMPREPLY=($(compgen -W "${opts}" -- ${cur}))  
+    return 0
+}
+
 _pipeline_complete_folders() 
 {
     . /pipeline/environment
@@ -77,6 +103,10 @@ _complete_pipeline(){
     _pipeline_complete
 }
 
+_complete_kimitems(){
+    _kimitems_complete
+}
+
 _complete_pipeline_all(){
     _pipeline_complete_folders "te td mo md"
 }
@@ -89,5 +119,5 @@ complete -F _complete_pipeline     pipeline
 complete -F _complete_pipeline_all pipeline_runpair
 complete -F _complete_pipeline_all pipeline_runmatches
 complete -F _complete_pipeline_all pipeline_verify
-complete -F _complete_pipeline_all pipeline_pullsingle
+complete -F _complete_kimitems     pipeline_kimitems
 complete -F _complete_pipeline_td  testgenie

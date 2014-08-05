@@ -35,9 +35,16 @@ def run_verifiers(kimobj):
     return [v.kim_code for v in verifiers],allpassed
 
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) > 1:
-        name = sys.argv[1]
+    import argparse
+    parser = argparse.ArgumentParser(description=
+        """Utility to run all relevant verification checks for a KIM object.
+        This can be run for tests and models.  A summary is printed at the
+        end of testing."""
+    )
+    parser.add_argument('kimcode', type=str,
+        help="KIM code of the object to run the verification checks")
+    args = vars(parser.parse_args())
+    name = args['kimcode']
 
     try:
         t = kimobjects.Test(name)

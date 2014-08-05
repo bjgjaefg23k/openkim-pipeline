@@ -33,6 +33,7 @@ import subprocess
 import re
 import dircache
 import simplejson
+import glob
 
 #------------------------------------------------
 # Base KIMObject
@@ -171,6 +172,21 @@ class KIMObject(simplejson.JSONEncoder):
         name,leader,num,version = database.get_latest_version(self.kim_code_name,
                 self.kim_code_leader,self.kim_code_number)
         return version
+
+    @property
+    def kimfile_name(self):
+        postfix = ''
+        with self.in_dir():
+            if os.path.exists(DOTKIM_FILE):
+                postfix = DOTKIM_FILE
+            else:
+                ll = glob.glob("*.kim")
+                if len(ll):
+                    postfix = ll[0]
+        if postfix:
+            return os.path.join(self.path, postfix)
+        else:
+            raise IOError(".kim file not found for %r" % self)
 
     @property
     def latest_version(self):

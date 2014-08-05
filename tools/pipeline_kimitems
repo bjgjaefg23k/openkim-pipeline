@@ -1,0 +1,175 @@
+#!/usr/bin/env python
+import sys
+import json
+import urllib
+import tarfile
+import os
+import shutil
+import glob
+import uuid
+
+import kimquery
+import database
+
+from config import *
+from logger import logging
+logger = logging.getLogger("kimitems")
+
+def build_query(args):
+    q = {}
+    q['query'] = {}
+
+    if args['type']:
+        q['project'] = ["kimcode"]
+        q['query'].update({'type': args['type']})
+    else:
+        q['fields'] = {"_id": 1}
+        q['project'] = ["_id"]
+
+    if args['version']:
+        q['query'].update({"version": args['version']})
+    else:
+        q['query'].update({"latest": True})
+
+    if args['search-term']:
+        q['query'].update({"kimcode": {"$regex": args['search-term']}})
+
+    return q
+
+def search(query):
+    s = json.loads(kimquery.query(query))
+    if not isinstance(s, list):
+        s = [s]
+    return s
+
+def local_search(pack):
+    hits = glob.glob(os.path.join(KIM_REPOSITORY_DIR, "??", pack))
+    if len(hits) > 0:
+        return hits[0]
+    else:
+        return None
+
+def download(obj, tmp=False):
+    outname = obj+".tar.gz"
+    if tmp:
+        outname = 'tmp'+uuid.uuid1().get_hex()+outname
+    url = "https://kim-items.openkim.org/archive"
+    data = urllib.urlencode({"kimid": obj, "compression": "gz"})
+    urllib.urlretrieve(url+"?"+data, outname)
+    return os.path.abspath(outname)
+
+def install(obj):
+    fn = download(obj, tmp=True)
+
+    try:
+        name, leader, num, version = database.parse_kim_code(obj)
+        leader_dir = os.path.join(KIM_REPOSITORY_DIR, leader.lower())
+        install_dir = os.path.join(leader_dir, obj)
+        tar = tarfile.open(fn)
+
+        if not os.path.exists(install_dir):
+            os.makedirs(install_dir)
+        else:
+            print "%s already exists, skipping" % install_dir
+            return
+
+        tar.extractall(path=leader_dir)
+        tar.close()
+        os.remove(fn)
+
+    except Exception as e:
+        pass
+
+def action_install(query):
+    for s in search(query):
+        print "Installing %s ..." % s
+        install(s)
+
+def action_download(query):
+    for s in search(query):
+        print "Downloading %s ..." % s
+        download(s)
+
+def action_search(query):
+    for s in search(query):
+        print s
+
+def action_remove(args):
+    for s in args.get('packages'):
+        path = local_search(s)
+
+        if path:
+            print "Permanently deleting %s ..." % s
+            shutil.rmtree(path)
+        else:
+            print "KIM object not found: %s" % s
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description=
+        """Interface to the openkim.org kim-items packages.  Navigate,
+        download and install tests and models from the main repository
+        without login credentials or pipeline priviledges"""
+    )
+    sub = parser.add_subparsers()
+
+    shared = argparse.ArgumentParser(add_help=False)
+    shared.add_argument("-t", "--type", type=str, default='',
+        help="""KIM object type shortname two letter codes. \n
+            te = test, td = test driver, mo = model
+            md = model driver, rd = reference data
+            vt = verification test, vm = verification model
+            tr = test result, vr = verification result
+        """, metavar=''
+    )
+    shared.add_argument("-v", "--version", type=str, default='',
+        help="specify the version of the packages, else latest only", metavar='')
+    shared.add_argument("-d", "--debug", action='store_true',
+        help="show the query and quit for debug purposes")
+    shared.add_argument("search-term", type=str, nargs='?', metavar='',
+        help="Search terms to narrow down search results. Regex accepted"
+    )
+
+
+    parse_install = sub.add_parser(name='install', parents=[shared],
+        help="install the particular KIM objects found")
+    parse_download = sub.add_parser(name='download', parents=[shared],
+        help="download the source for the searched packages")
+    parse_search = sub.add_parser(name='search', parents=[shared],
+        help="list the packages that match arguments")
+    parse_remove = sub.add_parser(name='remove',
+        help="remove the packages that match arguments")
+
+    parse_install.set_defaults(action='install')
+    parse_download.set_defaults(action='download')
+    parse_search.set_defaults(action='search')
+    parse_remove.set_defaults(action='remove')
+
+    parse_remove.add_argument("packages", type=str, nargs='*',
+        help="Packages to remove. Must be full name, no regex.")
+    parse_remove.add_argument("-d", "--debug", action='store_true',
+        help="show the query and quit for debug purposes")
+
+    args = vars(parser.parse_args())
+
+    if args.get('action') != 'remove':
+        query = build_query(args)
+        
+        if args.get('debug'):
+            print "Arguments: \n", args, "\n"
+            print "Query: \n", query
+            sys.exit(0)
+
+        if args.get('action') == "install":
+            action_install( query )
+        if args.get('action') == "download":
+            action_download( query )
+        if args.get('action') == "search":
+            action_search( query )
+    else:
+        if args.get('debug'):
+            print "Arguments: \n", args
+            sys.exit(0)
+
+        action_remove( args )
+

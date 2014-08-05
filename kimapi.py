@@ -59,17 +59,17 @@ def valid_match_util(test,model):
     return False
 
 
-def valid_match_codes(test_code,model_code):
+def valid_match_codes(test,model):
     """ Test to see if a test and model match using the kim API, returns bool
 
         Tests through ``kimservice.KIM_API_init``, running in its own forked process
     """
     #logger.debug("attempting to match %r with %r",testname,modelname)
-    logger.debug("invoking KIMAPI for (%r,%r)",test_code,model_code)
+    logger.debug("invoking KIMAPI for (%r,%r)",test,model)
     pid = os.fork()
     if (pid==0):
         logger.debug("in fork")
-        match, pkim = kimservice.KIM_API_init(test_code,model_code)
+        match, pkim = kimservice.KIM_API_file_init(str(test.kimfile_name), str(model))
         if match:
             kimservice.KIM_API_free(pkim)
             os._exit(0)
@@ -83,7 +83,7 @@ def valid_match_codes(test_code,model_code):
     elif exitcode == 1:
         match = False
     else:
-        logger.error("We seem to have a Kim init error on (%r,%r)", test_code, model_code)
+        logger.error("We seem to have a Kim init error on (%r,%r)", test, model)
         raise KIMRuntimeError
         match = False
 
@@ -97,4 +97,4 @@ def valid_match(test,model):
 
         Tests through ``kimservice.KIM_API_init``, running in its own forked process
     """
-    return valid_match_codes(test.kim_code,model.kim_code)
+    return valid_match_codes(test, model)

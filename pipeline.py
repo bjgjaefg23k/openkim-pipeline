@@ -509,6 +509,15 @@ def signal_handler(): #signal, frame):
     sys.exit(1)
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description=
+        """OpenKIM pipeline executable.  Depending on the role, this executable
+        will connect to the pipeline infrastructure and perform work as a worker,
+        director, or emulating the role of the website."""
+    )
+    parser.add_argument("role", type=str, help="Pipeline role to assume {worker|director|site}")
+    args = vars(parser.parse_args())
+
     import sys
     if PIPELINE_REMOTE:
         logger.info("REMOTE MODE: ON")
@@ -526,9 +535,9 @@ if __name__ == "__main__":
     builder = manager.BuilderBot()
     rsynclock = Lock()
 
-    if len(sys.argv) > 1:
+    if args['role']:
         # directors are not multithreaded for build safety
-        if sys.argv[1] == "director":
+        if args['role'] == "director":
             director = Director(num=0)
             logger.info("Building KIM API...")
             director.make_api()
@@ -536,7 +545,7 @@ if __name__ == "__main__":
 
         # workers can be multi-threaded so launch the appropriate
         # number of worker threads
-        elif sys.argv[1] == "worker":
+        elif args['role'] == "worker":
             thrds = cpu_count()
             for i in range(thrds):
                 pipe[i] = Worker(num=i, builder=builder, rsynclock=rsynclock)
@@ -557,14 +566,12 @@ if __name__ == "__main__":
                 signal_handler()
 
         # site is a one off for testing
-        elif sys.argv[1] == "site":
+        elif args['role'] == "site":
             obj = Site()
             obj.run()
             obj.send_update(sys.argv[2])
 
-        elif sys.argv[1] == "agent":
+        elif args['role'] == "agent":
             obj = APIAgent()
             obj.run()
 
-    else:
-        logger.info("Specify {worker|director|site}")
