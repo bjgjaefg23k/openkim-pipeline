@@ -41,7 +41,7 @@ Finally, the executables in ``~/bin/`` are also on ``PATH``.  This includes ``ma
 
 
 Local Repository
----------------
+----------------
 
 By default, the VM makes some assumptions about the directory structure of ``~/openkim-repository``. The default layout is
 
@@ -292,7 +292,7 @@ The Test we've seen above computes the lattice constant and cohesive energy of f
 
 ``testgenie`` should be on the ``PATH`` of the VM.  To view its associated help, try typing
 
-.. code_block:: bash
+.. code-block:: bash
 
     testgenie -h
 
@@ -305,15 +305,16 @@ this case, this corresponds to the ``test_template`` directory and
 To demonstrate how to invoke ``testgenie``, remove the current Test we
 downloaded earlier (but do not delete the Test Driver):
 
-.. code_block:: bash
+.. code-block:: bash
 
-     rm -rf ~/openkim-repository/te/LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000/
+    rm -rf ~/openkim-repository/te/LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000/
 
 Next, issue the command
 
-.. code_block:: bash
 
-     testgenie LatticeConstantCubicEnergy__TD_475411767977_000
+.. code-block:: bash
+
+    testgenie LatticeConstantCubicEnergy__TD_475411767977_000
 
 After ``testgenie`` finishes running, you'll notice that in ``~/openkim-repository/te/`` that
 there are now many new Tests in addition to the original fcc iron Test from before.  In fact,
