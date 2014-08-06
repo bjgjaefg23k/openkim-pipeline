@@ -5,12 +5,12 @@
 
 Welcome to OpenKIM Pipeline's documentation!
 ============================================
-The OpenKIM pipeline is the backbone of the computational resources that the KIM 
+The OpenKIM pipeline is the backbone of the computational resources that the KIM
 project will use.  The goal is to provide a reliable provenance for the computational
 results that are central to the goals of KIM.  The pipeline will run verification checks
-and tests for every model in order to best compare and understand the uses of 
+and tests for every model in order to best compare and understand the uses of
 interatomic models.  The results of these tests must be reproducable and their origins
-trusted so that it may become a resource to the scientific community.  
+trusted so that it may become a resource to the scientific community.
 
 In order to do so, we have designed a system that relies on many standard software packages
 that allow us to abstract locations and hardware to provide standard computational resources
@@ -19,6 +19,9 @@ below.
 
 FAQS
 ----
+
+ * How do I get started with the OpenKIM Virtual Machine (VM)?
+    Please refer to the :doc:`tutorial_vm` guide.
 
  * How do I write tests that comply with the pipeline?
     Look in the `Test Development <developers.html#test-development>`_ section of :doc:`developers`
@@ -41,7 +44,7 @@ FAQS
 
  * How do I play around with the database on my machine?
     See :doc:`orm`
-    
+
  * How did you get all of this to work?
     Good question! You could read all the gory details in :doc:`code`
 
