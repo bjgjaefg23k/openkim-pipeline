@@ -11,6 +11,7 @@ import uuid
 import kimquery
 import database
 import kimapi
+import kimobjects
 
 from config import *
 from logger import logging
@@ -93,12 +94,31 @@ def install(obj):
 
 def action_build():
     print "Building all packages..."
-    kimapi.make_all()
+    try:
+        kimapi.make_all()
+    except:
+        from compute import tail, MAKE_LOG
+        print "Build failed."
+        print tail(MAKE_LOG)
 
-def action_install(query):
-    for s in search(query):
+def action_install(query, dobuild=False):
+    results = search(query)
+    if len(results) > 30:
+        print "You are about to download %r kim objects." % len(results),
+        print "Do you want to continue? [y/N]?",
+        ans = raw_input()
+        if ans.lower() != 'y':
+            print "Exiting..."
+            return
+
+    for s in results:
         print "Installing %s ..." % s
         install(s)
+
+        if dobuild:
+            print "Building %s ..." % s
+            obj = kimobjects.kim_obj(s)
+            obj.make()
 
 def action_download(query):
     for s in search(query):
@@ -150,7 +170,6 @@ if __name__ == "__main__":
         help="Search terms to narrow down search results. Regex accepted"
     )
 
-
     parse_build = sub.add_parser(name='build',
         help="build the current KIM packages using the API")
     parse_download = sub.add_parser(name='download', parents=[shared],
@@ -168,6 +187,8 @@ if __name__ == "__main__":
     parse_search.set_defaults(action='search')
     parse_remove.set_defaults(action='remove')
 
+    parse_install.add_argument("-m", "--make", action='store_true',
+        help="build the installed packages immediately")
     parse_search.add_argument("-i", "--info", action='store_true',
         help="show verbose information about the packages found")
     parse_remove.add_argument("packages", type=str, nargs='*',
@@ -181,7 +202,7 @@ if __name__ == "__main__":
         action_build()
     if args.get('action') == "install":
         query = build_query(args)
-        action_install( query )
+        action_install( query, args['make'] )
     if args.get('action') == "download":
         query = build_query(args)
         action_download( query )

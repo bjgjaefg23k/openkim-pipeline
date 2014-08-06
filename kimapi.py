@@ -13,6 +13,8 @@ from contextlib import contextmanager
 #======================================
 # API build utilities
 #======================================
+MAKE_LOG = os.path.join(KIM_LOG_DIR, "make.log")
+
 @contextmanager
 def in_api_dir():
     cwd = os.getcwd()
@@ -27,14 +29,14 @@ def in_api_dir():
 def make_all():
     logger.debug("Building everything...")
     with in_api_dir():
-        with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
+        with open(MAKE_LOG, "a") as log:
             check_call(["make", "clean"], stdout=log, stderr=log)
             check_call(["make"], stdout=log, stderr=log)
 
 def make_api():
     logger.debug("Building the API...")
     with in_api_dir():
-        with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
+        with open(MAKE_LOG, "a") as log:
             check_call(["make", "kim-api-clean"], stdout=log, stderr=log)
             check_call(["make", "config"], stdout=log, stderr=log)
             check_call(["make", "kim-api-libs"], stdout=log, stderr=log)
