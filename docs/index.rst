@@ -42,9 +42,6 @@ FAQS
  * How does the pipeline work?
     See :doc:`pipeline`
 
- * How do I play around with the database on my machine?
-    See :doc:`orm`
-
  * How did you get all of this to work?
     Good question! You could read all the gory details in :doc:`code`
 
@@ -59,7 +56,9 @@ Table of Contents
    gateway
    beanstalkd
    virtualbox
+   dependencies
    developers
+   tutorial_vm
    tutorial_ase
    tutorial_lammps
    maintainers

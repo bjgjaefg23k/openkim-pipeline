@@ -65,7 +65,7 @@ def download(obj, tmp=False):
     outname = obj+".tar.gz"
     if tmp:
         outname = 'tmp'+uuid.uuid1().get_hex()+outname
-    url = "https://kim-items.openkim.org/archive"
+    url = "https://query.openkim.org/archive"
     data = urllib.urlencode({"kimid": obj, "compression": "gz"})
     urllib.urlretrieve(url+"?"+data, outname)
     return os.path.abspath(outname)

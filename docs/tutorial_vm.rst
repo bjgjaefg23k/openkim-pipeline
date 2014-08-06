@@ -30,9 +30,12 @@ Tools and Scripts
 
 Of particular interest are the tools listed in ``~/openkim-pipeline/tools``, which should all be on ``PATH`` so they can be invoked from any directory.
 
++ ``kimitems`` - a simple package manager with an interface to the official openkim.org repository
 + ``kimunits`` - used by the pipeline to perform unit conversions
 + ``pipeline_runpair`` - run a specific Test-Model pair
 + ``pipeline_runmatches`` - run all of the compatible Models (Tests) for a specified Test (Model)
++ ``pipeline_verify`` - run all verification results for a particular object (Test or Model)
++ ``pipeline_verifyresult`` - run property verification checks on a test result
 + ``testgenie`` - creates a set of Tests from a template - this is typically used when creating many Tests that use a Test Driver
 
 Additionally, it should be known that bash completions have been added so that you should be able to tab-complete on any of the KIM items you have in your local repository (i.e. all items contained in ``~/openkim-repository/`` on your VM) on the command line.

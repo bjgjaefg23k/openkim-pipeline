@@ -88,6 +88,15 @@ def get_new_version(name,leader,num):
     version_int = int(get_latest_version(name,leader,num)) + 1
     return "{:03d}".format(version_int)
 
+def get_leader(kimcode):
+    if uuid_type(kimcode):
+        return uuid_type(kimcode)
+    try:
+        name,leader,num,ver = parse_kim_code(kimcode)
+        return leader
+    except:
+        return None
+
 def format_kim_code(name,leader,num,version):
     """ Format a kim code into its proper form, assuming the form
         
@@ -109,6 +118,7 @@ def uuid_type(uuid):
     for leader in tries:
         if os.path.exists(os.path.join(RSYNC_LOCAL_ROOT, leader, uuid)):
             return leader
+    return None
 
 def strip_version(kimcode):
     name, leader, num, version = parse_kim_code(kimcode)

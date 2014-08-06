@@ -26,6 +26,11 @@ logger = logging.getLogger("pipeline").getChild("compute")
 #================================================================
 class Command(object):
     def __init__(self, cmd, stdin=None, stdout=None, stderr=None):
+        """
+        A class to provide time limits to sub processes. Accepts
+        a command as an array (similar to check_output) and file
+        handles with which to communicate on stdin, stdout, stderr
+        """
         self.cmd = cmd
         self.process = None
         self.stdin = stdin
@@ -33,8 +38,14 @@ class Command(object):
         self.stderr = stderr
 
     def run(self, timeout):
+        """
+        Run the command, cutting it off abruptly at timeout,
+        where timeout is given in seconds.
+        """
+
         def target():
-            self.process = subprocess.Popen(self.cmd, stdin=self.stdin, stdout=self.stdout, stderr=self.stderr, shell=True)
+            self.process = subprocess.Popen(self.cmd, stdin=self.stdin,
+                    stdout=self.stdout, stderr=self.stderr, shell=True)
             self.process.communicate()
 
         thread = threading.Thread(target=target)
@@ -62,6 +73,16 @@ class Command(object):
 #================================================================
 class Computation(object):
     def __init__(self, runner=None, subject=None, result_code=""):
+        """
+        A pipeline computation object that utilizes all of the pipeline
+        machinery to calculate a result (test or verification or otherwise).
+
+        Parameters:
+            * runner : A Test or {Test|Model} Verification object
+            * subject : A Test or Model depending on the runner
+            * result_code : if provided, the result will be moved
+                to the appropriate location
+        """
         self.runner = runner
         self.subject = subject
         self.runner_temp = runner
@@ -73,16 +94,19 @@ class Computation(object):
         self.full_result_path = os.path.join(KIM_REPOSITORY_DIR, self.result_path)
 
     def _create_tempdir(self):
+        """ Create a temporary running directory and copy over the test contents """
         tempname = self.runner.kim_code_name+"_running"+self.result_code+"__"+self.runner.kim_code_id
         self.runner_temp = kimobjects.kim_obj(self.runner.kim_code, search=False, subdir=tempname)
         shutil.copytree(self.runner.path, self.runner_temp.path)
 
     def _create_output_dir(self):
+        """ Make sure that the ``output`` directory exists for results """
         outputdir = os.path.join(self.runner_temp.path,OUTPUT_DIR)
         if not os.path.exists(outputdir):
             os.makedirs(outputdir)
 
     def _clean_old_run(self):
+        """ Delete old temporary files if they exist """
         for flname in INTERMEDIATE_FILES:
             try:
                 os.remove(flname)
@@ -94,6 +118,15 @@ class Computation(object):
 
     @contextmanager
     def tempdir(self):
+        """
+        Create a temporary directory and copy all objects over so that
+        they can run independently of other processes on a single machine.
+
+        A context manager so that you can say:
+
+            with self.tempdir():
+                ... do something ...
+        """
         if self.result_code:
             self._create_tempdir()
 
@@ -113,8 +146,10 @@ class Computation(object):
                 self._delete_tempdir()
 
     def execute_in_place(self):
-        """ Execute a runner with a corresponding subject
-        with /usr/bin/time profilling where ever the executable exists
+        """
+        Execute the runner with the subject as set in the object.  Do this in
+        the current directory, wherever that may be.  In the process, also
+        collect runtime information using /usr/bin/time profilling
         """
         logger.info("running %r with %r",self.runner,self.subject)
 
@@ -153,7 +188,11 @@ class Computation(object):
             raise KIMRuntimeError("Executable %r returned error code %r" % (self.runner_temp, self.retcode))
 
     def process_output(self):
-        """ Template the run results into the proper YAML """
+        """
+        In the current directory, make sure that the results are ready to
+        go by checking that ``RESULT_FILE`` exists and conforms to the
+        property definitions that it promises.  Also append SI units
+        """
         # Short-circuit if we already have a results.edn
         with self.runner_temp.in_dir():
             if not os.path.isfile(RESULT_FILE):
@@ -180,6 +219,11 @@ class Computation(object):
 
 
     def gather_profiling_info(self, extrainfo=None):
+        """
+        Append the profiling information obtained in ``execute_in_place``
+        to the information metadata.  This will saved during the ``write_result``
+        method later on.
+        """
         # Add metadata
         info_dict = {}
         info_dict["time"] = self.runtime
@@ -203,6 +247,18 @@ class Computation(object):
 
 
     def write_result(self, error=False):
+        """
+        Write the remaining information to make the final test result
+        object.  This includes:
+
+            * check for errors in the previous steps.  if there are any skip
+              and move directory to the error directory
+
+            * Creating ``CONFIG_FILE`` and ``PIPELINESPEC_FILE`` for result
+              metadata
+
+            * Moving the ``output`` directory to its final resting place
+        """
         if error:
             self.result_path = os.path.join("er", self.result_code)
             self.full_result_path = os.path.join(KIM_REPOSITORY_DIR, self.result_path)
@@ -250,11 +306,16 @@ class Computation(object):
 
     def run(self, extrainfo=None):
         """
-        run a runner with the corresponding subject, with /usr/bin/time profilling,
-        capture the output as a dict, and return or
-        run a V{T,M} with the corresponding {TE,MO}
+        Run a runner with the corresponding subject, with /usr/bin/time
+        profilling, capture the output as a dict, and return or run a V{T,M}
+        with the corresponding {TE,MO}
 
-        if result_code is set, then run in a temporary directory, otherwise local run
+        If result_code is set, then run in a temporary directory, otherwise
+        run in place in the test folder.
+
+        If errors occur, print the last lines of all output files and
+        report the error back while moving the result into the errors
+        directory.
         """
         with self.tempdir():
             try:
@@ -283,6 +344,10 @@ class Computation(object):
 # helper functions
 #================================================================
 def tail(f, n=5):
+    """
+    Return the last ``n`` lines of a file ``f`` using
+    the unix tool tail and popen.  ``f`` is a str object
+    """
     try:
         stdin,stdout = os.popen2("tail -n "+str(n)+" "+f)
         stdin.close()
@@ -293,16 +358,25 @@ def tail(f, n=5):
     return "".join(lines)
 
 def last_output_lines(kimobj, files, n=20):
+    """ Return the last lines of all output files """
     with kimobj.in_dir():
         tails = [ tail(f, n) for f in files ]
     return tails
 
 def append_newline(string):
+    """ Append a newline is there isn't one present """
     if len(string) > 0 and string[-1] != '\n':
         string += "\n"
     return string
 
 def test_result_valid(flname):
+    """
+    Queries pipeline.openkim.org to figure out if the given
+    flname is a valid property based on the property definitions
+    available in the official repository:
+
+        https://github.com/openkim/openkim-properties
+    """
     reply = json.loads(kimquery.query_property_validator(flname))
     valid = all([ rep['valid'] for rep in reply ])
     return (valid, reply)
