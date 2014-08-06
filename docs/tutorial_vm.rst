@@ -294,7 +294,7 @@ The Test we've seen above computes the lattice constant and cohesive energy of f
 
 .. code-block:: bash
 
-     testgenie -h
+    testgenie -h
 
 To use it, you need to provide a folder that acts as a template for the
 generation of a Test, as well as a list of ``json`` dictionaries
@@ -307,14 +307,14 @@ downloaded earlier (but do not delete the Test Driver):
 
 .. code-block:: bash
 
-      rm -rf ~/openkim-repository/te/LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000/
+    rm -rf ~/openkim-repository/te/LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000/
 
 Next, issue the command
 
 
 .. code-block:: bash
 
-      testgenie LatticeConstantCubicEnergy__TD_475411767977_000
+    testgenie LatticeConstantCubicEnergy__TD_475411767977_000
 
 After ``testgenie`` finishes running, you'll notice that in ``~/openkim-repository/te/`` that
 there are now many new Tests in addition to the original fcc iron Test from before.  In fact,
