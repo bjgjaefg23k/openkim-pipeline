@@ -23,7 +23,7 @@ After booting the VM and logging in, you will find yourself in a bash shell with
     ├── openkim-repository - contains an empty copy of the OpenKIM Repository
     └── openkim-website - contains code to run the remote viewing panel for the VM
 
-It is important to note the existence of the ``/vagrant/`` directory.  This directory is shared between the VM and the primary OS you're running, and can be conveniently used to transfer files between the two.  Anything that you copy into ``/vagrant/`` on the VM will show up in the folder you installed the VM into on your primary OS.  Likewise, anything you place in the folder where you installed the VM will show up in ``/vagrant/`` on the VM.
+In addition to the standard KIM directories, it is important to note the existence of the ``/vagrant/`` directory.  This directory is shared between the VM and the primary OS you're running, and can be conveniently used to transfer files between the two.  Anything that you copy into ``/vagrant/`` on the VM will show up in the folder you installed the VM into on your primary OS.  Likewise, anything you place in the folder where you installed the VM will show up in ``/vagrant/`` on the VM.
 
 Tools and Scripts
 -----------------
@@ -72,7 +72,7 @@ Here, we'll run through the basics of downloading Tests and Models and running t
 Downloading Content
 ~~~~~~~~~~~~~~~~~~~
 
-First, let’s get a Model. This can be either done graphically by going to the `KIM Items`_ pages on the OpenKIM website or through command line via utilities such as ``curl`` or ``wget``.  In this example, we're going to use the ``EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000`` Model.  If you'd like to download the the Model using your web browser, navigate to `this Model's KIM Items page`_.  At the bottom of this page, you will see a "Download" section where links to an archive of this Model are provided.  Simply click on the link corresponding to your desired archive format to queue the download.  Having downloaded an archive of the Model, the next step is to transfer this archive onto the VM.  In order to do this, copy the archive file into the directory where you installed the VM on your primary OS.  After doing this, you'll notice that if you look in the ``/vagrant/`` directory on your VM, you'll see the archive.  From here, decompress the archive and copy the resulting folder into ``~/openkim-repository/mo/``.
+First, let’s get a Model. This can be either done graphically by going to the `KIM Items`_ pages on the OpenKIM website or through command line via the ``kimitems`` utility.  In this example, we're going to use the ``EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000`` Model.  If you'd like to download the the Model using your web browser, navigate to `this Model's KIM Items page`_.  At the bottom of this page, you will see a "Download" section where links to an archive of this Model are provided.  Simply click on the link corresponding to your desired archive format to queue the download.  Having downloaded an archive of the Model, the next step is to transfer this archive onto the VM.  In order to do this, copy the archive file into the directory where you installed the VM on your primary OS.  After doing this, you'll notice that if you look in the ``/vagrant/`` directory on your VM, you'll see the archive.  From here, decompress the archive and copy the resulting folder into ``~/openkim-repository/mo/``.
 
 .. code-block:: bash
 
@@ -84,35 +84,37 @@ First, let’s get a Model. This can be either done graphically by going to the 
 
     The KIM Items page of KIM content can always be referenced by a permanent URL of the form openkim.org/cite/<KIM short ID>.  For example, the link above to the KIM Items page of the Model above is openkim.org/cite/MO_142799717516_000.
 
-Alternatively, you can download the archive directly from within the VM by using, e.g. ``curl``, along with the URL that is linked to in the "Download" section of the Model's KIM Items page.  The download URLs on the KIM Items pages are always of the form
-
-::
-
-    https://kim-items.openkim.org/archive?kimid=<Extended KIM ID>&compression=<desired compression format>
-
-In this case, we'll choose to use the ``xz`` compression format, making sure that we place the decompressed archive under ``~/openkim-repository/mo/``:
+Alternatively, you can download the archive directly from within the VM by using the ``kimitems`` utility.  From any location, we can issue
 
 .. code-block:: bash
 
-    cd ~/openkim-repository/mo/
-    curl "https://kim-items.openkim.org/archive?kimid=EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000&compression=xz" | tar xvJ
+    kimitems download EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000
 
-If you downloaded the Model using your browser, you may have noticed that under the "Download" section of its KIM Items page, there was also a section labeled "Download Dependency".  This is present to indicate that this Model is derived from a Model Driver (``EAM_Dynamo__MD_120291908751_000``), and thus the Model Driver must also be downloaded.  Repeat the above steps to download ``EAM_Dynamo__MD_120291908751_000``, only this time place the archive in ``~/openkim-repository/md/`` instead of ``~/openkim-repository/mo/``.
+to download a ``.tar.gz`` archive of a KIM Item into the current directory.  We can then use the following commands to decompress the model and have it installed in ``~/openkim-repository/mo/``.  You can also safely remove the ``.tar.gz`` archive at this point.
 
 .. code-block:: bash
 
-    cd ~/openkim-repository/md/
-    curl "https://kim-items.openkim.org/archive?kimid=EAM_Dynamo__MD_120291908751_000&compression=xz" | tar xvJ
+    kimitems install EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000
+    rm EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000.tar.gz
 
+If you downloaded the Model using your browser, you may have noticed that under the "Download" section of its KIM Items page, there was also a section labeled "Download Dependency".  This is present to indicate that this Model is derived from a Model Driver (``EAM_Dynamo__MD_120291908751_000``), and thus the Model Driver must also be downloaded.  Repeat the above steps to download ``EAM_Dynamo__MD_120291908751_000``, only this time place the archive in ``~/openkim-repository/md/`` instead of ``~/openkim-repository/mo/``. If you use ``kimitems``, it will place the Model Driver in the correct directory automatically.
+
+.. code-block:: bash
+
+    kimitems download EAM_Dynamo__MD_120291908751_000
+    kimitems install EAM_Dynamo__MD_120291908751_000
+    rm EAM_Dynamo__MD_120291908751_000.tar.gz
 
 Having obtained a Model and its corresponding Model Driver, we'll also want to download a Test to run against this Model.  In this case, a Test which is compatible with our Model is ``LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000``, which computes the lattice constant and cohesive energy of fcc iron.  Examination of `this Test's KIM Items page`_ indicates that it also requires a Test Driver (``LatticeConstantCubicEnergy__TD_475411767977_000``) in order to run.  Let's download the Test and its Test Driver directly from the VM:
 
 .. code-block:: bash
 
-    cd ~/openkim-repository/te/
-    curl "https://kim-items.openkim.org/archive?kimid=LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000&compression=xz" | tar xvJ
-    cd ~/openkim-repository/td/
-    curl "https://kim-items.openkim.org/archive?kimid=LatticeConstantCubicEnergy__TD_475411767977_000&compression=xz" | tar xvJ
+    kimitems download LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000
+    kimitems install LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000
+    rm LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000.tar.gz
+    kimitems download LatticeConstantCubicEnergy__TD_475411767977_000
+    kimitems install LatticeConstantCubicEnergy__TD_475411767977_000
+    rm LatticeConstantCubicEnergy__TD_475411767977_000.tar.gz
 
 
 Building Content
