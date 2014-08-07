@@ -23,7 +23,7 @@ After booting the VM and logging in, you will find yourself in a bash shell with
     ├── openkim-repository - contains an empty copy of the OpenKIM Repository
     └── openkim-website - contains code to run the remote viewing panel for the VM
 
-It is important to note the existence of the ``/vagrant/`` directory.  This directory is shared between the VM and the primary OS you're running, and can be conveniently used to transfer files between the two.  Anything that you copy into ``/vagrant/`` on the VM will show up in the folder you installed the VM into on your primary OS.  Likewise, anything you place in the folder where you installed the VM will show up in ``/vagrant/`` on the VM.
+In addition to the standard KIM directories, it is important to note the existence of the ``/vagrant/`` directory.  This directory is shared between the VM and the primary OS you're running, and can be conveniently used to transfer files between the two.  Anything that you copy into ``/vagrant/`` on the VM will show up in the folder you installed the VM into on your primary OS.  Likewise, anything you place in the folder where you installed the VM will show up in ``/vagrant/`` on the VM.
 
 Tools and Scripts
 -----------------
