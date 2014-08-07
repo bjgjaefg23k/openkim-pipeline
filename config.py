@@ -60,9 +60,9 @@ HOME               = os.path.expanduser('~')
 KIM_REPOSITORY_DIR = os.path.join(HOME,"openkim-repository")
 KIM_PIPELINE_DIR   = os.path.abspath(os.path.dirname(__file__))
 KIM_LOG_DIR        = os.path.join(KIM_PIPELINE_DIR, "logs")
-KIM_API_DIR        = os.path.join(HOME,"openkim-api")
+KIM_API_DIR        = os.path.join(HOME,"kim-api")
 KIM_API_LIB_DIR    = os.path.join(KIM_API_DIR,"KIM_API")
-KIM_API_CHECK_MATCH_UTIL = os.path.join(KIM_API_LIB_DIR,"openkim-api-descriptor-file-match")
+KIM_API_CHECK_MATCH_UTIL = os.path.join(KIM_API_LIB_DIR,"kim-api-descriptor-file-match")
 
 OUTPUT_DIR      = "output"
 TEST_EXECUTABLE = "runner"
