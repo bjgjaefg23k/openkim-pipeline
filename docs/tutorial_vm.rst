@@ -114,7 +114,7 @@ Having obtained a Model and its corresponding Model Driver, we'll also want to d
     rm LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000.tar.gz
     kimitems download LatticeConstantCubicEnergy__TD_475411767977_000
     kimitems install LatticeConstantCubicEnergy__TD_475411767977_000
-    rm LatticeConstantCubicEnergy__TD_475411767977_000.targz
+    rm LatticeConstantCubicEnergy__TD_475411767977_000.tar.gz
 
 
 Building Content
