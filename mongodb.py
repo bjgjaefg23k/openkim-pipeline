@@ -75,9 +75,9 @@ def kimcode_to_dict(kimcode):
             "inserted_on": str(datetime.datetime.utcnow()),
             "latest": True,
             }
-    if foo['type'] in ('te','mo','md','vt','vm'):
+    if foo['type'] in ('te','mo','md','tv','mv'):
         foo['makeable'] = True
-    if foo['type'] in ('te','vt','vm'):
+    if foo['type'] in ('te','tv','mv'):
         foo['runner'] = True
     if foo['type'] in ('te','mo'):
         foo['subject'] = True
@@ -259,7 +259,7 @@ def insert_one_reference_data(leader, kimcode):
 
 def insert_objs():
     logger.info("Filling with objects")
-    leaders = ('te','vt','vm','mo','md','td')
+    leaders = ('te','tv','mv','mo','md','td')
     for leader in leaders:
         for i,folder in enumerate(os.listdir(os.path.join(PATH_APPROVED,leader))):
             if folder.startswith("Make"):

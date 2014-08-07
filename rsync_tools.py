@@ -131,7 +131,7 @@ def gateway_write_result(leader, kimcode):
 
 def gateway_full_read():
     """ when a director trys to get everything """
-    files = [j(RA,"te/"),j(RA,"mo/"),j(RA,"md/"),j(RA,"td/"),j(RA,"vt/"),j(RA,"vm/"),j(RA,"rd/")]
+    files = [j(RA,"te/"),j(RA,"mo/"),j(RA,"md/"),j(RA,"td/"),j(RA,"tv/"),j(RA,"mv/"),j(RA,"rd/")]
     rsync_read(files, delete=True)
 
 #=================================
@@ -139,7 +139,7 @@ def gateway_full_read():
 #=================================
 def director_approved_read():
     """ when a director trys to get everything """
-    files = [j(RA,"te/"),j(RA,"mo/"),j(RA,"md/"),j(RA,"td/"),j(RA,"vt/"),j(RA,"vm/")]
+    files = [j(RA,"te/"),j(RA,"mo/"),j(RA,"md/"),j(RA,"td/"),j(RA,"tv/"),j(RA,"mv/")]
     rsync_read(files, delete=True)
 
 def director_pending_read(kimobj):

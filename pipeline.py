@@ -283,12 +283,12 @@ class Director(Agent):
         checkmatch = False
         if leader=="VT":
             # for every test launch
-            test = kimobjects.VerificationTest(kimid)
+            test = kimobjects.TestVerification(kimid)
             models = list(kimobjects.Test.all())
             tests = [test]*ll(models)
         elif leader=="VM":
             #for all of the models, run a job
-            test = kimobjects.VerificationModel(kimid)
+            test = kimobjects.ModelVerification(kimid)
             models = list(kimobjects.Model.all())
             tests = [test]*ll(models)
         else:

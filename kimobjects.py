@@ -12,8 +12,8 @@ Has a base ``KIMObject`` class and
  * Model
  * TestDriver
  * ModelDriver
- * VerificationTest
- * VerificationModel
+ * TestVerification
+ * ModelVerification
  * VirtualMachine
 
 classes, all of which inherit from ``KIMObject`` and aim to know how to handle themselves.
@@ -487,9 +487,9 @@ class Test(Runner):
         return [] if not self.test_drivers else [self.test_drivers]
 
 #------------------------------------------
-# VerificationTest(Check)
+# TestVerification(Check)
 #------------------------------------------
-class VerificationTest(Test):
+class TestVerification(Test):
     """ A kim test, it is a KIMObject, plus
 
         Settings:
@@ -507,21 +507,21 @@ class VerificationTest(Test):
                 a dictionary of its output file, mapping strings to
                 Property objects
     """
-    required_leader = "VT"
+    required_leader = "TV"
     makeable = True
     subject_type = Test
     result_leader = "VR"
-    runner_name = "verification-test"
+    runner_name = "test-verification"
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Test, with a kim_code """
-        super(VerificationTest,self).__init__(kim_code,*args,**kwargs)
+        super(TestVerification,self).__init__(kim_code,*args,**kwargs)
 
 
 #------------------------------------------
-# VerificationModel(Check)
+# ModelVerification(Check)
 #------------------------------------------
-class VerificationModel(Test):
+class ModelVerification(Test):
     """ A kim test, it is a KIMObject, plus
 
         Settings:
@@ -539,15 +539,15 @@ class VerificationModel(Test):
                 a dictionary of its output file, mapping strings to
                 Property objects
     """
-    required_leader = "VM"
+    required_leader = "MV"
     makeable = True
     subject_type = Model
     result_leader = "VR"
-    runner_name = "verification-model"
+    runner_name = "model-verification"
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Test, with a kim_code """
-        super(VerificationModel,self).__init__(kim_code,*args,**kwargs)
+        super(ModelVerification,self).__init__(kim_code,*args,**kwargs)
 
 
 #==========================================
@@ -633,7 +633,7 @@ class VirtualMachine(KIMObject):
 #--------------------------------------------
 # two letter codes to the associated class
 code_to_model = {"TE": Test, "MO": Model, "TD": TestDriver,
-    "VT": VerificationTest, "VM": VerificationModel,
+    "TV": TestVerification, "MV": ModelVerification,
      "MD": ModelDriver }
 
 def kim_obj(kim_code, *args, **kwargs):
