@@ -88,20 +88,15 @@ Alternatively, you can download the archive directly from within the VM by using
 
 .. code-block:: bash
 
-    kimitems download EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000
-
-to download a ``.tar.gz`` archive of a KIM Item into the current directory.  We can then use the following commands to decompress the model and have it installed in ``~/openkim-repository/mo/``.  You can also safely remove the ``.tar.gz`` archive at this point.
-
-.. code-block:: bash
-
     kimitems install EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000
     rm EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000.tar.gz
+
+to automatically download a ``.tar.gz`` archive of a KIM Item into the current directory, decompress it, and copy it to the appropriate directory under ``~/openkim-repository/``.  You can also safely remove the ``.tar.gz`` archive after ``kimitems`` finishes the installation process.
 
 If you downloaded the Model using your browser, you may have noticed that under the "Download" section of its KIM Items page, there was also a section labeled "Download Dependency".  This is present to indicate that this Model is derived from a Model Driver (``EAM_Dynamo__MD_120291908751_000``), and thus the Model Driver must also be downloaded.  Repeat the above steps to download ``EAM_Dynamo__MD_120291908751_000``, only this time place the archive in ``~/openkim-repository/md/`` instead of ``~/openkim-repository/mo/``. If you use ``kimitems``, it will place the Model Driver in the correct directory automatically.
 
 .. code-block:: bash
 
-    kimitems download EAM_Dynamo__MD_120291908751_000
     kimitems install EAM_Dynamo__MD_120291908751_000
     rm EAM_Dynamo__MD_120291908751_000.tar.gz
 
@@ -109,10 +104,8 @@ Having obtained a Model and its corresponding Model Driver, we'll also want to d
 
 .. code-block:: bash
 
-    kimitems download LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000
     kimitems install LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000
     rm LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000.tar.gz
-    kimitems download LatticeConstantCubicEnergy__TD_475411767977_000
     kimitems install LatticeConstantCubicEnergy__TD_475411767977_000
     rm LatticeConstantCubicEnergy__TD_475411767977_000.tar.gz
 
