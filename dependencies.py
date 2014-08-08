@@ -70,14 +70,14 @@ def result_pair(uuid):
              "project": ["runner.kimcode", "subject.kimcode"]}
     return (kimobjects.kim_obj(a) for a in kimquery.query(query, decode=True))
 
-def get_run_list(target, depth=0, tree=False):
+def get_run_list(target, depth=0, tree=False, display=False):
     if hasattr(target, '__iter__'):
         # we have a (test,model) pair which needs updating
         torun = set()
         satisfied = True
 
         te, mo = target
-        deps = te.dependencies(mo)
+        deps = te.runtime_dependencies(mo)
 
         for dep in deps:
             if hasattr(dep, '__iter__'):
@@ -106,7 +106,7 @@ def get_run_list(target, depth=0, tree=False):
 
         torun = set()
         for test in kimobjects.Test.all():
-            deps = test.dependencies(mo)
+            deps = test.runtime_dependencies(mo)
 
             for dep in deps:
                 if hasattr(dep, '__iter__'):

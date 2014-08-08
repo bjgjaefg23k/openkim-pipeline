@@ -28,12 +28,30 @@ def in_api_dir():
     finally:
         os.chdir(cwd)
 
+def make_config():
+    with open(os.path.join(KIM_REPOSITORY_DIR, "md", "Makefile.KIM_Config"), 'w') as f:
+        check_call(["kim-api-build-config", "--makefile-kim-config"], stdout=f)
+    with open(os.path.join(KIM_REPOSITORY_DIR, "mo", "Makefile.KIM_Config"), 'w') as f:
+        check_call(["kim-api-build-config", "--makefile-kim-config"], stdout=f)
+
 def make_all():
     logger.debug("Building everything...")
     with in_api_dir():
         with open(MAKE_LOG, "a") as log:
             check_call(["make", "clean"], stdout=log, stderr=log)
             check_call(["make"], stdout=log, stderr=log)
+
+    make_config()
+
+    import kimobjects
+    for o in kimobjects.TestDriver.all():
+        o.make()
+    for o in kimobjects.Test.all():
+        o.make()
+    for o in kimobjects.ModelDriver.all():
+        o.make()
+    for o in kimobjects.Model.all():
+        o.make()
 
 def make_api():
     logger.debug("Building the API...")

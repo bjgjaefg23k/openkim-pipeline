@@ -23,9 +23,11 @@ from template import template_environment
 import database
 import kimapi
 from config import *
+from config import __kim_api_version_spec__
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("kimobjects")
 
+from packaging import version
 from contextlib import contextmanager
 import template
 import shutil
@@ -231,6 +233,8 @@ class KIMObject(simplejson.JSONEncoder):
     def make(self):
         """ Try to build the thing, by executing ``make`` in its directory """
         if self.makeable:
+            if not version.Version(self.kim_api_version) in version.Specifier(__kim_api_version_spec__):
+                return
             with self.in_dir():
                 with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
                     logger.debug("Attempting to make %r: %r", self.__class__.__name__, self.kim_code)
@@ -354,7 +358,7 @@ class Runner(KIMObject):
         template.process(self.infile_path, subject, self, modelonly=True)
         return open(os.path.join(self.path, TEMP_INPUT_FILE))
 
-    def dependencies(self, subject=None):
+    def runtime_dependencies(self, subject=None):
         """ go ahead and append the subject to single test items """
         if self.depfile:
             raw, out = loadedn(self.depfile), []

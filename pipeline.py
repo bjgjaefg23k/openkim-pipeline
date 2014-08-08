@@ -516,6 +516,7 @@ if __name__ == "__main__":
         director, or emulating the role of the website."""
     )
     parser.add_argument("role", type=str, help="Pipeline role to assume {worker|director|site}")
+    parser.add_argument("kimid", type=str, nargs='?', help="If acting as site, the kimid to update")
     args = vars(parser.parse_args())
 
     import sys
@@ -569,7 +570,7 @@ if __name__ == "__main__":
         elif args['role'] == "site":
             obj = Site()
             obj.run()
-            obj.send_update(sys.argv[2])
+            obj.send_update(args['kimid'])
 
         elif args['role'] == "agent":
             obj = APIAgent()
