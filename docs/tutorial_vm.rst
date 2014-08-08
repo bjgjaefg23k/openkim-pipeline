@@ -15,7 +15,7 @@ After booting the VM and logging in, you will find yourself in a bash shell with
     ~
     ├── bin - contains binaries necessary to build and run Tests (lammps, make, etc)
     ├── builds - contains several auxiliary packages used by the pipeline (openkim-kimcalculator-ase, openkim-python, etc)
-    ├── openkim-api - contains the source code of the KIM API
+    ├── kim-api - contains the source code of the KIM API
     ├── openkim-pipeline - contains the pipeline code
     │   ├── logs - where the pipeline logs live
     │   └── tools - various command line tools to help with the development process
@@ -72,38 +72,38 @@ Here, we'll run through the basics of downloading Tests and Models and running t
 Downloading Content
 ~~~~~~~~~~~~~~~~~~~
 
-First, let’s get a Model. This can be either done graphically by going to the `KIM Items`_ pages on the OpenKIM website or through command line via the ``kimitems`` utility.  In this example, we're going to use the ``EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000`` Model.  If you'd like to download the the Model using your web browser, navigate to `this Model's KIM Items page`_.  At the bottom of this page, you will see a "Download" section where links to an archive of this Model are provided.  Simply click on the link corresponding to your desired archive format to queue the download.  Having downloaded an archive of the Model, the next step is to transfer this archive onto the VM.  In order to do this, copy the archive file into the directory where you installed the VM on your primary OS.  After doing this, you'll notice that if you look in the ``/vagrant/`` directory on your VM, you'll see the archive.  From here, decompress the archive and copy the resulting folder into ``~/openkim-repository/mo/``.
+First, let’s get a Model. This can be either done graphically by going to the `KIM Items`_ pages on the OpenKIM website or through command line via the ``kimitems`` utility.  In this example, we're going to use the ``EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_001`` Model.  If you'd like to download the the Model using your web browser, navigate to `this Model's KIM Items page`_.  At the bottom of this page, you will see a "Download" section where links to an archive of this Model are provided.  Simply click on the link corresponding to your desired archive format to queue the download.  Having downloaded an archive of the Model, the next step is to transfer this archive onto the VM.  In order to do this, copy the archive file into the directory where you installed the VM on your primary OS.  After doing this, you'll notice that if you look in the ``/vagrant/`` directory on your VM, you'll see the archive.  From here, decompress the archive and copy the resulting folder into ``~/openkim-repository/mo/``.
 
 .. code-block:: bash
 
     cd /vagrant
-    tar xvJ EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000.txz
-    cp -r EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000 ~/openkim-repository/mo/
+    tar xvJ EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_001.txz
+    cp -r EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_001 ~/openkim-repository/mo/
 
 .. note::
 
-    The KIM Items page of KIM content can always be referenced by a permanent URL of the form openkim.org/cite/<KIM short ID>.  For example, the link above to the KIM Items page of the Model above is openkim.org/cite/MO_142799717516_000.
+    The KIM Items page of KIM content can always be referenced by a permanent URL of the form openkim.org/cite/<KIM short ID>.  For example, the link above to the KIM Items page of the Model above is openkim.org/cite/MO_142799717516_001.
 
 Alternatively, you can download the archive directly from within the VM by using the ``kimitems`` utility.  From any location, we can issue
 
 .. code-block:: bash
 
-    kimitems install EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000
+    kimitems install EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_001
 
 to automatically download a ``.tar.gz`` archive of a KIM Item into the current directory, decompress it, and copy it to the appropriate directory under ``~/openkim-repository/``.  It will then delete the ``.tar.gz`` that was downloaded.
 
-If you downloaded the Model using your browser, you may have noticed that under the "Download" section of its KIM Items page, there was also a section labeled "Download Dependency".  This is present to indicate that this Model is derived from a Model Driver (``EAM_Dynamo__MD_120291908751_000``), and thus the Model Driver must also be downloaded.  Repeat the above steps to download ``EAM_Dynamo__MD_120291908751_000``, only this time place the archive in ``~/openkim-repository/md/`` instead of ``~/openkim-repository/mo/``. If you use ``kimitems``, it will place the Model Driver in the correct directory automatically.
+If you downloaded the Model using your browser, you may have noticed that under the "Download" section of its KIM Items page, there was also a section labeled "Download Dependency".  This is present to indicate that this Model is derived from a Model Driver (``EAM_Dynamo__MD_120291908751_001``), and thus the Model Driver must also be downloaded.  Repeat the above steps to download ``EAM_Dynamo__MD_120291908751_001``, only this time place the archive in ``~/openkim-repository/md/`` instead of ``~/openkim-repository/mo/``. If you use ``kimitems``, it will place the Model Driver in the correct directory automatically.
 
 .. code-block:: bash
 
-    kimitems install EAM_Dynamo__MD_120291908751_000
+    kimitems install EAM_Dynamo__MD_120291908751_001
 
-Having obtained a Model and its corresponding Model Driver, we'll also want to download a Test to run against this Model.  In this case, a Test which is compatible with our Model is ``LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000``, which computes the lattice constant and cohesive energy of fcc iron.  Examination of `this Test's KIM Items page`_ indicates that it also requires a Test Driver (``LatticeConstantCubicEnergy__TD_475411767977_000``) in order to run.  Let's download the Test and its Test Driver directly from the VM:
+Having obtained a Model and its corresponding Model Driver, we'll also want to download a Test to run against this Model.  In this case, a Test which is compatible with our Model is ``LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_001``, which computes the lattice constant and cohesive energy of fcc iron.  Examination of `this Test's KIM Items page`_ indicates that it also requires a Test Driver (``LatticeConstantCubicEnergy__TD_475411767977_001``) in order to run.  Let's download the Test and its Test Driver directly from the VM:
 
 .. code-block:: bash
 
-    kimitems install LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000
-    kimitems install LatticeConstantCubicEnergy__TD_475411767977_000
+    kimitems install LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_001
+    kimitems install LatticeConstantCubicEnergy__TD_475411767977_001
 
 
 Building Content
@@ -113,10 +113,10 @@ Now that we've downloaded a Test and Model to run, we need to compile them.  Thi
 
 .. code-block:: bash
 
-    cd ~/openkim-repository/md/EAM_Dynamo__MD_120291908751_000 && make
-    cd ~/openkim-repository/mo/EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000 && make
-    cd ~/openkim-repository/td/LatticeConstantCubicEnergy__TD_475411767977_000 && make
-    cd ~/openkim-repository/te/LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000 && make
+    cd ~/openkim-repository/md/EAM_Dynamo__MD_120291908751_001 && make
+    cd ~/openkim-repository/mo/EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_001 && make
+    cd ~/openkim-repository/td/LatticeConstantCubicEnergy__TD_475411767977_001 && make
+    cd ~/openkim-repository/te/LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_001 && make
 
 .. warning::
 
@@ -126,8 +126,8 @@ If for some reason you encounter compilation problems that you don't believe are
 
 .. code-block:: bash
 
-    cd ~/openkim-api/KIM_API && make clean
-    cd .. && make openkim-api
+    cd ~/kim-api/KIM_API && make clean
+    cd .. && make kim-api
 
 Running the Test-Model pair
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -136,7 +136,7 @@ With the Model and Test compiled, we're ready to run them.  We can do this at th
 
 .. code-block:: bash
 
-     pipeline_runpair LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000 EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000
+     pipeline_runpair LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_001 EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_001
 
 .. note::
 
@@ -150,11 +150,11 @@ You should see output similar to the following:
 
 .. code-block:: bash
 
-    2014-08-05 15:49:46,744 - INFO - pipeline.development - Running combination <<Test(LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000)>, <Model(EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000)>
-    2014-08-05 15:49:46,989 - INFO - pipeline.compute - running <Test(LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000)> with <Model(EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000)>
+    2014-08-05 15:49:46,744 - INFO - pipeline.development - Running combination <<Test(LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_001)>, <Model(EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_001)>
+    2014-08-05 15:49:46,989 - INFO - pipeline.compute - running <Test(LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_001)> with <Model(EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_001)>
     2014-08-05 15:49:46,996 - INFO - pipeline.compute - launching run...
     2014-08-05 15:49:47,317 - INFO - pipeline.compute - Run completed in 0.3207240104675293 seconds
-    2014-08-05 15:49:47,499 - INFO - pipeline.compute - Copying the contents of /home/openkim/openkim-repository/te/LatticeConstantCubicEnergy_fcc_Fe_running2053bdf0-1cb8-11e4-8a62-237f1482a623__TE_342002765394_000/output to /home/openkim/openkim-repository/tr/2053bdf0-1cb8-11e4-8a62-237f1482a623
+    2014-08-05 15:49:47,499 - INFO - pipeline.compute - Copying the contents of /home/openkim/openkim-repository/te/LatticeConstantCubicEnergy_fcc_Fe_running2053bdf0-1cb8-11e4-8a62-237f1482a623__TE_342002765394_001/output to /home/openkim/openkim-repository/tr/2053bdf0-1cb8-11e4-8a62-237f1482a623
 
 The last line indicates that the results of the run have been copied to ``~/openkim-repository/tr/`` into a unique directory named with a pseudo-random UUID code. Go to this directory and inspect the results.
 
@@ -187,13 +187,13 @@ Now that we've seen how to run a Test-Model pair, let’s take a closer look at 
 
 .. code-block:: bash
 
-     cd ~/openkim-repository/te/LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000/
+     cd ~/openkim-repository/te/LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_001/
 
 The Test has the following layout:
 
 ::
 
-    LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000/
+    LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_001/
     ├── descriptor.kim
     ├── kimspec.edn
     ├── LICENSE.CDDL
@@ -207,7 +207,7 @@ The Test has the following layout:
   simply reads the Test Driver and input parameters from stdin and executes
   the Test Driver with those inputs.
 + ``descriptor.kim`` (REQUIRED) is the KIM descriptor file of the Test, as described
-  in `~/openkim-api/DOCS/standard.kim`_.  This file tells the KIM API about
+  in `~/kim-api/DOCS/standard.kim`_.  This file tells the KIM API about
   the operational parameters of our Test, such as which atomic species and
   neighbor list methods the it supports.  This information is used to determine
   whether a given Model is compatible with this Test (i.e. can be run with it). The
@@ -237,13 +237,13 @@ To take a closer look at the Test Driver, let's visit its folder in our local re
 
 .. code-block:: bash
 
-     cd ~/openkim-repository/td/LatticeConstantCubicEnergy__TD_475411767977_000
+     cd ~/openkim-repository/td/LatticeConstantCubicEnergy__TD_475411767977_001
 
 There, we find the following:
 
 ::
 
-    LatticeConstantCubicEnergy__TD_475411767977_000/
+    LatticeConstantCubicEnergy__TD_475411767977_001/
     ├── kimspec.edn
     ├── LICENSE.CDDL
     ├── Makefile
@@ -301,14 +301,14 @@ downloaded earlier (but do not delete the Test Driver):
 
 .. code-block:: bash
 
-    rm -rf ~/openkim-repository/te/LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000/
+    rm -rf ~/openkim-repository/te/LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_001/
 
 Next, issue the command
 
 
 .. code-block:: bash
 
-    testgenie LatticeConstantCubicEnergy__TD_475411767977_000
+    testgenie LatticeConstantCubicEnergy__TD_475411767977_001
 
 After ``testgenie`` finishes running, you'll notice that in ``~/openkim-repository/te/`` that
 there are now many new Tests in addition to the original fcc iron Test from before.  In fact,
@@ -339,7 +339,7 @@ may want to visit the `LAMMPS Example Tests`_ or `ASE Example Tests`_.
 .. _Jinja2: http://jinja.pocoo.org/docs/
 .. _here: https://pipeline.openkim.org/docs/developers.html#pipelineoutdocs
 .. _ASE: https://wiki.fysik.dtu.dk/ase/
-.. _EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000: https://openkim.org/cite/MO_142799717516_000
+.. _EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_001: https://openkim.org/cite/MO_142799717516_001
 .. _Getting Started Page: https://openkim.org/getting-started/
 .. _Extended KIM ID: https://openkim.org/about-kim-ids/
 .. _OpenKIM Pipeline: https://pipeline.openkim.org/docs/
@@ -347,9 +347,9 @@ may want to visit the `LAMMPS Example Tests`_ or `ASE Example Tests`_.
 .. _KIM Properties Framework: https://openkim.org/properties-framework/
 .. _at github: https://github.com/openkim/openkim-pipeline/blob/edn/tools/testgenie
 .. _this page (FIXME): http://example.com
-.. _~/openkim-api/DOCS/standard.kim: https://raw.githubusercontent.com/openkim/openkim-api/v1.5.0/KIM_API/standard.kim
+.. _~/kim-api/DOCS/standard.kim: https://raw.githubusercontent.com/openkim/kim-api/master/src/standard.kim
 .. _downloads page: https://pipeline.openkim.org/downloads
 .. _VirtualBox: https://www.virtualbox.org/
 .. _Vagrant: https://www.vagrantup.com/
-.. _this Model's KIM Items page: https://openkim.org/cite/MO_142799717516_000
-.. _this Test's KIM Items page: https://openkim.org/cite/TE_342002765394_000
+.. _this Model's KIM Items page: https://openkim.org/cite/MO_142799717516_001
+.. _this Test's KIM Items page: https://openkim.org/cite/TE_342002765394_001
