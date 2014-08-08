@@ -20,7 +20,7 @@ def run_verifiers(kimobj):
 
     allpassed = []
     for v in verifiers:
-        comp = compute.Computation(v, kimobj, d.get_result_code())
+        comp = compute.Computation(v, kimobj, d.get_result_code(), verify=False)
         try:
             comp.run()
             resultfile = os.path.join(comp.full_result_path, "results.edn")

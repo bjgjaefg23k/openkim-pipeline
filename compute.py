@@ -72,7 +72,7 @@ class Command(object):
 # the actual computation class
 #================================================================
 class Computation(object):
-    def __init__(self, runner=None, subject=None, result_code=""):
+    def __init__(self, runner=None, subject=None, result_code="", verify=True):
         """
         A pipeline computation object that utilizes all of the pipeline
         machinery to calculate a result (test or verification or otherwise).
@@ -82,6 +82,8 @@ class Computation(object):
             * subject : A Test or Model depending on the runner
             * result_code : if provided, the result will be moved
                 to the appropriate location
+            * verify : whether the result should be verified against
+                the property definitions held by official repo
         """
         self.runner = runner
         self.subject = subject
@@ -89,6 +91,7 @@ class Computation(object):
         self.runtime = None
         self.result_code = result_code
         self.info_dict = None
+        self.verify = verify
 
         self.result_path = os.path.join(self.runner_temp.result_leader.lower(), self.result_code)
         self.full_result_path = os.path.join(KIM_REPOSITORY_DIR, self.result_path)
@@ -207,9 +210,10 @@ class Computation(object):
             except Exception as e:
                 raise KIMRuntimeError, "Test did not produce valid EDN %s" % RESULT_FILE
 
-            valid, reply = test_result_valid(RESULT_FILE)
-            if not valid:
-                raise KIMRuntimeError, "Test result did not conform to property definition\n%r" % reply
+            if self.verify:
+                valid, reply = test_result_valid(RESULT_FILE)
+                if not valid:
+                    raise KIMRuntimeError, "Test result did not conform to property definition\n%r" % reply
 
         logger.debug("Adding units to result file")
         with self.runner_temp.in_dir(), open(RESULT_FILE, 'w') as f:

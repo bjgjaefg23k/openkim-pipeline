@@ -232,6 +232,10 @@ class KIMObject(simplejson.JSONEncoder):
 
     def make(self):
         """ Try to build the thing, by executing ``make`` in its directory """
+        if self.drivers:
+            for dr in self.drivers:
+                dr.make()
+
         if self.makeable:
             if not version.Version(self.kim_api_version) in version.Specifier(__kim_api_version_spec__):
                 return
