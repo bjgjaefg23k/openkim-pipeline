@@ -89,25 +89,21 @@ Alternatively, you can download the archive directly from within the VM by using
 .. code-block:: bash
 
     kimitems install EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000
-    rm EAM_Dynamo_Ackland_Bacon_Fe__MO_142799717516_000.tar.gz
 
-to automatically download a ``.tar.gz`` archive of a KIM Item into the current directory, decompress it, and copy it to the appropriate directory under ``~/openkim-repository/``.  You can also safely remove the ``.tar.gz`` archive after ``kimitems`` finishes the installation process.
+to automatically download a ``.tar.gz`` archive of a KIM Item into the current directory, decompress it, and copy it to the appropriate directory under ``~/openkim-repository/``.  It will then delete the ``.tar.gz`` that was downloaded.
 
 If you downloaded the Model using your browser, you may have noticed that under the "Download" section of its KIM Items page, there was also a section labeled "Download Dependency".  This is present to indicate that this Model is derived from a Model Driver (``EAM_Dynamo__MD_120291908751_000``), and thus the Model Driver must also be downloaded.  Repeat the above steps to download ``EAM_Dynamo__MD_120291908751_000``, only this time place the archive in ``~/openkim-repository/md/`` instead of ``~/openkim-repository/mo/``. If you use ``kimitems``, it will place the Model Driver in the correct directory automatically.
 
 .. code-block:: bash
 
     kimitems install EAM_Dynamo__MD_120291908751_000
-    rm EAM_Dynamo__MD_120291908751_000.tar.gz
 
 Having obtained a Model and its corresponding Model Driver, we'll also want to download a Test to run against this Model.  In this case, a Test which is compatible with our Model is ``LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000``, which computes the lattice constant and cohesive energy of fcc iron.  Examination of `this Test's KIM Items page`_ indicates that it also requires a Test Driver (``LatticeConstantCubicEnergy__TD_475411767977_000``) in order to run.  Let's download the Test and its Test Driver directly from the VM:
 
 .. code-block:: bash
 
     kimitems install LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000
-    rm LatticeConstantCubicEnergy_fcc_Fe__TE_342002765394_000.tar.gz
     kimitems install LatticeConstantCubicEnergy__TD_475411767977_000
-    rm LatticeConstantCubicEnergy__TD_475411767977_000.tar.gz
 
 
 Building Content
