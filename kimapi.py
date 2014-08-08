@@ -4,11 +4,13 @@ that build the libraries and use the Python interface kimservice
 to test if tests and models match.
 """
 from config import *
+from config import __pipeline_version_spec__, __kim_api_version_spec__
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("kimapi")
 
 from subprocess import check_output, check_call
 from contextlib import contextmanager
+from packaging import version
 
 #======================================
 # API build utilities
@@ -99,4 +101,14 @@ def valid_match(test,model):
 
         Tests through ``kimservice.KIM_API_init``, running in its own forked process
     """
-    return valid_match_codes(test, model)
+    ver = version.Version
+    ver_pipspec = version.Specifier(__pipeline_version_spec__)
+    ver_kimspec = version.Specifier(__kim_api_version_spec__)
+
+    version_match = (
+        ver(test.kim_api_version) in ver_kimspec and
+        ver(model.kim_api_version) in ver_kimspec and
+        ver(test.pipeline_api_version) in ver_pipspec
+    )
+
+    return version_match and valid_match_codes(test, model)

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import yaml
 import os
 
 import compute
@@ -13,9 +12,9 @@ def run_verifiers(kimobj):
     d = Director()
 
     if isinstance(kimobj, kimobjects.Test):
-        verifiers = list(kimobjects.VerificationTest.all())
+        verifiers = list(kimobjects.TestVerification.all())
     elif isinstance(kimobj, kimobjects.Model):
-        verifiers = list(kimobjects.VerificationModel.all())
+        verifiers = list(kimobjects.ModelVerification.all())
     else:
         return
 
@@ -24,11 +23,11 @@ def run_verifiers(kimobj):
         comp = compute.Computation(v, kimobj, d.get_result_code())
         try:
             comp.run()
-            resultfile = os.path.join(comp.full_result_path, 'results.yaml')
-            docs = yaml.load_all(open(resultfile))
+            resultfile = os.path.join(comp.full_result_path, "results.edn")
+            docs = loadedn(resultfile)
             for di in docs:
-                if di.has_key('check'):
-                    passed = di['check']['passed']
+                if di.has_key('passed'):
+                    passed = di['passed']
         except Exception as e:
             passed = False
         allpassed.append(passed)

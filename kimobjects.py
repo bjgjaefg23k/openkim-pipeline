@@ -270,6 +270,18 @@ class KIMObject(simplejson.JSONEncoder):
         return spec
 
     @property
+    def kim_api_version(self):
+        if self.kimspec:
+            return self.kimspec.get("kim-api-version")
+        return None
+
+    @property
+    def pipeline_api_version(self):
+        if self.kimspec:
+            return self.kimspec.get("pipeline-api-version")
+        return None
+
+    @property
     def dependencies(self):
         """ Return a generator of kim objects that are its dependencies """
         return list(self.drivers)

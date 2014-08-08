@@ -16,7 +16,7 @@ import os
 import shutil
 
 import ase.data
-import jinja2, json, yaml, clj
+import jinja2, json, clj
 from functools import partial
 
 from kimquery import query
@@ -52,8 +52,7 @@ def stripversion(kim):
     newtup = ( kimtup.name, kimtup.leader, kimtup.num, None)
     return database.format_kim_code( *newtup )
 
-#custom yaml,json dump
-yamldump = partial(yaml.dump, default_flow_style=False, explicit_start=True)
+#custom json dump
 jsondump = partial(json.dumps, indent=4)
 edndump  = partial(clj.dumps)
 
@@ -74,7 +73,6 @@ template_environment = jinja2.Environment(
 template_environment.filters.update(
         {
             "json": jsondump,
-            "yaml": yamldump,
             "edn":  edndump,
             "stripversion": stripversion,
             "latestversion": latestversion,

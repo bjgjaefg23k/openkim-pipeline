@@ -12,10 +12,18 @@ and this module is imported in star from at the top of all of the scripts::
 import os
 import re
 
-__version__ = ".".join(map(str, (1, 0)))
-#__release__ = "".join([__version__, "+", githash])
-#    info['setuphash'] = Popen("cd "+CONF["PIPELINEDIR"]+"; git log -n 1 | grep commit | sed s/commit\ //", 
-#        stdout=PIPE, shell=True).communicate()[0]
+def tostr(cls):
+    return ".".join(map(str, cls))
+
+_pipeline_version_clauses = (1,0,0)
+_kim_api_version_clauses = (1,6,0)
+
+__version__ = tostr(_pipeline_version_clauses)
+__kim_api_version__ = tostr(_kim_api_version_clauses)
+__pipeline_version__ = __version__
+
+__pipeline_version_spec__ = "~= "+tostr(_pipeline_version_clauses[:-1])
+__kim_api_version_spec__  = "~= "+tostr(_kim_api_version_clauses)
 
 #======================================
 # the environment parser
