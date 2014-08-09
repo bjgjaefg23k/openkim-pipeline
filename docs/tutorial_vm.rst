@@ -23,25 +23,9 @@ After booting the VM and logging in, you will find yourself in a bash shell with
     ├── openkim-repository - contains an empty copy of the OpenKIM Repository
     └── openkim-website - contains code to run the remote viewing panel for the VM
 
-In addition to the standard KIM directories, it is important to create a shared folder that allows you to conveniently transfer files between your primary OS and the VM.  If you installed the VM using Vagrant, then there should already be a shared folder named ``/vagrant/`` mounted on the VM which points to the folder on your primary OS where you installed the VM (i.e., the folder containing the ``Vagrantfile`` you used).  Anything that you copy into ``/vagrant/`` on the VM will show up in this folder.  Likewise, anything you place in the folder where you installed the VM will show up in ``/vagrant/`` on the VM.
+In addition to the standard KIM directories, it's useful to create a shared folder that allows you to conveniently transfer files between your primary OS and the VM.  If you installed the VM using Vagrant, then there should already be a shared folder named ``/vagrant/`` mounted on the VM which points to the folder on your primary OS where you installed the VM (i.e., the folder containing the ``Vagrantfile`` you used).  Anything that you copy into ``/vagrant/`` on the VM will show up in this folder.  Likewise, anything you place in the folder where you installed the VM will show up in ``/vagrant/`` on the VM.
 
-If, instead, you installed the VM using only VirtualBox, you must manually create the shared folder yourself.  First, open Virtualbox and right-click on the VM you created in the pane on the left-hand side of the window.  Select "Settings".
-
-.. image:: ./img/createsharedfolder1.png
-
-Within the "Settings" menu, click on "Shared Folders".  You'll see an empty list, but a button to the right which allows you to create a new shared folder.
-
-.. image:: ./img/createsharedfolder2.png
-
-In the menu that pops up, go to "Folder Path" and select a folder on your primary OS where you'd like to share files with the VM (in this example, I've used ``/home/user/Desktop/My_OpenKIM_VM/``.  Next, select a directory on the VM where you'd like to share files with your primary OS (I chose to name this ``/My_OpenKIM_VM/``).  For convenience, you'll want to check "Auto Mount" and "Make Permanent" so that the shared folder is always available when you boot the VM.
-
-.. image:: ./img/createsharedfolder3.png
-
-When you return to the "Shared Folders" menu, you should see the shared folder you created.
-
-.. image:: ./img/createsharedfolder4.png
-
-In this example, anything that is copied to ``/home/user/Desktop/My_OpenKIM_VM/`` on the machine running the VM will appear in the directory ``/My_OpenKIM_VM/`` on the VM, and vice versa.
+If you installed the VM using only VirtualBox, i.e. you did not use Vagrant, you must manually create the shared folder yourself.  Please follow the instructions under the "Setting up shared folders" section of the VirtualBox tab in the `VM download and installation page <downloads page>`_.
 
 Tools and Scripts
 -----------------
