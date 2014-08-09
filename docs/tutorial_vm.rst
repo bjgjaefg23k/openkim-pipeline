@@ -23,7 +23,9 @@ After booting the VM and logging in, you will find yourself in a bash shell with
     ├── openkim-repository - contains an empty copy of the OpenKIM Repository
     └── openkim-website - contains code to run the remote viewing panel for the VM
 
-In addition to the standard KIM directories, it is important to note the existence of the ``/vagrant/`` directory.  This directory is shared between the VM and the primary OS you're running, and can be conveniently used to transfer files between the two.  Anything that you copy into ``/vagrant/`` on the VM will show up in the folder you installed the VM into on your primary OS.  Likewise, anything you place in the folder where you installed the VM will show up in ``/vagrant/`` on the VM.
+In addition to the standard KIM directories, it's useful to create a shared folder that allows you to conveniently transfer files between your primary OS and the VM.  If you installed the VM using Vagrant, then there should already be a shared folder named ``/vagrant/`` mounted on the VM which points to the folder on your primary OS where you installed the VM (i.e., the folder containing the ``Vagrantfile`` you used).  Anything that you copy into ``/vagrant/`` on the VM will show up in this folder.  Likewise, anything you place in the folder where you installed the VM will show up in ``/vagrant/`` on the VM.
+
+If you installed the VM using only VirtualBox, i.e. you did not use Vagrant, you must manually create the shared folder yourself.  Please follow the instructions under the "Setting up shared folders" section of the VirtualBox tab in the `VM download and installation page <downloads page>`_.
 
 Tools and Scripts
 -----------------
@@ -226,7 +228,7 @@ The Test has the following layout:
   Distribution License (CDDL), so it includes the standard CDDL license file.
 + ``Makefile`` (OPTIONAL) this file is included here, but simply includes messages indicating that
   the Test doesn't need to be compiled, since it is a python executable. It could
-  just as well have been ommitted.
+  just as well have been omitted.
 
 In this particular case, the Test itself is rather bare and it's the Test Driver that does most of the heavy lifting.
 
