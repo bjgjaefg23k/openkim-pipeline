@@ -226,7 +226,7 @@ The Test has the following layout:
   Distribution License (CDDL), so it includes the standard CDDL license file.
 + ``Makefile`` (OPTIONAL) this file is included here, but simply includes messages indicating that
   the Test doesn't need to be compiled, since it is a python executable. It could
-  just as well have been ommitted.
+  just as well have been omitted.
 
 In this particular case, the Test itself is rather bare and it's the Test Driver that does most of the heavy lifting.
 
