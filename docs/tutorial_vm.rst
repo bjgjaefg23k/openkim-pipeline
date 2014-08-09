@@ -25,7 +25,7 @@ After booting the VM and logging in, you will find yourself in a bash shell with
 
 In addition to the standard KIM directories, it's useful to create a shared folder that allows you to conveniently transfer files between your primary OS and the VM.  If you installed the VM using Vagrant, then there should already be a shared folder named ``/vagrant/`` mounted on the VM which points to the folder on your primary OS where you installed the VM (i.e., the folder containing the ``Vagrantfile`` you used).  Anything that you copy into ``/vagrant/`` on the VM will show up in this folder.  Likewise, anything you place in the folder where you installed the VM will show up in ``/vagrant/`` on the VM.
 
-If you installed the VM using only VirtualBox, i.e. you did not use Vagrant, you must manually create the shared folder yourself.  Please follow the instructions under the "Setting up shared folders" section of the VirtualBox tab in the `VM download and installation page <downloads page>`_.
+If you installed the VM using only VirtualBox, i.e. you did not use Vagrant, you must manually create the shared folder yourself.  Please follow the instructions under the "Setting up shared folders" section of the VirtualBox tab in the `VM download and installation guide`_.
 
 Tools and Scripts
 -----------------
@@ -355,3 +355,4 @@ may want to visit the `LAMMPS Example Tests`_ or `ASE Example Tests`_.
 .. _Vagrant: https://www.vagrantup.com/
 .. _this Model's KIM Items page: https://openkim.org/cite/MO_142799717516_001
 .. _this Test's KIM Items page: https://openkim.org/cite/TE_342002765394_001
+.. _VM download and installation guide: https://pipeline.openkim.org/downloads
