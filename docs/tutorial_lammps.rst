@@ -6,11 +6,11 @@ Example tests - LAMMPS
     lattice constant from the OpenKIM database.  Using this lattice constant, we
     set up a single atom unit cell and calculate it's energy, reporting it as the
     cohesive energy.  For a general overview on test format, have a look at the
-    documentation for :ref:`desctests`.  
+    documentation for :ref:`desctests`.
 ..
     For this example, we have adopted the descriptive KIM short name of
     ASECohesiveEnergyFromQuery_Fe_bcc and have been provided with the KIM code
-    TE_102111117114_000.  
+    TE_102111117114_000.
 
 We consider here the use of the `LAMMPS Molecular Dynamics Simulator <http://lammps.sandia.gov/>`_ in constructing Tests within the OpenKIM Pipeline (hereafter, "the pipeline").  This process essentially amounts to the following steps:
 
@@ -19,7 +19,18 @@ We consider here the use of the `LAMMPS Molecular Dynamics Simulator <http://lam
 #. Parsing the LAMMPS output for the quantities of interest
 #. Post-processing the quantities of interest, if necessary, and reporting the results of the Test
 
-Two example Tests which make use of LAMMPS are detailed below.  These should already be on your box as part of the OpenKIM repository, but can also be downloaded :download:`here <./LAMMPS_tutorial_examples.tgz>`. Although not strictly necessary, both of the Tests included in this tutorial have been set up to make use of Test Drivers for the purposes of demonstration.  If you are unfamiliar with the role of Test Drivers in the pipeline or other general details of Test creation, please see :ref:`testdev`.
+Although not strictly necessary in general, both of the Tests included in this tutorial have been constructed to make use of Test Drivers for the purpose of demonstration.  In order to download these Tests and their Test Drivers, as well as the Model we'll use and its Model Driver, log into the VM and issue the following commands:
+
+.. code-block::
+
+    kimitems install LammpsExample__TE_565333229701_001
+    kimitems install LammpsExample__TD_567444853524_001
+    kimitems install LammpsExample2_fcc_Ar__TE_778998786610_001
+    kimitems install LammpsExample2__TD_887699523131_001
+    kimitems install Pair_Lennard_Jones_Shifted_Bernardes_MedCutoff_Ar__MO_126566794224_001
+    kimitems install Pair_Lennard_Jones_Shifted__MD_498634107543_001
+
+.. #### Give link to :ref:`testdev` once it's updated.
 
 In the :ref:`first example Test <example1_ref>`, the user provides an initial guess at the equilibrium lattice constant of an (infinite) face-centered cubic lattice of Argon atoms.  Using this initial guess, LAMMPS attempts to compute the equilibrium lattice constant and cohesive energy by performing a static minimization of the potential energy using the Polak-Ribiere conjugate gradient method.
 
@@ -37,9 +48,9 @@ Example 1: Cohesive energy & lattice constant of fcc Argon
 
 .. _example1_TD_ref:
 
-Test Driver 
----------------
-Let us begin by looking at the Test Driver for the first example.  This Test Driver is constructed to compute the cohesive energy and equilibrium lattice constant of an fcc Argon lattice.  Each Test which uses this Test Driver can supply its own initial guess at the equilibrium lattice spacing.
+Test Driver
+-----------
+Let's begin by looking at the Test Driver for the first example.  This Test Driver is constructed to compute the cohesive energy and equilibrium lattice constant of an fcc Argon lattice.  Each Test which uses this Test Driver can supply its own initial guess at the equilibrium lattice spacing.
 
 List of files
 ^^^^^^^^^^^^^
@@ -47,20 +58,21 @@ List of files
     * :ref:`example1_TD_exec` - the main executable, a bash script
     * :ref:`example1_TD_kimspec` - a file which describes the metadata associated with the Test Driver
     * :ref:`example1_TD_makefile` - a Makefile
-    * :ref:`example1_TD_lammpstemplate` - a LAMMPS input script template which the Test Driver processes with 'sed'
+    * :ref:`example1_TD_lammpstemplate` - a LAMMPS input script template which the Test Driver processes with \`sed`
+    * :ref:`example1_TD_resultstemplate` - an `edn`-formatted template which the Test Driver processes with \`sed`
     * ``README.txt`` - a file which contains a basic explanation of the Test Driver
     * ``LICENSE.CDDL`` - a copy of the `CDDL license <http://opensource.org/licenses/CDDL-1.0>`_
 
 .. _example1_TD_exec:
 
-LammpsExample__TD_567444853524_000
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+runner
+^^^^^^
 .. code-block:: bash
 
     #!/usr/bin/env bash
 
     # Author: Daniel S. Karls (karl0100 |AT| umn DOT edu), University of Minnesota
-    # Date: 9/13/2013
+    # Date: 8/04/2014
 
     # This example Test Driver computes the cohesive energy and equilibrium
     # lattice constant for an FCC argon lattice using Polak-Ribiere
@@ -69,7 +81,7 @@ LammpsExample__TD_567444853524_000
 
     # Define function which outputs to stderr
     echoerr() { echo "$@" 1>&2; }
-    
+
     # Read the KIM Model name and initial lattice constant from pipeline.stdin.tpl
     # (the former is passed using @< MODELNAME >@, which the
     # pipeline will automatically fill in once a compatible Model is found).
@@ -77,7 +89,7 @@ LammpsExample__TD_567444853524_000
     read modelname
     echo "Please enter an initial lattice constant (Angstroms):"
     read initial_lattice_constant
-    
+
     # Replace the string 'sed_model_string' in the lammp.in.template input file
     # script template with the name of the KIM Model being used.  Also replace
     # the string 'sed_initial_lattice_constant_string' with the value supplied
@@ -87,17 +99,17 @@ LammpsExample__TD_567444853524_000
     thisdir=`dirname "$0"` # The directory of this Test Driver executable
     sed s/sed_model_string/"$modelname"/ ""$thisdir"/lammps.in.template" > output/lammps.in
     sed -i "s/sed_initial_lattice_constant_string/$initial_lattice_constant/" output/lammps.in
-    
+
     # Run LAMMPS using the lammps.in input file and write the output to lammps.log
     lammps < output/lammps.in > output/lammps.log
-    
+
     # Parse the LAMMPS output log and extract the final pressure (to indicate how converged it is to 0),
     # cohesive energy, and equilibrium lattice constant.
     numberoflines=`awk 'END{print NR}' output/lammps.log`
     finalpressure=`awk "NR==$numberoflines-2" output/lammps.log | awk '{print $(NF-1)}'`
     ecohesive=`awk "NR==$numberoflines-1" output/lammps.log | awk '{print $(NF-1)}'`
     latticeconstant=`awk "NR==$numberoflines" output/lammps.log | awk '{print $(NF-1)}'`
-    
+
     # Check that the results we obtained are actually numbers (in case there was a LAMMPS error of some sort)
     if ! [[ $finalpressure =~ ^[0-9.e-]+ ]] ; then
         echo "Error: Final pressure parsed from LAMMPS log is not a numeric value.  Check the LAMMPS log for errors.  Exiting..."
@@ -110,34 +122,38 @@ LammpsExample__TD_567444853524_000
     elif ! [[ $latticeconstant =~ ^[0-9.e-]+ ]] ; then
         echo "Error: Equilibrium lattice constant parsed from LAMMPS log is not a numeric value.  Check the LAMMPS log for errors.  Exiting..."
         echoerr "Error: Equilibrium lattice constant parsed from LAMMPS log is not a numeric value.  Check the LAMMPS log for errors.  Exiting..."
-    exit 1
+        exit 1
     fi
-    
-    # Create a JSON dictionary of the Test Results.  This will be used to parse through the results.yaml.tpl Jinja template
-    # found in the directories of Tests which are derived from this Test Driver (e.g. LammpsExample__TE_565333229701_000)
-    thisdir=`dirname "$0"`
-    JSONresults="{ \"latticeconstant\": \"$latticeconstant\", \"cohesiveenergy\": \"$ecohesive\", \"finalpressure\": \"$finalpressure\" }"
-    
-    # Print the JSON dictionary of results as the *last* line of stdout for the pipeline to catch
-    echo "$JSONresults"
 
-We begin by reading the Model name and the initial lattice constant from stdin.  The instantiations of these are contained in the :ref:`example1_TE_stdin` file of the Test itself.  The Model name and initial lattice constant are then used to replace the corresponding placeholder strings in :ref:`example1_TD_lammpstemplate` to create a functioning LAMMPS input script, ``lammps.in``, in the Test Result directory (``output/``).  LAMMPS is then called using ``lammps.in`` as an input script and the resulting output is redirected to a file named ``lammps.log`` in the Test Result directory.  After the quantities of interest in the LAMMPS log file are parsed, a JSON dictionary containing the results is created and printed as the last line of stdout.  Note that the "keys" (variable names)  contained in this JSON dictionary, i.e. "latticeconstant", "cohesiveenergy", and "finalpressure", can be chosen arbitrarily so long as they correspond to the variable names in the template that is used by the Test to report its results (:ref:`example1_TE_results`).   Moreover, note that the name of this file must be the extended KIM ID of the Test Driver.
+    #JSONresults="{ \"latticeconstant\": \"$latticeconstant\", \"cohesiveenergy\": \"$ecohesive\", \"finalpressure\": \"$finalpressure\" }"
+    sed "s/_LATCONST_/${latticeconstant}/" ""$thisdir"/results.edn.tpl" > output/results.edn
+    sed -i "s/_ECOHESIVE_/${ecohesive}/" output/results.edn
+    sed -i "s/_PFINAL_/${finalpressure}/" output/results.edn
 
+We begin by reading the Model name and the initial lattice constant from stdin.  The instantiations of these are contained in the :ref:`example1_TE_stdin` file of the Test itself.  The Model name and initial lattice constant are then used to replace the corresponding placeholder strings in :ref:`example1_TD_lammpstemplate` to create a functioning LAMMPS input script, ``lammps.in``, in the Test Result directory (``output/``).  LAMMPS is then called using ``lammps.in`` as an input script and the resulting output is redirected to a file named ``lammps.log`` in the Test Result directory.  After the quantities of interest in the LAMMPS log file are parsed, ``sed`` is used to replace the relevant placeholder strings in :ref:`example1_TD_resultstemplate` and yield a file named ``results.edn`` in the Test Result directory.
+
+This executable of a Test Driver must always be named ``runner``.
 .. _example1_TD_kimspec:
 
-kimspec.yaml
-^^^^^^^^^^^^
-This YAML-formatted file contains metadata associated with the Test Driver.  More information on these files can be found `here <https://kim-items.openkim.org/kimspec-format>`_. This file must always be named ``kimspec.yaml``.
+kimspec.edn
+^^^^^^^^^^^
+This `edn`-formatted file contains metadata associated with the Test Driver.  More information on these files can be found `here <https://kim-items.openkim.org/kimspec-format>`_. This file must always be named ``kimspec.edn``.
 
-.. code-block:: yaml
+.. code-block:: javascript
 
-    extended-id: LammpsExample__TD_567444853524_000
-    title: "LammpsExample: compute cohesive energy and equilibrium lattice constant of fcc Argon."
-    description: "This example Test Driver illustrates the use of LAMMPS in the openkim-pipeline to compute the equilibrium lattice spacing
-       and cohesive energy of fcc Argon using Polak-Ribiere conjugate gradient minimization in LAMMPS and an initial guess at the equilibrium
-       lattice spacing supplied by the user through pipeline.stdin.tpl."
-    notes: "Submitted by Daniel S. Karls (karl0100 |AT| umn DOT edu), University of Minnesota."
-    domain: openkim.org
+    {
+      "description" "This example Test Driver illustrates the use of LAMMPS in the openkim-pipeline
+    to compute the equilibrium lattice spacing and cohesive energy of fcc Argon using
+    Polak-Ribiere conjugate gradient minimization in LAMMPS and an initial guess at
+    the equilibrium lattice spacing supplied by the user through pipeline.stdin.tpl."
+      "domain" "openkim.org"
+      "executables" [ "runner" ]
+      "extended-id" "LammpsExample__TD_567444853524_001"
+      "kim-api-version" "1.6"
+      "title" "LammpsExample: cohesive energy and equilibrium lattice constant of fcc Argon"
+      "pipeline-api-version" "1.0"
+      "properties" ["tag:staff@noreply.openkim.org,2014-04-15:property/cohesive-potential-energy-cubic-crystal"]
+    }
 
 .. _example1_TD_makefile:
 
@@ -155,15 +171,17 @@ As there is no need to compile :ref:`example1_TD_exec` since it is a bash script
 
 lammps.in.template
 ^^^^^^^^^^^^^^^^^^
-This file is processed by :ref:`example1_TD_exec` using the 'sed' command line utility and the information entered on stdin through :ref:`example1_TE_stdin`.  The processed file is then written to the final LAMMPS input script which is run (``lammps.in`` in the Test Result directory). Note that when using a KIM Model within LAMMPS, the appropriate LAMMPS 'pair_style' to use is `pair_style kim <http://lammps.sandia.gov/doc/pair_kim.html>`_. ::
+This file is processed by :ref:`example1_TD_exec` using the 'sed' command line utility and the information entered on stdin through :ref:`example1_TE_stdin`.  The processed file is then written to the final LAMMPS input script which is run (``lammps.in`` in the Test Result directory). Note that when using a KIM Model within LAMMPS, the appropriate LAMMPS 'pair_style' to use is `pair_style kim <http://lammps.sandia.gov/doc/pair_kim.html>`_.
+
+::
 
     # Define unit set and class of atomic model
     units metal
     atom_style atomic
-    
+
     # Periodic boundary conditions along all three dimensions
     boundary p p p
-    
+
     # Create an FCC lattice with the lattice spacing supplied supplied by the user
     # using a single conventional (orthogonal) unit cell
     lattice fcc sed_initial_lattice_constant_string
@@ -171,45 +189,96 @@ This file is processed by :ref:`example1_TD_exec` using the 'sed' command line u
     create_box 1 box
     create_atoms 1 box
     mass 1 39.948
-    
+
     # Specify which KIM Model to use, letting LAMMPS compute the virial/pressure
     pair_style kim LAMMPSvirial sed_model_string
     pair_coeff * * Ar
-    
+
     # Set what thermodynamic information to print to log
     thermo_style custom step atoms xlo xhi ylo yhi zlo zhi pe press pxx pyy pzz pxy pxz pyz
     thermo 10 # Print every 10 timesteps
-    
+
     # Set what information to write to dump file
     dump id all custom 10 output/lammps.dump id type x y z fx fy fz
     dump_modify id format "%d %d %16.7f %16.7f %16.7f %16.7f %16.7f %16.7f"
-    
+
     # Set boundary conditions to be stress-free
     fix 1 all box/relax iso 0.0
-    
+
     # Perform static minimization using the Polack-Ribiere conjugate gradient method.
     # The first argument is a convergence tolerance for the energy, the second argument
     # is a convergence tolerance for the forces, and the latter two arguments set the
     # maximum number of allowed iterations and force/energy evaluations, respectively.
     minimize 1e-16 1e-16 2000 100000
-    
+
     # Define auxiliary variables to contain cohesive energy and equilibrium lattice constant
     variable poteng    equal "c_thermo_pe"
     variable natoms    equal "count(all)"
     variable ecohesive equal "-v_poteng/v_natoms"
     variable pressure  equal "c_thermo_press"
     variable a         equal "lx"
-    
+
     # Output cohesive energy and equilibrium lattice constant
     print "Final pressure = ${pressure} bar"
     print "Cohesive energy = ${ecohesive} eV/atom"
     print "Equilibrium lattice constant = ${a} angstrom"
 
+
 Neither the contents nor name of this file are standardized within the pipeline, but instead are left up to the Test writer.
+
+.. _example1_TD_results_template:
+
+results.edn.tpl
+^^^^^^^^^^^^^^^
+This file is not standardized as part of KIM, but rather just a template created for the convenience of Tests which use this Test Driver.  However, note that however you choose to generate your results (whether via a template or printing them directly), your Test must eventually produce a valid `edn` document named ``results.edn`` which conforms to the `KIM Properties Framework`_.
+
+::
+
+    {
+      "property-id" "tag:staff@noreply.openkim.org,2014-04-15:property/cohesive-potential-energy-cubic-crystal"
+      "instance-id" 1
+      "short-name" {
+        "source-value" [ "fcc Argon" ]
+      }
+      "species" {
+        "source-value" [
+          "Ar"
+          "Ar"
+          "Ar"
+          "Ar"
+        ]
+      }
+      "a" {
+        "source-value" _LATCONST_
+        "source-unit" "angstrom"
+      }
+      "basis-atom-coordinates" {
+        "source-value" [
+          [   0    0    0 ]
+          [   0  0.5  0.5 ]
+          [ 0.5    0  0.5 ]
+          [ 0.5  0.5    0 ]
+        ]
+      }
+      "space-group" {
+        "source-value" "Fm-3m"
+      }
+      "wyckoff-multiplicity-and-letter" {
+        "source-value" [ "4a" ]
+      }
+      "wyckoff-coordinates" {
+        "source-value" [ [ 0 0 0 ] ]
+      }
+      "cohesive-potential-energy" {
+        "source-value" _ECOHESIVE_
+        "source-unit" "eV"
+      }
+    }
+
 
 .. _example1_TE_ref:
 
-Test 
+Test
 --------
 Next, we inspect a Test which uses the above Test Driver.  In this case, this Test corresponds to one particular initial guess at the lattice constant, 5.3 Angstroms.
 
@@ -224,8 +293,8 @@ List of files
     * :ref:`example1_TE_makefile` - a Makefile
     * :ref:`example1_TE_stdin` - a Jinja template file used to provide input on stdin
     * :ref:`example1_TE_results` - a Jinja template file used to report the results of the Test
-    * ``README.txt`` - a file which contains a basic explanation of the Test 
-    * ``LICENSE.CDDL`` - a copy of the `CDDL license <http://opensource.org/licenses/CDDL-1.0>`_ 
+    * ``README.txt`` - a file which contains a basic explanation of the Test
+    * ``LICENSE.CDDL`` - a copy of the `CDDL license <http://opensource.org/licenses/CDDL-1.0>`_
 
 .. _example1_TE_exec:
 
@@ -240,11 +309,11 @@ In the case where a Test uses a Test Driver, the contents of its executable file
     from subprocess import Popen, PIPE
     from StringIO import StringIO
     import fileinput
-    
+
     inp = fileinput.input()
     exe = next(inp).strip()
     args = "".join([line for line in inp])
-    
+
     try:
         proc = Popen(exe, stdin=PIPE, stdout=sys.stdout,
                 stderr=sys.stderr, shell=True)
@@ -269,17 +338,17 @@ The .kim descriptor file outlines the operational parameters of the Test, includ
     Unit_charge      := e
     Unit_temperature := K
     Unit_time        := ps
-    
+
     SUPPORTED_ATOM/PARTICLES_TYPES:
     Ar spec 18
-    
+
     CONVENTIONS:
     ZeroBasedLists    flag
     Neigh_BothAccess  flag
     NEIGH_PURE_H      flag
     NEIGH_PURE_F      flag
     NEIGH_RVEC_F      flag
-    
+
     MODEL_INPUT:
     numberOfParticles            integer  none    []
     numberParticleTypes          integer  none    []
@@ -288,7 +357,7 @@ The .kim descriptor file outlines the operational parameters of the Test, includ
     numberContributingParticles  integer  none    []
     get_neigh                    method   none    []
     neighObject                  pointer  none    []
-    
+
     MODEL_OUTPUT:
     compute  method  none    []
     destroy  method  none    []
@@ -339,7 +408,7 @@ Here, we begin by specifying the path of the Test Driver.  We then use ``@< MODE
     @< MODELNAME >@
     5.3
 
-This file must always be named ``pipeline.stdin.tpl``.  Further explanation of these files can be found :ref:`here <pipelineindocs>`. 
+This file must always be named ``pipeline.stdin.tpl``.  Further explanation of these files can be found :ref:`here <pipelineindocs>`.
 
 .. _example1_TE_results:
 
@@ -439,7 +508,7 @@ This Jinja template file is used by the Test to report its results.  Separate do
         source-unit: K
         source-value: 0
       pressure:
-        source-unit: bar 
+        source-unit: bar
         source-value: @<finalpressure>@
     kim-namespace: tag:staff@noreply.openkim.org,2013-08-03:property/cohesive-energy
 
@@ -469,7 +538,7 @@ which yields as output something similar to the following::
     2014-01-28 20:08:38,150 - INFO - pipeline.compute - Copying the contents of /home/openkim/openkim-repository/te/LammpsExample_runningf96016a1-8857-11e3-8596-4005d10d911c__TE_565333229701_000/output to /home/openkim/openkim-repository/tr/f96016a1-8857-11e3-8596-4005d10d911c
 
 In this case, the last line of the output indicates that the results of the calculation have been copied to ``/home/openkim/openkim-repository/tr/f96016a1-8857-11e3-8596-4005d10d911c/``.  Examining ``pipeline.stdout``, we can see the JSON dictionary printed by the Test Driver::
-    
+
     Please enter a KIM Model name:
     Please enter an initial lattice constant (Angstroms):
     { "latticeconstant": "5.24859000000002", "cohesiveenergy": "0.0865055077405508", "finalpressure": "-1.44622588926135" }
@@ -627,7 +696,7 @@ Test Driver
 ---------------
 This Test Driver is constructed to compute a cohesive energy versus lattice constant "curve" for a cubic lattice of a given species.  The lattice constants for which the cohesive energy is computed are specified by a set of parameters given by the user.
 
-.. _example2_TD_listoffiles: 
+.. _example2_TD_listoffiles:
 
 List of files
 ^^^^^^^^^^^^^
@@ -648,19 +717,19 @@ LammpsExample2__TD_887699523131_000
 .. code-block:: bash
 
     #!/usr/bin/env bash
-    
+
     # Author: Daniel S. Karls (karl0100 |AT| umn DOT edu), University of Minnesota
     # Date: 9/13/2013
-    
+
     # This example Test Driver illustrates the use of LAMMPS in the openkim-pipeline to compute a cohesive energy versus lattice constant curve
     # for a given cubic lattice (fcc, bcc, sc, diamond) of a single given species.  The curve is computed for lattice constants ranging from a_min
     # to a_max, with most samples being about a_0 (a_min, a_max, and a_0 are specified via stdin. a_0 is typically approximately equal to the equilibrium
     # lattice constant.).  The precise scaling of sample points going from a_min to a_0 and from a_0 to a_max is specified by two separate parameters
     # passed from stdin.
-    
+
     # Define function which prints to stderr
     echoerr() { echo "$@" 1>&2; }
-    
+
     # Read the KIM Model name from stdin (this is passed through pipeline.stdin.tpl using the @< MODELNAME >@, which the pipeline will automatically fill
     # in once a compatible Model is found). Also pass the species, atomic mass (in g/mol), type of cubic lattice (bcc, fcc, sc, or diamond), a_0, a_min,
     # number of sample spacings between a_min and a_0, a_max, number of sample spacings between a_0 and a_max, and the two parameters governing the
@@ -689,7 +758,7 @@ LammpsExample2__TD_887699523131_000
     read samplespacing_lower
     echo "Please enter a value of the "upper sample spacing parameter" (see README.txt for more details):"
     read samplespacing_upper
-    
+
     # Check that lattice constants are positive and that a_min < a_0 < a_max
     a_mincheck=`echo $a_min | awk '{if($1 <= 0.0) print "Not positive"} {}'`
     if [ "$a_mincheck" == "Not positive" ]; then
@@ -697,21 +766,21 @@ LammpsExample2__TD_887699523131_000
     echoerr "Error: a_min read in must be a positive number.  Exiting..."
     exit 1
     fi
-    
+
     a_0check=`echo $a_0 $a_min | awk '{if($1 <= $2) print "Not greater than a_min"}'`
     if [ "$a_0check" == "Not greater than a_min" ]; then
     echo "Error: a_0 read in must be strictly greater than a_min.  Exiting..."
     echoerr "Error: a_0 read in must be strictly greater than a_min.  Exiting..."
     exit 1
     fi
-    
+
     a_maxcheck=`echo $a_max $a_0 | awk '{if($1 <= $2) print "Not greater than a_0"}'`
     if [ "$a_maxcheck" == "Not greater than a_0" ]; then
     echo "Error: a_max read in must be strictly greater than a_0.  Exiting..."
     echoerr "Error: a_max read in must be strictly greater than a_0.  Exiting..."
     exit 1
     fi
-    
+
     # Check that the number of spacings are positive
     N_lowercheck=`echo $N_lower | awk '{if($1 <= 0) print "Not positive"}'`
     if [ "$N_lowercheck" == "Not positive" ]; then
@@ -719,14 +788,14 @@ LammpsExample2__TD_887699523131_000
     echoerr "Error: N_lower read in must be a positive number.  Exiting..."
     exit 1
     fi
-    
+
     N_uppercheck=`echo $N_upper | awk '{if($1 <= 0) print "Not positive"}'`
     if [ "$N_uppercheck" == "Not positive" ]; then
     echo "Error: N_upper read in must be a positive number.  Exiting..."
     echoerr "Error: N_upper read in must be a positive number.  Exiting..."
     exit 1
     fi
-    
+
     # Check that samplespacing parameters are > 1
     spacingparamcheck=`echo $samplespacing_lower $samplespacing_upper | awk '{if($1 <= 1.0 && $2 <=1.0) print 1; else if($1 <= 1.0) print 2; else if($2 <= 1.0) print 3; else print 4}'`
     if [ "$spacingparamcheck" == 1 ]; then
@@ -742,7 +811,7 @@ LammpsExample2__TD_887699523131_000
     echoerr "Error: upper sample spacing parameter must be strictly greater than 1.  Exiting."
     exit 1
     fi
-    
+
     # Identify which of the cubic lattice types (bcc,fcc,sc,diamond) the user entered (case-insensitive).
     if [ `echo $latticetypeinput | tr [:upper:] [:lower:]` = `echo bcc | tr [:upper:] [:lower:]`  ]; then
     latticetype="bcc"
@@ -765,13 +834,13 @@ LammpsExample2__TD_887699523131_000
     echoerr "Error: This Test supports only cubic lattices (specified by 'bcc', 'fcc', 'sc', or 'diamond'). Exiting..."
     exit 1
     fi
-    
+
     # Define which lattice constants at which the energy will be computed.  See README.txt for more details.
     latticeconst=`echo $a_0 $a_min $N_lower $a_max $N_upper $samplespacing_lower $samplespacing_upper | awk '{for (i=0;i<=$3;++i){printf "%f ",$2+($1-$2)*log(1+i*($6-1)/$3)/log($6)}}\
     {for (i=$5-1;i>=0;--i){printf "%f ",$1+($4-$1)*(1-log(1+i*($7-1)/$5)/log($7))}}'`
     read -a lattice_const <<< "$latticeconst"
     numberofspacings=`expr $N_lower + $N_upper + 1`
-    
+
     # Replace placeholder strings in the lammp.in.template input file script template.  The resulting
     # lammps input file (lammps.in)  will be stored in the Test Result folder (which may be referenced
     # as the 'output' directory).
@@ -782,18 +851,18 @@ LammpsExample2__TD_887699523131_000
     sed -i "s/sed_latticetype_string/$latticetype/" output/lammps.in
     sed -i "s/sed_numberofspacings_string/$numberofspacings/" output/lammps.in
     sed -i "s/sed_latticeconst_string/$latticeconst/" output/lammps.in
-    
+
     # Run LAMMPS using the lammps.in input file and write to lammps.log
     lammps -in output/lammps.in > output/lammps.log
-    
+
     # Parse LAMMPS output log and extract the cohesive energies corresponding to each lattice spacing into an array
     read -a cohesive_energy <<< `grep "Cohesive energy = [0-9.e-]* eV/atom" output/lammps.log | cut -d' ' -f4 | sed ':a;N;$!ba;s/\n/ /g'`
-    
+
     # Build a JSON dictionary of results.  This will be used to parse through the results.yaml.tpl Jinja template found in the directories of Tests which are
     # derived from this Test Driver (e.g. LammpsExample2_fcc_Ar__TE_778998786610_000).
     JSONresults="{ \"crystal_structure\": \"$latticetype\",  \"element\": \"$element\", \"wyckoff_code\": \"$wyckoffcode\", \"space_group\": \"$space_group\",\
      \"numberofspacings\": \"$numberofspacings\", \"latticeconstantarray\": ["
-    
+
     for ((i=1; i<=$numberofspacings;++i))
     do
     j=`expr $i - 1`
@@ -802,9 +871,9 @@ LammpsExample2__TD_887699523131_000
         JSONresults="$JSONresults,"
     fi
     done
-    
+
     JSONresults="$JSONresults], \"cohesiveenergyarray\": ["
-    
+
     for ((i=1; i<=$numberofspacings;++i))
     do
     j=`expr $i - 1`
@@ -820,9 +889,9 @@ LammpsExample2__TD_887699523131_000
         JSONresults="$JSONresults,"
     fi
     done
-    
+
     JSONresults="$JSONresults]}"
-    
+
     # Print the JSON dictionary of results as the *last* line of stdout for the pipeline to catch.
     echo "$JSONresults"
 
@@ -835,7 +904,7 @@ The LAMMPS input script for this example utilizes the `next <http://lammps.sandi
 kimspec.yaml
 ^^^^^^^^^^^^
 This YAML-formatted file contains metadata associated with the Test Driver. More information on these files can be found `here <https://kim-items.openkim.org/kimspec-format>`_.  This file must always be named ``kimspec.yaml``.
- 
+
 .. code-block:: yaml
 
     extended-id: LammpsExample2__TD_887699523131_000
@@ -857,7 +926,7 @@ As there is no need to compile :ref:`example2_TD_exec`, the Makefile is unintere
 
     all:
                 @echo "Nothing to make"
-    
+
     clean:
                 @echo "Nothing to clean"
 
@@ -870,14 +939,14 @@ This file is processed by :ref:`example2_TD_exec` using the 'sed' command line u
     # Define looping variables
     variable loopcount loop sed_numberofspacings_string
     variable latticeconst index sed_latticeconst_string
-    
+
     # Define unit set and class of atomic model
     units metal
     atom_style atomic
-    
+
     # Periodic boundary conditions along all three dimensions
     boundary p p p
-    
+
     # Create an FCC lattice with a spacing specified by the user (referred to as "a_0" in
     # README.txt) using a single conventional (orthogonal) unit cell
     lattice sed_latticetype_string ${latticeconst}
@@ -885,30 +954,30 @@ This file is processed by :ref:`example2_TD_exec` using the 'sed' command line u
     create_box 1 box
     create_atoms 1 box
     mass 1 sed_mass_string
-    
+
     # Specify which KIM Model to use
     pair_style kim LAMMPSvirial sed_model_string
     pair_coeff * * sed_species_string
-    
+
     # Set what thermodynamic information to print to log
     thermo_style custom step atoms xlo xhi ylo yhi zlo zhi pe press pxx pyy pzz pxy pxz pyz
     thermo 10 # Print every 10 steps
-    
+
     # Set what information to write to dump file
     dump id all custom 10 output/lammps.dump id type x y z fx fy fz
     dump_modify id format "%d %d %16.7f %16.7f %16.7f %16.7f %16.7f %16.7f"
-    
+
     # Compute the energy and forces for this lattice spacing
     run 0
-    
+
     # Define auxiliary variables to contain cohesive energy and equilibrium lattice constant
     variable poteng    equal "c_thermo_pe"
     variable natoms    equal "count(all)"
     variable ecohesive equal "v_poteng/v_natoms"
-    
+
     # Output cohesive energy and equilibrium lattice constant
     print "Cohesive energy = ${ecohesive} eV/atom"
-    
+
     # Queue next loop
     clear # Clear existing atoms, variables, and allocated memory
     next latticeconst # Increment latticeconst to next value
@@ -931,7 +1000,7 @@ List of files
     * :ref:`example2_TE_stdin` - a Jinja template file to provide input on stdin
     * :ref:`example2_TE_results` - a Jinja template file for the results
     * ``README.txt`` - a file which contains a basic explanation of the Test
-    * ``LICENSE.CDDL`` - a copy of the `CDDL license <http://opensource.org/licenses/CDDL-1.0>`_ 
+    * ``LICENSE.CDDL`` - a copy of the `CDDL license <http://opensource.org/licenses/CDDL-1.0>`_
 
 .. _example2_TE_exec:
 
@@ -944,11 +1013,11 @@ As mentioned in Example 1, the contents of a Test's executable file can be a cop
     from subprocess import Popen, PIPE
     from StringIO import StringIO
     import fileinput
-    
+
     inp = fileinput.input()
     exe = next(inp).strip()
     args = "".join([line for line in inp])
-    
+
     try:
         proc = Popen(exe, stdin=PIPE, stdout=sys.stdout,
                 stderr=sys.stderr, shell=True)
@@ -971,17 +1040,17 @@ As always, the .kim descriptor file outlines the essential details of a Test, in
     Unit_charge      := e
     Unit_temperature := K
     Unit_time        := ps
-    
+
     SUPPORTED_ATOM/PARTICLES_TYPES:
     Si spec 14
-    
+
     CONVENTIONS:
     ZeroBasedLists    flag
     Neigh_BothAccess  flag
     NEIGH_PURE_H      flag
     NEIGH_PURE_F      flag
     NEIGH_RVEC_F      flag
-    
+
     MODEL_INPUT:
     numberOfParticles            integer  none    []
     numberParticleTypes          integer  none    []
@@ -990,7 +1059,7 @@ As always, the .kim descriptor file outlines the essential details of a Test, in
     numberContributingParticles  integer  none    []
     get_neigh                    method   none    []
     neighObject                  pointer  none    []
-    
+
     MODEL_OUTPUT:
     compute  method  none    []
     destroy  method  none    []
@@ -1026,7 +1095,7 @@ As there is no need to compile :ref:`example2_TE_exec`, the Makefile is unintere
 
     all:
                 @echo "Nothing to make"
-    
+
     clean:
                 @echo "Nothing to clean"
 
@@ -1109,13 +1178,13 @@ This Jinja template is used to report the results of the Test.  In this case, a 
           source-unit: 1
         set-or-measured: set
         species: @<element>@
-    
+
     nvt:
       kim-namespace: tag:staff@noreply.openkim.org,2013-08-03:primitive/equilibrium-ensemble-nvt
       temperature:
         source-value: 0
         source-unit: K
-    
+
     cohesive-energy:
       kim-namespace: tag:staff@noreply.openkim.org,2013-08-03:primitive/cohesive-energy
       source-unit: eV
@@ -1124,7 +1193,7 @@ This Jinja template is used to report the results of the Test.  In this case, a 
       - @<ecoh.cohesive_energy>@
     @[ endfor ]@
       table-info: cohesiveenergyversuslatticeconstant
-    
+
     table-info:
       cohesiveenergyversuslatticeconstant:
         dim: 1
@@ -1134,7 +1203,7 @@ This Jinja template is used to report the results of the Test.  In this case, a 
         n-fields: 2
         shape:
         - @<numberofspacings>@
-    
+
     kim-namespace: tag:staff@noreply.openkim.org,2013-08-03:property/cohesive-energy-relation
 
 Here, we see the use of ``for`` loops in the template which cycle over elements in the ``latticeconstantarray`` and ``cohesiveenergyarray`` entries output by :ref:`example2_TD_exec`.  The actual "curve" of cohesive energy versus lattice constant is defined using the ``table-info`` key.  In this case, ``table-info`` is listed alongside the array of values for ``a`` under the ``crystal-structure`` primitive and alongside the array of values under the ``cohesive-energy`` primitive.  The ``table-info`` entry at the bottom of the file tells the pipeline how to construct the "table," i.e. the pairing of the array of lattice constants with the array of cohesive energies.  Each of the ``n-fields`` arrays of length ``shape`` consists of ``dim``-dimensional data.  The values of each array are assumed to correspond in sequence, e.g. the the first element of the lattice constant array is paired with the first entry of the cohesive energy array, and so on.
@@ -1582,3 +1651,5 @@ Finally, the ``results.yaml`` file looks like::
 
 .. note:: Another Test derived from this Test Driver, LammpsExample2_fcc_Ar__TE_778998786610_000, can be found in the source archive of these example Tests.
 .. note:: The ``testgenie`` utility included on the OpenKIM Virtual Machine was used to generate the Tests LammpsExample2_diamond_Si__TE_837477125670_000 and LammpsExample2_fcc_Ar__TE_778998786610_000.  This utility operates using a file named ``test_generator.json`` in the Test Driver directory and the template files found in ``test_template/``.  To generate these two Tests, enter the LammpsExample2__TD_887699523131_000 directory and issue, for example, the command ``testgenie --destination ~/openkim-repository/te/ LammpsExample2__TD_887699523131_000``.  For more information on ``testgenie``, enter the command ``testgenie --h``.
+
+.. _KIM Properties Framework: https://openkim.org/properties-framework/
