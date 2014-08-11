@@ -7,6 +7,7 @@ import os
 import shutil
 import glob
 import uuid
+import subprocess
 
 import kimquery
 import database
@@ -17,6 +18,7 @@ from config import *
 from config import __pipeline_version__
 from logger import logging
 logger = logging.getLogger("kimitems")
+join = os.path.join
 
 def build_query(args):
     q = {}
@@ -73,7 +75,7 @@ def search(args):
     return out
 
 def local_search(pack):
-    hits = glob.glob(os.path.join(KIM_REPOSITORY_DIR, "??", pack))
+    hits = glob.glob(join(KIM_REPOSITORY_DIR, "??", pack))
     if len(hits) > 0:
         return hits[0]
     else:
@@ -100,8 +102,8 @@ def install(obj):
 
     try:
         name, leader, num, version = database.parse_kim_code(obj)
-        leader_dir = os.path.join(KIM_REPOSITORY_DIR, leader.lower())
-        install_dir = os.path.join(leader_dir, obj)
+        leader_dir = join(KIM_REPOSITORY_DIR, leader.lower())
+        install_dir = join(leader_dir, obj)
         tar = tarfile.open(fn)
 
         if not os.path.exists(install_dir):
@@ -118,12 +120,7 @@ def install(obj):
 
 def action_build():
     print "Building all packages..."
-    try:
-        kimapi.make_all()
-    except:
-        from compute import tail, MAKE_LOG
-        print "Build failed."
-        print tail(MAKE_LOG)
+    kimapi.make_all()
 
 def action_install(args, dobuild=False):
     results = search(args)

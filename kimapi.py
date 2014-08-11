@@ -11,6 +11,7 @@ logger = logging.getLogger("pipeline").getChild("kimapi")
 from subprocess import check_output, check_call
 from contextlib import contextmanager
 from packaging import version
+from functools import partial
 
 #======================================
 # API build utilities
@@ -18,15 +19,17 @@ from packaging import version
 MAKE_LOG = os.path.join(KIM_LOG_DIR, "make.log")
 
 @contextmanager
-def in_api_dir():
+def in_dir(path):
     cwd = os.getcwd()
-    os.chdir(KIM_API_DIR)
+    os.chdir(path)
     try:
         yield
     except Exception as e:
         raise e
     finally:
         os.chdir(cwd)
+
+in_api_dir = partial(in_dir, path=KIM_API_DIR)
 
 def make_config():
     with open(os.path.join(KIM_REPOSITORY_DIR, "md", "Makefile.KIM_Config"), 'w') as f:
@@ -36,11 +39,7 @@ def make_config():
 
 def make_all():
     logger.debug("Building everything...")
-    with in_api_dir():
-        with open(MAKE_LOG, "a") as log:
-            check_call(["make", "clean"], stdout=log, stderr=log)
-            check_call(["make"], stdout=log, stderr=log)
-
+    make_api()
     make_config()
 
     import kimobjects
