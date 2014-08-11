@@ -39,8 +39,8 @@ def make_config():
 
 def make_all():
     logger.debug("Building everything...")
-    make_api()
     make_config()
+    make_api()
 
     import kimobjects
     for o in kimobjects.TestDriver.all():
@@ -54,6 +54,7 @@ def make_all():
 
 def make_api():
     logger.debug("Building the API...")
+    make_config()
     with in_api_dir():
         with open(MAKE_LOG, "a") as log:
             check_call(["make", "kim-api-clean"], stdout=log, stderr=log)

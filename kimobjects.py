@@ -259,7 +259,7 @@ class KIMObject(simplejson.JSONEncoder):
                 with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
                     logger.debug("Attempting to make %r: %r", self.__class__.__name__, self.kim_code)
                     try:
-                        subprocess.check_call('make', stdout=log, stderr=log)
+                        subprocess.check_call(['make'], stdout=log, stderr=log)
                     except Exception as e:
                         raise subprocess.CalledProcessError("Could not build %r" % self, e)
         else:
