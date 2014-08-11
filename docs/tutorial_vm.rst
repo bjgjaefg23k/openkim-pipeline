@@ -16,6 +16,7 @@ After booting the VM and logging in, you will find yourself in a bash shell with
     ├── bin - contains binaries necessary to build and run Tests (lammps, make, etc)
     ├── builds - contains several auxiliary packages used by the pipeline (openkim-kimcalculator-ase, openkim-python, etc)
     ├── kim-api - contains the source code of the KIM API
+    ├── kim-api-install - contains the compiled and installed KIM API and its utilities
     ├── openkim-pipeline - contains the pipeline code
     │   ├── logs - where the pipeline logs live
     │   └── tools - various command line tools to help with the development process
@@ -40,9 +41,12 @@ Of particular interest are the tools listed in ``~/openkim-pipeline/tools``, whi
 + ``pipeline_verifyresult`` - run property verification checks on a test result
 + ``testgenie`` - creates a set of Tests from a template - this is typically used when creating many Tests that use a Test Driver
 
+To learn more about these tools and their options, you can read their help text by executing them with a ``--help`` flag.
+
 Additionally, it should be known that bash completions have been added so that you should be able to tab-complete on any of the KIM items you have in your local repository (i.e. all items contained in ``~/openkim-repository/`` on your VM) on the command line.
 
-Finally, the executables in ``~/bin/`` are also on ``PATH``.  This includes ``makekim``, which will attempt to build all of the KIM items in your entire local repository.
+Finally, the executables in ``~/bin/`` are also on ``PATH``.
+.. This includes ``makekim``, which will attempt to build all of the KIM items in your entire local repository.
 
 
 Local Repository
@@ -111,7 +115,7 @@ Having obtained a Model and its corresponding Model Driver, we'll also want to d
 Building Content
 ~~~~~~~~~~~~~~~~
 
-Now that we've downloaded a Test and Model to run, we need to compile them.  This can be accomplished by issuing the ``makekim`` command from any directory, which will attempt to compile all of the Models, Model Drivers, Tests, and Test Drivers under ``~/openkim-repository/``.  If you're only looking to compile or recompile a small subset of your local repository, you can do so by manually navigating to the directory of each KIM Item and issuing the ``make`` command (preceeded by ``make clean`` in the case of recompilation).  In the case of our example, this would amount to the following:
+Now that we've downloaded a Test and Model to run, we need to compile them.  This can be accomplished by issuing the ``kimitems build`` command from any directory, which will attempt to compile all of the Models, Model Drivers, Tests, and Test Drivers under ``~/openkim-repository/``.  If you're only looking to compile or recompile a small subset of your local repository, you can do so by manually navigating to the directory of each KIM Item and issuing the ``make`` command (preceeded by ``make clean`` in the case of recompilation).  In the case of our example, this would amount to the following:
 
 .. code-block:: bash
 
@@ -122,12 +126,12 @@ Now that we've downloaded a Test and Model to run, we need to compile them.  Thi
 
 .. warning::
 
-    When manually compiling/recompiling Models which a Model Driver or Tests which use a Test Driver, you'll want to make sure that you first compile or recompile the relevant Model Driver or Test Driver **before** you compile/recompile the individual Models or Tests, respectively.
+    When manually compiling/recompiling Models which a Model Driver or Tests which use a Test Driver, it is good practice to first compile or recompile the relevant Model Driver or Test Driver **before** you compile/recompile the individual Models or Tests, respectively.
 
-If for some reason you encounter compilation problems that you don't believe are specifically related to a KIM Item, try rebuilding the KIM API itself on your VM by entering
+.. If for some reason you encounter compilation problems that you don't believe are specifically related to a KIM Item, try rebuilding the KIM API itself on your VM by entering
 
-.. code-block:: bash
-
+..
+  code-block:: bash
     cd ~/kim-api/KIM_API && make clean
     cd .. && make kim-api
 
