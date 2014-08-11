@@ -48,6 +48,7 @@ def build_query(args):
 def build_query_driver(args):
     q = build_query(args)
     q['project'] = ["driver._id"]
+    q['fields'] = {"driver._id": 1}
     return q
 
 def search(args):

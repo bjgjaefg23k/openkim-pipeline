@@ -46,12 +46,12 @@ logger = logging.getLogger("pipeline").getChild("dependencies")
 import json
 from collections import Iterable
 
-def result_isrunning(test, model):
+def result_inqueue(test, model):
     query = {"database": "job", "test": str(test), "model": str(model),
              "project": ["tube"], "limit": 1}
 
     tube = kimquery.query(query, decode=True)
-    return len(tube) > 0 and tube != 'results'
+    return len(tube) > 0
 
 def result_exists(test, model):
     query = {"project": ["uuid"], "database": "obj", "query":
@@ -88,7 +88,7 @@ def get_run_list(target, depth=0, tree=False, display=False):
                     # there are results that need be collected, wait for them
                     satisfied = False
 
-                    if not result_isrunning(tmp_te, tmp_mo):
+                    if not result_inqueue(tmp_te, tmp_mo):
                         # they are not on the queue, let's get around to run
                         for dep in get_run_list((tmp_te, tmp_mo),
                                         depth=depth+1, display=display):
