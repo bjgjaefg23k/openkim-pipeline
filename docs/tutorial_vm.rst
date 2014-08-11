@@ -208,29 +208,29 @@ The Test has the following layout:
     ├── results.edn.tpl
     └── runner
 
-+ ``runner`` (REQUIRED) is the Test executable. The executable of all Tests and Test
++ ``runner`` is the Test executable. The executable of all Tests and Test
   Drivers must always share this name.  In this example, this file
   simply reads the Test Driver and input parameters from stdin and executes
   the Test Driver with those inputs.
-+ ``descriptor.kim`` (REQUIRED) is the KIM descriptor file of the Test, as described
++ ``descriptor.kim`` is the KIM descriptor file of the Test, as described
   in `~/kim-api/DOCS/standard.kim`_.  This file tells the KIM API about
   the operational parameters of our Test, such as which atomic species and
   neighbor list methods the it supports.  This information is used to determine
   whether a given Model is compatible with this Test (i.e. can be run with it). The
   name of this file for a Test must always be ``descriptor.kim``.
-+ ``pipeline.stdin.tpl`` (REQUIRED) this is the file that the pipeline will use
++ ``pipeline.stdin.tpl`` this is the file that the pipeline will use
   as a template to form what will actually be passed into the Test’s
   executable at runtime.
-+ ``kimspec.edn`` (REQUIRED) this file includes metadata about the Test such as its Extended KIM ID and that of its Test Driver, which
++ ``kimspec.edn`` this file includes metadata about the Test such as its Extended KIM ID and that of its Test Driver, which
   atomic species it supports, and which version of the pipeline it was designed for.
-+ ``results.edn.tpl`` (OPTIONAL) this specific Test happens to use its own template file to generate
++ ``results.edn.tpl`` this specific Test happens to use its own template file to generate
   the ``results.edn`` Property Instance file we saw in the Test Result folder.  However, the Test
   may generate ``results.edn`` in any way it likes, including writing it line-by-line.  It should
   be emphasized, however, that every Test must eventually output a valid ``edn`` Property Instance named
   ``results.edn``.
-+ ``LICENSE.CDDL`` (OPTIONAL) in this case, the Test conforms to the Creative Development and
++ ``LICENSE.CDDL`` in this case, the Test conforms to the Creative Development and
   Distribution License (CDDL), so it includes the standard CDDL license file.
-+ ``Makefile`` (OPTIONAL) this file is included here, but simply includes messages indicating that
++ ``Makefile`` this file is included here, but simply includes messages indicating that
   the Test doesn't need to be compiled, since it is a python executable. It could
   just as well have been omitted.
 
@@ -265,19 +265,19 @@ There, we find the following:
 
 Inside are the following:
 
-+ ``runner`` (REQUIRED) As with the Test, this is the main executable of the
++ ``runner`` As with the Test, this is the main executable of the
   Test Driver and must be named ``runner``.  This Test Driver consists of a python
   script which makes use of the OpenKIM `ASE`_ interface to compute the lattice constant
   for a given Model and cubic material by minimizing its energy.
-+ ``kimspec.edn`` (REQUIRED) metadata for the Test Driver, as for the Test.
-+ ``LICENSE.CDDL`` (OPTIONAL) in this case, the Test conforms to the Creative Development and
++ ``kimspec.edn`` metadata for the Test Driver, as for the Test.
++ ``LICENSE.CDDL`` in this case, the Test conforms to the Creative Development and
   Distribution License (CDDL), so it includes the standard CDDL license file.
-+ ``Makefile`` (OPTIONAL) this file is included here, but simply includes messages indicating that
++ ``Makefile`` this file is included here, but simply includes messages indicating that
   the Test doesn't need to be compiled, since it is a python executable. It could
   just as well have been ommitted.
-+ ``test_generator.json`` (OPTIONAL) used by ``testgenie`` to create Tests for this Test Driver
++ ``test_generator.json`` used by ``testgenie`` to create Tests for this Test Driver
   from a template
-+ ``test_template`` (OPTIONAL) The contents of this folder serve as a template which ``testgenie``
++ ``test_template`` The contents of this folder serve as a template which ``testgenie``
   uses to create a large number of Tests which use this Test Driver, including the Test above.
   See below for more information on ``testgenie``.
 
