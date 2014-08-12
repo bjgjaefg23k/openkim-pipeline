@@ -71,7 +71,7 @@ class KIMObject(simplejson.JSONEncoder):
     #whether or not objects of this type are makeable
     makeable = False
 
-    def __init__(self,kim_code,search=True,subdir=None,strict=False):
+    def __init__(self,kim_code,search=True,subdir=None):
         """ Initialize a KIMObject given the kim_code, where partial kim codes are promoted if possible,
             if search is False, then don't look for existing ones
 
@@ -90,21 +90,9 @@ class KIMObject(simplejson.JSONEncoder):
                     /home/openkim/openkim-repository/{mo,md,te...}/KIM_CODE/KIM_CODE
                     can provide the folder of
                     /home/openkim/openkim-repository/{mo,md,te...}/SUBDIR/KIM_CODE
-                strict (bool)
-                    Allow non-standard kimcode names to go through the kimobjects interface
-                    If True, then allowed, otherwise only allow strict KIM IDs
         """
         logger.debug("Initializing a new KIMObject: %r", kim_code)
-        self.isdebugid = False
-
-        try:
-            name, leader, num, version = database.parse_kim_code(kim_code)
-        except InvalidKIMID as e:
-            if not strict:
-                name, leader, num, version = database.get_debug_extended_id(kim_code)
-                self.isdebugid = True
-            else:
-                raise e
+        name, leader, num, version = database.parse_kim_code(kim_code)
 
         # test to see if we have the right leader
         if self.required_leader:
@@ -116,7 +104,7 @@ class KIMObject(simplejson.JSONEncoder):
         self.kim_code_number = num
         self.kim_code_version = version
 
-        if not search or self.isdebugid:
+        if not search:
             self.kim_code = kim_code
         #if we were given everything, we are good to go
         elif name and leader and num and version:
@@ -141,12 +129,8 @@ class KIMObject(simplejson.JSONEncoder):
             self.kim_code_version = version
             self.kim_code = database.format_kim_code(name,leader,num,version)
 
-        if not self.isdebugid:
-            self.kim_code_id = database.strip_name(self.kim_code)
-            self.kim_code_short = database.strip_version(self.kim_code)
-        else:
-            self.kim_code_id = self.kim_code_number
-            self.kim_code_short = self.kim_code
+        self.kim_code_id = database.strip_name(self.kim_code)
+        self.kim_code_short = database.strip_version(self.kim_code)
         self.parent_dir = os.path.join(KIM_REPOSITORY_DIR, self.kim_code_leader.lower())
         if subdir is not None:
             self.path = os.path.join(self.parent_dir, subdir)
@@ -679,15 +663,9 @@ code_to_model = {"TE": Test, "MO": Model, "TD": TestDriver,
     "TV": TestVerification, "MV": ModelVerification,
      "MD": ModelDriver }
 
-def kim_obj(kim_code, strict=False, *args, **kwargs):
+def kim_obj(kim_code, *args, **kwargs):
     """ Just given a kim_code try to make the right object, i.e. try to make a TE code a Test, etc. """
-    try:
-        name,leader,num,version = database.parse_kim_code(kim_code)
-    except InvalidKIMID as e:
-        if not strict:
-            leader = database.get_leader_by_search(kim_code)
-        else:
-            raise e
+    name,leader,num,version = database.parse_kim_code(kim_code)
     cls = code_to_model.get(leader, KIMObject)
     return cls(kim_code, *args, **kwargs)
 

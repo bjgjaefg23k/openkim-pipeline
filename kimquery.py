@@ -3,9 +3,18 @@ import urllib2
 import itertools
 from config import PipelineQueryError
 import json
+import os
+
+def prepare_dns():
+    resolv = "/etc/resolv.conf"
+    dnsline = "nameserver 127.0.0.1"
+    if not open(resolv).read().startswith(dnsline):
+        os.system("sudo sed -i '1i"+dnsline+"' "+resolv)
 
 def query_datomic(querydata, queryrules="", keys=None):
     # set up the globals for how to interact with the website
+    prepare_dns()
+
     url = 'http://openkim.org:3000/api/query'
     user_agent = "OpenKIM Pipeline (http://pipeline.openkim.org/)"
     header = {'User-Agent' : user_agent, "Content-type": "application/x-www-form-urlencoded"}
@@ -34,6 +43,8 @@ def query_datomic(querydata, queryrules="", keys=None):
 
 def query_mongo(query, url="", decode=False):
     # set up the globals for how to interact with the website
+    prepare_dns()
+
     url = url or 'https://query.openkim.org/api'
     user_agent = "OpenKIM Pipeline (http://pipeline.openkim.org/)"
     header = {'User-Agent' : user_agent, "Content-type": "application/x-www-form-urlencoded"}
@@ -56,6 +67,8 @@ def query_mongo(query, url="", decode=False):
     return answer
 
 def query_property_validator(filename, url=""):
+    prepare_dns()
+
     url = url or "http://pipeline.openkim.org:5005/"
     user_agent = "OpenKIM Pipeline (http://pipeline.openkim.org/)"
     header = {'User-Agent' : user_agent, "Content-type": "application/x-www-form-urlencoded"}
