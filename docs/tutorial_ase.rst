@@ -10,7 +10,7 @@ have a look at the documentation for :ref:`desctests`.
 
 For this example, we have adopted the descriptive KIM short name of
 ASECohesiveEnergyFromQuery_fcc_Ar and have been provided with the KIM code
-TE_102111117114_000.  
+TE_102111117114.  
 
 .. _ase_listoffiles: 
 
@@ -124,14 +124,14 @@ This file contains meta-data which makes it a valid KIM test in the
 OpenKIM repository.  In our case, it look like::
 
     {
-        "extended-id" "ASECohesiveEnergyFromQueryExample_fcc_Ar__TE_102111117114_000" 
+        "extended-id" "ASECohesiveEnergyFromQueryExample_fcc_Ar__TE_102111117114_001" 
         "domain" "openkim.org" 
         "title" "ASE cohesive energy test example" 
         "species" ["Ar"]
         "executables" ["runner"]
         "disclaimer" "Tutorial test using the Atomic Simulation Environment which calculates the cohesive energy"
         "resources" "mp-none"
-        "kim-api-version" "1.5"
+        "kim-api-version" "1.6"
         "pipeline-api-version" "1.0"
         "properties" ["tag:staff@noreply.openkim.org,2014-04-15:property/cohesive-potential-energy-cubic-crystal"]
     }
@@ -228,10 +228,10 @@ Testing everything
 -------------------
 
 Checkout the full source code in this :download:`archive
-<./ASECohesiveEnergyFromQuery_fcc_Ar__TE_102111117114_000.tar.gz>` or use the
+<./ASECohesiveEnergyFromQueryExample_fcc_Ar__TE_102111117114_001.tar.gz>` or use the
 ``kimitems`` utility to install it from the command line by::
 
-    kimitems install ASECohesiveEnergyFromQueryExample_fcc_Ar__TE_102111117114_000
+    kimitems install ASECohesiveEnergyFromQueryExample_fcc_Ar__TE_102111117114_001
 
 If you directly downloaded the source, to use, place in the folder
 ``~/openkim-repository/te``.  We can then test out our new test using the tools
@@ -240,7 +240,7 @@ other Linux utilities.
 
 To run every possible combination involving the test::
 
-    pipeline_runmatches ASECohesiveEnergyFromQuery_fcc_Ar__TE_102111117114_000
+    pipeline_runmatches ASECohesiveEnergyFromQueryExample_fcc_Ar__TE_102111117114_001
 
 or if you want to try only one run with a specific model, run::
 
