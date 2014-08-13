@@ -20,12 +20,17 @@ from logger import logging
 logger = logging.getLogger("kimitems")
 join = os.path.join
 
+def unique(seq):
+    seen = set()
+    return [x for x in seq if x not in seen and not seen.add(x)]
+
 def build_query(args):
     q = {}
     q['query'] = {}
 
     q['project'] = ["_id"]
     q['fields'] = {"_id": 1}
+    q['sort'] = [["_id",1]]
 
     if args['type']:
         q['query'].update({'type': args['type']})
@@ -51,6 +56,7 @@ def build_query_driver(args):
     q = build_query(args)
     q['project'] = ["driver._id"]
     q['fields'] = {"driver._id": 1}
+    q['sort'] = [["driver._id",1]]
     return q
 
 def search(args):
@@ -58,11 +64,11 @@ def search(args):
     s1, s2 = [], []
 
     q1 = build_query(args)
-    s1 = json.loads(kimquery.query(q1, url=apiurl))
+    s1 = kimquery.query(q1, url=apiurl, decode=True)
 
     if args['drivers']:
         q2 = build_query_driver(args)
-        s2 = json.loads(kimquery.query(q2, url=apiurl))
+        s2 = unique(kimquery.query(q2, url=apiurl, decode=True))
 
     s1 = [s1] if not isinstance(s1, list) else s1
     s2 = [s2] if not isinstance(s2, list) else s2
@@ -82,6 +88,7 @@ def local_search(pack):
         return None
 
 def download(obj, tmp=False, compression='gz'):
+    print "Downloading %s ..." % obj
     url = _global_url+"/archive"
     ext = {"gz": ".tar.gz", "bz2": ".tar.bz2"}
            #"zip": ".zip", "tar": ".tar"}
@@ -97,32 +104,38 @@ def download(obj, tmp=False, compression='gz'):
     urllib.urlretrieve(url+"?"+data, outname)
     return os.path.abspath(outname)
 
-def install(obj):
+def install(obj, force=False):
+    name, leader, num, version = database.parse_kim_code(obj)
+    leader_dir = join(KIM_REPOSITORY_DIR, leader.lower())
+    install_dir = join(leader_dir, obj)
+
+    if os.path.exists(install_dir) and not force:
+        print "%s already exists, skipping" % install_dir
+        return
+
     fn = download(obj, tmp=True)
+    tar = tarfile.open(fn)
 
-    try:
-        name, leader, num, version = database.parse_kim_code(obj)
-        leader_dir = join(KIM_REPOSITORY_DIR, leader.lower())
-        install_dir = join(leader_dir, obj)
-        tar = tarfile.open(fn)
+    if os.path.exists(install_dir):
+        print "%s already exists, replacing" % install_dir
+        shutil.rmtree(install_dir)
 
-        if not os.path.exists(install_dir):
-            os.makedirs(install_dir)
-            tar.extractall(path=leader_dir)
-            tar.close()
-        else:
-            print "%s already exists, skipping" % install_dir
+    print "Installing %s ..." % obj
+    tar.extractall(path=leader_dir)
 
-        os.remove(fn)
+    tar.close()
+    os.remove(fn)
 
-    except Exception as e:
-        pass
+def build_obj(o):
+    print "Building %s ..." % o
+    obj = kimobjects.kim_obj(o)
+    obj.make()
 
 def action_build():
     print "Building all packages..."
     kimapi.make_all()
 
-def action_install(args, dobuild=False):
+def action_install(args, dobuild=True):
     results = search(args)
     if len(results) > 30:
         print "You are about to download %r kim objects." % len(results),
@@ -133,17 +146,13 @@ def action_install(args, dobuild=False):
             return
 
     for s in results:
-        print "Installing %s ..." % s
-        install(s)
+        install(s, args['force'])
 
         if dobuild:
-            print "Building %s ..." % s
-            obj = kimobjects.kim_obj(s)
-            obj.make()
+            build_obj(s)
 
 def action_download(args):
     for s in search(args):
-        print "Downloading %s ..." % s
         download(s, compression=args.get('compression'))
 
 def action_search(args):
@@ -219,8 +228,10 @@ if __name__ == "__main__":
     parse_remove.set_defaults(action='remove')
 
     # custom actions for each particular action
-    parse_install.add_argument("-m", "--make", action='store_true',
-        help="build the installed packages immediately")
+    parse_install.add_argument("-s", "--skip-build", action='store_true',
+        help="do not build the installed packages immediately")
+    parse_install.add_argument("-f", "--force", action='store_true',
+        help="force download and install even if objects already exist")
 
     parse_download.add_argument("-c", "--compression", type=str, default='gz',
             help="type of compression to use (gz, bz2)", metavar='')
@@ -239,7 +250,7 @@ if __name__ == "__main__":
     if args.get('action') == "build":
         action_build()
     if args.get('action') == "install":
-        action_install( args, args['make'] )
+        action_install( args, not args['skip_build'] )
     if args.get('action') == "download":
         action_download( args )
     if args.get('action') == "search":
