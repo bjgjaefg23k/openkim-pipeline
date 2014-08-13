@@ -3,7 +3,7 @@ Example test - ASE
 
 Here, we describe a very basic test using the Atomic Simulation Environment
 (ASE) and Python binding for the OpenKIM API.  In this test, we gather the Ar
-body center cubic lattice constant from the OpenKIM database.  Using this
+face center cubic lattice constant from the OpenKIM database.  Using this
 lattice constant, we set up a single atom unit cell and calculate it's energy,
 reporting it as the cohesive energy.  For a general overview on test format,
 have a look at the documentation for :ref:`desctests`.  
@@ -70,7 +70,7 @@ The script is short enough that we should take a look at it here::
     output = Template("""
     [{
         "property-id" "tag:staff@noreply.openkim.org,2014-04-15:property/cohesive-potential-energy-cubic-crystal"
-        "instance-id" 0
+        "instance-id" 1
         "short-name" {
             "source-value"  ["fcc"]
         }
@@ -251,7 +251,7 @@ Installing ASE Interface Locally
 --------------------------------
 
 If you do not wish to develop on the virtual machine, you can also install the 
-OpenKIM KIMCalculator onto your local machine.
+OpenKIM ASE KIMCalculator onto your local machine.
 
 OpenKIM currently maintains an unofficial interface to the Atomic Simulation
 Environment (ASE) through a Python module called `kimcalculator`.  This module
@@ -262,7 +262,7 @@ repositories hosted on github.  On standard \*nix environments, this can be done
 
     git clone https://github.com/woosong/openkim-python.git
     cd openkim-python
-    [sudo] KIM_DIR=<path_to_KIM_API> python setupy.py install [--prefix=<path>]
+    [sudo] python setupy.py install [--prefix=<path>]
 
     git clone https://github.com/mattbierbaum/openkim-kimcalculator-ase.git
     cd openkim-kimcalculator-ase 
