@@ -136,6 +136,7 @@ def install(obj, force=False):
 
 def build_obj(o):
     print "Building %s ..." % o
+    kimapi.make_api()
     obj = kimobjects.kim_obj(o)
     obj.make()
 

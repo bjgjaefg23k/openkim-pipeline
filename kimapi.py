@@ -44,7 +44,7 @@ def make_clean():
     with in_api_dir():
         with open(MAKE_LOG, 'a') as log:
             try:
-                check_call(["make", "cleaner"], stdout=log, stderr=log)
+                check_call(["make", "clean"], stdout=log, stderr=log)
             except CalledProcessError as e:
                 raise cf.KIMBuildError("Could not `make clean` for KIM API")
 
@@ -69,7 +69,7 @@ def make_api():
     with in_api_dir():
         with open(MAKE_LOG, "a") as log:
             try:
-                check_call(["make", "aconfig"], stdout=log, stderr=log)
+                check_call(["make", "config"], stdout=log, stderr=log)
                 check_call(["make", "kim-api-libs"], stdout=log, stderr=log)
             except CalledProcessError as e:
                 raise cf.KIMBuildError("Could not build kim-api-libs, check %s" % MAKE_LOG)
