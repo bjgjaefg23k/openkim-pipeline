@@ -7,6 +7,7 @@ import os
 import shutil
 import glob
 import uuid
+import subprocess
 
 import kimquery
 import database
@@ -14,19 +15,25 @@ import kimapi
 import kimobjects
 
 from config import *
+from config import __pipeline_version__
 from logger import logging
 logger = logging.getLogger("kimitems")
+join = os.path.join
+
+def unique(seq):
+    seen = set()
+    return [x for x in seq if x not in seen and not seen.add(x)]
 
 def build_query(args):
     q = {}
     q['query'] = {}
 
+    q['project'] = ["_id"]
+    q['fields'] = {"_id": 1}
+    q['sort'] = [["_id",1]]
+
     if args['type']:
-        q['project'] = ["kimcode"]
         q['query'].update({'type': args['type']})
-    else:
-        q['fields'] = {"_id": 1}
-        q['project'] = ["_id"]
 
     if args['version']:
         q['query'].update({"version": args['version']})
@@ -41,92 +48,119 @@ def build_query(args):
 
     if args['action'] == 'search' and args['info']:
         q.pop('project')
-
-    if args.get('debug'):
-        print "Arguments: \n", args, "\n"
-        print "Query: \n", q 
-        sys.exit(0)
+        q.pop('fields')
 
     return q
 
-def search(query):
-    s = json.loads(kimquery.query(query))
-    if not isinstance(s, list):
-        s = [s]
-    return s
+def build_query_driver(args):
+    q = build_query(args)
+    q['project'] = ["driver._id"]
+    q['fields'] = {"driver._id": 1}
+    q['sort'] = [["driver._id",1]]
+    return q
+
+def search(args):
+    apiurl = _global_url+"/api"
+    s1, s2 = [], []
+
+    q1 = build_query(args)
+    s1 = kimquery.query(q1, url=apiurl, decode=True)
+
+    if args['drivers']:
+        q2 = build_query_driver(args)
+        s2 = unique(kimquery.query(q2, url=apiurl, decode=True))
+
+    s1 = [s1] if not isinstance(s1, list) else s1
+    s2 = [s2] if not isinstance(s2, list) else s2
+    out = s2+s1
+
+    if not out:
+        print "No objects found matching your query"
+        sys.exit(0)
+
+    if len(out) > 30:
+        print "Your search returned %r kim items." % len(out),
+        print "Do you want to continue? [y/N]?",
+        ans = raw_input()
+        if ans.lower() != 'y':
+            print "Exiting..."
+            sys.exit(0)
+
+    return out
 
 def local_search(pack):
-    hits = glob.glob(os.path.join(KIM_REPOSITORY_DIR, "??", pack))
+    hits = glob.glob(join(KIM_REPOSITORY_DIR, "??", pack))
     if len(hits) > 0:
         return hits[0]
     else:
         return None
 
-def download(obj, tmp=False):
-    outname = obj+".tar.gz"
+def download(obj, tmp=False, compression='gz'):
+    print "Downloading %s ..." % obj
+    url = _global_url+"/archive"
+    ext = {"gz": ".tar.gz", "bz2": ".tar.bz2"}
+           #"zip": ".zip", "tar": ".tar"}
+
+    if compression not in ext:
+        print "Please choose on of %r" % ext.keys()
+        sys.exit(0)
+
+    outname = obj+ext[compression]
     if tmp:
         outname = 'tmp'+uuid.uuid1().get_hex()+outname
-    url = "https://query.openkim.org/archive"
-    data = urllib.urlencode({"kimid": obj, "compression": "gz"})
+    data = urllib.urlencode({"kimid": obj, "compression": compression})
     urllib.urlretrieve(url+"?"+data, outname)
     return os.path.abspath(outname)
 
-def install(obj):
+def install(obj, force=False):
+    name, leader, num, version = database.parse_kim_code(obj)
+    leader_dir = join(KIM_REPOSITORY_DIR, leader.lower())
+    install_dir = join(leader_dir, obj)
+
+    if os.path.exists(install_dir) and not force:
+        print "%s already exists, skipping" % install_dir
+        return
+
     fn = download(obj, tmp=True)
+    tar = tarfile.open(fn)
 
-    try:
-        name, leader, num, version = database.parse_kim_code(obj)
-        leader_dir = os.path.join(KIM_REPOSITORY_DIR, leader.lower())
-        install_dir = os.path.join(leader_dir, obj)
-        tar = tarfile.open(fn)
+    if os.path.exists(install_dir):
+        print "%s already exists, replacing" % install_dir
+        shutil.rmtree(install_dir)
 
-        if not os.path.exists(install_dir):
-            os.makedirs(install_dir)
-            tar.extractall(path=leader_dir)
-            tar.close()
-        else:
-            print "%s already exists, skipping" % install_dir
+    print "Installing %s ..." % obj
+    tar.extractall(path=leader_dir)
 
-        os.remove(fn)
+    tar.close()
+    os.remove(fn)
 
-    except Exception as e:
-        pass
+def build_obj(o):
+    print "Building %s ..." % o
+    kimapi.make_api()
+    obj = kimobjects.kim_obj(o)
+    obj.make()
 
+#========================================================
+# these are the main actions that can be run
+# args are interpreted starting in these functions
+#========================================================
 def action_build():
     print "Building all packages..."
-    try:
-        kimapi.make_all()
-    except:
-        from compute import tail, MAKE_LOG
-        print "Build failed."
-        print tail(MAKE_LOG)
+    kimapi.make_all()
 
-def action_install(query, dobuild=False):
-    results = search(query)
-    if len(results) > 30:
-        print "You are about to download %r kim objects." % len(results),
-        print "Do you want to continue? [y/N]?",
-        ans = raw_input()
-        if ans.lower() != 'y':
-            print "Exiting..."
-            return
-
-    for s in results:
-        print "Installing %s ..." % s
-        install(s)
+def action_install(args, dobuild=True):
+    for s in search(args):
+        install(s, args['force'])
 
         if dobuild:
-            print "Building %s ..." % s
-            obj = kimobjects.kim_obj(s)
-            obj.make()
+            build_obj(s)
 
-def action_download(query):
-    for s in search(query):
-        print "Downloading %s ..." % s
-        download(s)
+def action_download(args):
+    for s in search(args):
+        download(s, compression=args.get('compression'))
 
-def action_search(query):
-    for s in search(query):
+def action_search(args):
+    for s in search(args):
         if isinstance(s, basestring):
             print s
         else:
@@ -142,15 +176,23 @@ def action_remove(args):
         else:
             print "KIM object not found: %s" % s
 
+#========================================================
+# main : argparse and interpreting user interaction
+#========================================================
 if __name__ == "__main__":
+    _global_url = 'https://query.openkim.org'
+    _global_url_debug = 'http://query.openkim.org:8081'
+
     import argparse
     parser = argparse.ArgumentParser(description=
         """Interface to the openkim.org kim-items packages.  Navigate,
         download and install tests and models from the main repository
-        without login credentials or pipeline priviledges"""
+        without login credentials or pipeline priviledges""",
+        version="Pipeline version "+__pipeline_version__
     )
     sub = parser.add_subparsers()
 
+    # shared arguments between most of the actions
     shared = argparse.ArgumentParser(add_help=False)
     shared.add_argument("-t", "--type", type=str, default='',
         help="""KIM object type shortname two letter codes. \n
@@ -158,18 +200,23 @@ if __name__ == "__main__":
             md = model driver, rd = reference data
             vt = verification test, vm = verification model
             tr = test result, vr = verification result
-        """, metavar=''
+        """
     )
-    shared.add_argument("-v", "--version", type=str, default='',
-        help="specify the version of the packages, else latest only", metavar='')
     shared.add_argument("-d", "--desc", type=str, default='',
-        help="filter by search terms in the object description", metavar='')
+        help="filter by search terms in the object description")
+    shared.add_argument("-v", "--version", type=str, default='', metavar='',
+        help="specify the version of the packages, else latest only")
+    shared.add_argument("-D", "--drivers", action='store_true',
+        help="""include item's drivers as well
+                (return in search / install / download / etc)""")
     shared.add_argument("-g", "--debug", action='store_true',
-        help="show the query and quit for debug purposes")
+        help="query and download from the debug pipeline")
     shared.add_argument("search-term", type=str, nargs='?',
-        help="Search terms to narrow down search results. Regex accepted"
+        help="""Search terms to narrow down search results. Regex accepted
+        including special characters $.^[]."""
     )
 
+    # the sub actions that can be performed
     parse_build = sub.add_parser(name='build',
         help="build the current KIM packages using the API")
     parse_download = sub.add_parser(name='download', parents=[shared],
@@ -187,28 +234,34 @@ if __name__ == "__main__":
     parse_search.set_defaults(action='search')
     parse_remove.set_defaults(action='remove')
 
-    parse_install.add_argument("-m", "--make", action='store_true',
-        help="build the installed packages immediately")
+    # custom actions for each particular action
+    parse_install.add_argument("-s", "--skip-build", action='store_true',
+        help="do not build the installed packages immediately")
+    parse_install.add_argument("-f", "--force", action='store_true',
+        help="force download and install even if objects already exist")
+
+    parse_download.add_argument("-c", "--compression", type=str, default='gz',
+            help="type of compression to use (gz, bz2)", metavar='')
+
     parse_search.add_argument("-i", "--info", action='store_true',
         help="show verbose information about the packages found")
+
     parse_remove.add_argument("packages", type=str, nargs='*',
         help="Packages to remove. Must be full name, no regex.")
-    parse_remove.add_argument("-d", "--debug", action='store_true',
-        help="show the query and quit for debug purposes")
 
     args = vars(parser.parse_args())
+
+    if args.get("debug"):
+        _global_url = _global_url_debug
 
     if args.get('action') == "build":
         action_build()
     if args.get('action') == "install":
-        query = build_query(args)
-        action_install( query, args['make'] )
+        action_install( args, not args['skip_build'] )
     if args.get('action') == "download":
-        query = build_query(args)
-        action_download( query )
+        action_download( args )
     if args.get('action') == "search":
-        query = build_query(args)
-        action_search( query )
+        action_search( args )
     if args.get('action') == "remove":
         action_remove( args )
 

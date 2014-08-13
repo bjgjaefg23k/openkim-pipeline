@@ -13,9 +13,9 @@ parser.add_argument('--version','-v', action='version',
         version='%(prog)s {}'.format(kimunits.VERSION))
 
 method_group = parser.add_mutually_exclusive_group()
-method_group.add_argument('--udunits2', action='store_true', help="Force udunits2 command line version [default]")
+method_group.add_argument('--units',  action='store_true', help="Force units version [default]")
+method_group.add_argument('--udunits2', action='store_true', help="Force udunits2 command line version")
 method_group.add_argument('--cfunits',  action='store_true', help="Force cfunits-python version")
-method_group.add_argument('--units',  action='store_true', help="Force units version")
 
 parser.add_argument('--no-unit', action='store_true', default=False, help="Supress printing of units and just give number")
 
@@ -30,7 +30,7 @@ elif args['units']:
 else:
     convert = kimunits.convert
 
-result = convert(args['source-value'], args['source-unit'], args['dest-unit'])
+result = convert(float(args['source-value']), args['source-unit'], args['dest-unit'])
 
 if args['no_unit']:
     print str(result[0])

@@ -6,9 +6,12 @@ As well as parsing and handling kim_codes
 Currently these calls mostly glob on the database, could be replaced by something more elegant later
 
 """
-from config import *
-import re, os, glob, operator
+import re
+import os
+import glob
+import operator
 
+import config as cf
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("database")
 
@@ -19,28 +22,33 @@ logger = logging.getLogger("pipeline").getChild("database")
 RE_KIMID    = r"(?:([_a-zA-Z][_a-zA-Z0-9]*?)__)?([A-Z]{2})_([0-9]{12})(?:_([0-9]{3}))?"
 RE_UUID     = r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"
 
+LEADERS_OBJS = ["mo", "md", "te", "td", "tv", "mv"]
+LEADERS_DATA = ["tr", "vr", "rd", "er"]
+
 def parse_kim_code(kim_code):
     """ Parse a kim code into it's pieces,
         returns a tuple (name,leader,num,version) """
-    try:
-        logger.debug("attempting to parse %r",kim_code)
-        return re.match(RE_KIMID,kim_code).groups()
-    except AttributeError:
-        try:
-            logger.debug("attempting to parse uuid %r", kim_code)
-            return re.match(RE_UUID, kim_code).groups()
-        except AttributeError:
-            logger.error("Invalid KIMID on %r", kim_code)
-            raise InvalidKIMID, "{}: is not a valid KIMID".format(kim_code)
+    rekimcode = re.match(RE_KIMID, kim_code)
+    reuuid = re.match(RE_UUID, kim_code)
+
+    if rekimcode:
+        return rekimcode.groups()
+    elif reuuid:
+        return reuuid.groups()
+    else:
+        raise InvalidKIMID, "{}: is not a valid KIMID or UUID".format(kim_code)
 
 def isuuid(kimcode):
-    return len(parse_kim_code(kimcode)) == 1
+    return re.match(RE_UUID, kimcode) is not None
+
+def iskimcode(kimcode):
+    return re.match(RE_KIMID, kimcode) is not None
 
 def kim_code_finder(name,leader,num,version):
     """ Do a glob to look for possible matches
         returns a list of possible matches, where the matches are kim_codes """
     logger.debug("looking up kim_code for (%r,%r,%r,%r)", name,leader,num,version)
-    start_path = os.path.join(KIM_REPOSITORY_DIR,leader.lower())
+    start_path = os.path.join(cf.KIM_REPOSITORY_DIR,leader.lower())
     name = name
     version = version or '*'
     kim_code = format_kim_code(name,leader,num,version)
@@ -53,9 +61,8 @@ def kim_code_finder(name,leader,num,version):
     if len(short_possibilities) == 0:
         #none found
         logger.error("Failed to find any matches for %r", kim_code)
-        raise PipelineSearchError, "Failed to find any matches for {}".format(kim_code)
+        raise cf.PipelineSearchError, "Failed to find any matches for {}".format(kim_code)
     return short_possibilities
-
 
 def look_for_name(leader,num,version):
     """ Look for a name given the other pieces of a kim code,
@@ -69,7 +76,7 @@ def look_for_name(leader,num,version):
         return name
     #must be multiple possibilities
     logger.error("Found multiple names for %r", partial)
-    raise PipelineTemplateError, "Found multiple matches for {}".format(partial)
+    raise cf.PipelineTemplateError, "Found multiple matches for {}".format(partial)
 
 def get_latest_version(name,leader,num):
     """ Get the latest version of the kim code in the database,
@@ -97,6 +104,17 @@ def get_leader(kimcode):
     except:
         return None
 
+def get_leader_by_search(kimcode):
+    for lead in LEADERS_OBJS+LEADERS_DATA:
+        if len(glob.glob(os.path.join(cf.KIM_REPOSITORY_DIR, lead, kimcode))):
+            return lead.upper()
+    return None
+
+def get_debug_extended_id(kimcode):
+    import random
+    return ( kimcode, get_leader_by_search(kimcode),
+        "%012d" % random.randint(0,1e11), "000" )
+
 def format_kim_code(name,leader,num,version):
     """ Format a kim code into its proper form, assuming the form
         
@@ -116,13 +134,17 @@ def format_kim_code(name,leader,num,version):
 def uuid_type(uuid):
     tries = ['tr', 'vr', 'er']
     for leader in tries:
-        if os.path.exists(os.path.join(RSYNC_LOCAL_ROOT, leader, uuid)):
+        if os.path.exists(os.path.join(cf.RSYNC_LOCAL_ROOT, leader, uuid)):
             return leader
     return None
 
 def strip_version(kimcode):
     name, leader, num, version = parse_kim_code(kimcode)
     return "{}__{}_{}".format(name, leader, num)
+
+def strip_name(kimcode):
+    name, leader, num, version = parse_kim_code(kimcode)
+    return "{}_{}_{}".format(leader, num, version)
 
 #--------------------------------
 # some list generators 

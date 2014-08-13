@@ -1,32 +1,36 @@
 """
 Holds the templating logic for the kim preprocessor
 
-The simple markup language as the following directives:
+We utilize jinja2 templating to expose certain functions to the templating
+functionality of the pipeline.  As of this version, the following functions
+are available
 
-    * @FILE[filename] - if used in the output of a test, tells the pipeline
-        to move the corresponding file
-    * @MODELNAME - replaced by the pipeline with the running model's kimid, for use
-        in the pipeline.in file so the test can execute the appropriate model
-    * @PATH[kim_code] - for use in pipeline.in gives the path of the corresponding kim_code;
+    * query(query) - run a general API query to query.openkim.org for any information
+        including test results or reference data.  See query.openkim.org for
+        information on formatting these queries
+    * MODELNAME - a global variable which represents the current model coupling
+        for this particular test run
+    * TESTNAME - the current runing testname, similar to MODELNAME
+    * path(kim_code) - gives the path of the corresponding kim_code;
         the executable if its a test or a test driver, and the folder otherwise
-    * @DATA[string] - gives the data string returned by the query string
+    * convert(value, srcunit, dstunit) - convert a floating point value from
+        one unit to another
+    * asedata - the dictionary of reference data contained within ASE
 """
-import re
 import os
-import shutil
-
 import ase.data
-import jinja2, json, yaml, clj
+import jinja2
+import json
+import clj
 from functools import partial
 
 from kimquery import query
 from kimunits import convert
 import database
 import kimobjects
-from config import *
+import config as cf
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("template")
-
 
 #-----------------------------------------
 # New Template functions
@@ -52,8 +56,7 @@ def stripversion(kim):
     newtup = ( kimtup.name, kimtup.leader, kimtup.num, None)
     return database.format_kim_code( *newtup )
 
-#custom yaml,json dump
-yamldump = partial(yaml.dump, default_flow_style=False, explicit_start=True)
+#custom json dump
 jsondump = partial(json.dumps, indent=4)
 edndump  = partial(clj.dumps)
 
@@ -74,7 +77,6 @@ template_environment = jinja2.Environment(
 template_environment.filters.update(
         {
             "json": jsondump,
-            "yaml": yamldump,
             "edn":  edndump,
             "stripversion": stripversion,
             "latestversion": latestversion,
@@ -92,14 +94,14 @@ template_environment.globals.update(
             "formatkimcode": database.format_kim_code,
         })
 
-def process(inppath, model, test, modelonly=False, outfile=TEMP_INPUT_FILE):
+def process(inppath, model, test, modelonly=False, outfile=cf.TEMP_INPUT_FILE):
     """ Takes in a path (relative to test directory)
     and writes a processed copy to TEMP_INPUT_FILE """
     logger.debug("attempting to process %r for (%r,%r)", inppath, test.kim_code, model.kim_code)
 
     with test.in_dir():
-        if not os.path.exists(OUTPUT_DIR):
-            os.makedirs(OUTPUT_DIR)
+        if not os.path.exists(cf.OUTPUT_DIR):
+            os.makedirs(cf.OUTPUT_DIR)
 
         template = template_environment.get_template(inppath)
         extrainfo = {

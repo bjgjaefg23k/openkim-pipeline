@@ -11,11 +11,22 @@ and this module is imported in star from at the top of all of the scripts::
 """
 import os
 import re
+import clj
+import json
+from functools import partial
 
-__version__ = ".".join(map(str, (1, 0)))
-#__release__ = "".join([__version__, "+", githash])
-#    info['setuphash'] = Popen("cd "+CONF["PIPELINEDIR"]+"; git log -n 1 | grep commit | sed s/commit\ //", 
-#        stdout=PIPE, shell=True).communicate()[0]
+def tostr(cls):
+    return ".".join(map(str, cls))
+
+_pipeline_version_clauses = (1,0,0)
+_kim_api_version_clauses = (1,6,0)
+
+__version__ = tostr(_pipeline_version_clauses)
+__kim_api_version__ = tostr(_kim_api_version_clauses)
+__pipeline_version__ = __version__
+
+__pipeline_version_spec__ = "~= "+tostr(_pipeline_version_clauses[:-1])
+__kim_api_version_spec__  = "~= "+tostr(_kim_api_version_clauses)
 
 #======================================
 # the environment parser
@@ -60,9 +71,9 @@ HOME               = os.path.expanduser('~')
 KIM_REPOSITORY_DIR = os.path.join(HOME,"openkim-repository")
 KIM_PIPELINE_DIR   = os.path.abspath(os.path.dirname(__file__))
 KIM_LOG_DIR        = os.path.join(KIM_PIPELINE_DIR, "logs")
-KIM_API_DIR        = os.path.join(HOME,"openkim-api")
+KIM_API_DIR        = os.path.join(HOME,"kim-api")
 KIM_API_LIB_DIR    = os.path.join(KIM_API_DIR,"KIM_API")
-KIM_API_CHECK_MATCH_UTIL = os.path.join(KIM_API_LIB_DIR,"openkim-api-descriptor-file-match")
+KIM_API_CHECK_MATCH_UTIL = os.path.join(KIM_API_LIB_DIR,"kim-api-descriptor-file-match")
 
 OUTPUT_DIR      = "output"
 TEST_EXECUTABLE = "runner"
@@ -156,6 +167,12 @@ class PipelineResultsError(Exception):
 class KIMRuntimeError(Exception):
     """ General purpose KIM Api Error, used if an invocation of the KIM_API doesn't behave """
 
+class KIMBuildError(Exception):
+    """ Error to throw when a build command fails """
+
+class RsyncRuntimeError(Exception):
+    """ Generic error to throw when rsync fails """
+
 class PipelineFileMissing(Exception):
     """ If a file we rely on is missing """
 
@@ -200,9 +217,18 @@ def success(func, *args, **kwargs):
 # FIXME - this is by no means long-term
 # temporary loc for edn2json
 #=======================================
+jedns = partial(json.dumps, separators=(' ', ' '), indent=4)
+
+def replace_nones(o):
+    if isinstance(o, list):
+        return [ replace_nones(i) for i in o ]
+    elif isinstance(o, dict):
+        return { k:replace_nones(v) for k,v in o.iteritems() }
+    else:
+        return o if o is not None else ''
+
 def loadedn(f):
     """ this function tries to load something as edn: file, filename, string """
-    import clj
     if isinstance(f, basestring):
         try:
             f = open(f)
@@ -210,8 +236,14 @@ def loadedn(f):
             return clj.loads(f)
     return clj.load(f)
 
-#=======================================
-# FIXME - now, this is bad.  check that
-# the box has the correct dns settings
-#=======================================
+def dumpedn(o, f, allow_nils=True):
+    if not allow_nils:
+        o = replace_nones(o)
+    o = jedns(o)
+
+    if isinstance(f, basestring):
+        with open(f, 'w') as fi:
+            fi.write(o)
+    else:
+        f.write(o)
 

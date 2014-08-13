@@ -17,7 +17,7 @@ import sys
 import os
 import logging
 import logging.handlers
-from config import *
+import config as cf
 
 __all__ = ['LogLexer']
 
@@ -141,11 +141,11 @@ def createLogger():
 
     # create the formatting style (with lines and times if verbose)
     log_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-    if PIPELINE_DEBUG_VBS:
+    if cf.PIPELINE_DEBUG_VBS:
         log_formatter = logging.Formatter('%(filename)s:%(lineno)d _ %(asctime)s - %(levelname)s - %(name)s - %(message)s')
 
     #create a rotating file handler
-    rotfile_handler = logging.handlers.RotatingFileHandler(os.path.join(KIM_LOG_DIR,"pipeline.log"),
+    rotfile_handler = logging.handlers.RotatingFileHandler(os.path.join(cf.KIM_LOG_DIR,"pipeline.log"),
             mode='a', backupCount=5, maxBytes=10*1024*1024)
     rotfile_handler.setLevel(FILELEVEL)
     rotfile_handler.setFormatter(log_formatter)
@@ -154,7 +154,7 @@ def createLogger():
     #create a console logger
     console_handler = PygmentHandler()
     console_handler.setLevel(logging.INFO)
-    if PIPELINE_DEBUG_VBS:
+    if cf.PIPELINE_DEBUG_VBS:
         console_handler.setLevel(logging.DEBUG)
 
     console_handler.setFormatter(log_formatter)

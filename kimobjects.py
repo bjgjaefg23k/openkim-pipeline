@@ -12,34 +12,36 @@ Has a base ``KIMObject`` class and
  * Model
  * TestDriver
  * ModelDriver
- * VerificationTest
- * VerificationModel
+ * TestVerification
+ * ModelVerification
  * VirtualMachine
 
 classes, all of which inherit from ``KIMObject`` and aim to know how to handle themselves.
 
 """
-from template import template_environment
-import database
-import kimapi
-from config import *
-from logger import logging
-logger = logging.getLogger("pipeline").getChild("kimobjects")
-
-from contextlib import contextmanager
 import template
 import shutil
 import subprocess
-import re
 import dircache
-import simplejson
 import glob
+import os
+from packaging import version
+from contextlib import contextmanager
+
+import database
+import kimapi
+from template import template_environment
+
+import config as cf
+from config import __kim_api_version_spec__
+from logger import logging
+logger = logging.getLogger("pipeline").getChild("kimobjects")
 
 #------------------------------------------------
 # Base KIMObject
 #------------------------------------------------
 
-class KIMObject(simplejson.JSONEncoder):
+class KIMObject(object):
     """ The base KIMObject that all things inherit from
 
     Attributes:
@@ -83,7 +85,7 @@ class KIMObject(simplejson.JSONEncoder):
                 search (bool)
                     Whether or not to search the directory structure for the fullest match,
                     false is useful when creating new KIMObjects to avoid hitting a PipelineSearchError
-                dirpath (str)
+                subdir (str)
                     In order to point to a directory that does not follow that pattern
                     /home/openkim/openkim-repository/{mo,md,te...}/KIM_CODE/KIM_CODE
                     can provide the folder of
@@ -127,9 +129,9 @@ class KIMObject(simplejson.JSONEncoder):
             self.kim_code_version = version
             self.kim_code = database.format_kim_code(name,leader,num,version)
 
-        self.kim_code_id = leader+"_"+num+"_"+version
+        self.kim_code_id = database.strip_name(self.kim_code)
         self.kim_code_short = database.strip_version(self.kim_code)
-        self.parent_dir = os.path.join(KIM_REPOSITORY_DIR, self.kim_code_leader.lower())
+        self.parent_dir = os.path.join(cf.KIM_REPOSITORY_DIR, self.kim_code_leader.lower())
         if subdir is not None:
             self.path = os.path.join(self.parent_dir, subdir)
         else:
@@ -177,8 +179,8 @@ class KIMObject(simplejson.JSONEncoder):
     def kimfile_name(self):
         postfix = ''
         with self.in_dir():
-            if os.path.exists(DOTKIM_FILE):
-                postfix = DOTKIM_FILE
+            if os.path.exists(cf.DOTKIM_FILE):
+                postfix = cf.DOTKIM_FILE
             else:
                 ll = glob.glob("*.kim")
                 if len(ll):
@@ -230,14 +232,12 @@ class KIMObject(simplejson.JSONEncoder):
 
     def make(self):
         """ Try to build the thing, by executing ``make`` in its directory """
+        if self.drivers:
+            for dr in self.drivers:
+                dr.make()
+
         if self.makeable:
-            with self.in_dir():
-                with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
-                    logger.debug("Attempting to make %r: %r", self.__class__.__name__, self.kim_code)
-                    try:
-                        subprocess.check_call('make', stdout=log, stderr=log)
-                    except Exception as e:
-                        raise subprocess.CalledProcessError("Could not build %r" % self, e)
+            kimapi.make_object(self)
         else:
             logger.warning("%r:%r is not makeable", self.__class__.__name__, self.kim_code)
 
@@ -253,8 +253,13 @@ class KIMObject(simplejson.JSONEncoder):
     def all(cls):
         """ Return a generator of all of this type """
         logger.debug("Attempting to find all %r...", cls.__name__)
-        type_dir = os.path.join(KIM_REPOSITORY_DIR, cls.required_leader.lower() )
-        kim_codes =  ( subpath for subpath in dircache.listdir(type_dir) if os.path.isdir( os.path.join( type_dir, subpath) ) )
+        type_dir = os.path.join(cf.KIM_REPOSITORY_DIR, cls.required_leader.lower() )
+        kim_codes = (
+            subpath for subpath in dircache.listdir(type_dir) if (
+                os.path.isdir(os.path.join(type_dir, subpath)) and
+                database.iskimcode(subpath)
+            )
+        )
         for x in kim_codes:
             try:
                 yield cls(x)
@@ -263,11 +268,26 @@ class KIMObject(simplejson.JSONEncoder):
 
     @property
     def kimspec(self):
-        specfile = os.path.join(self.path,CONFIG_FILE)
+        specfile = os.path.join(self.path,cf.CONFIG_FILE)
+        if not os.path.exists(specfile):
+            return None
+
         spec = {}
         with open(specfile) as f:
-            spec = loadedn(f)
+            spec = cf.loadedn(f)
         return spec
+
+    @property
+    def kim_api_version(self):
+        if self.kimspec:
+            return self.kimspec.get("kim-api-version")
+        return None
+
+    @property
+    def pipeline_api_version(self):
+        if self.kimspec:
+            return self.kimspec.get("pipeline-api-version")
+        return None
 
     @property
     def dependencies(self):
@@ -301,9 +321,9 @@ class Runner(KIMObject):
 
     def __init__(self,kim_code,*args,**kwargs):
         super(Runner,self).__init__(kim_code,*args,**kwargs)
-        self.executable = os.path.join(self.path,TEST_EXECUTABLE)
-        self.infile_path = os.path.join(self.path,INPUT_FILE)
-        self.depfile_path = os.path.join(self.path,DEPENDENCY_FILE)
+        self.executable = os.path.join(self.path,cf.TEST_EXECUTABLE)
+        self.infile_path = os.path.join(self.path,cf.INPUT_FILE)
+        self.depfile_path = os.path.join(self.path,cf.DEPENDENCY_FILE)
 
     def __call__(self,*args,**kwargs):
         """ Calling a runner object executes its executable in
@@ -336,16 +356,16 @@ class Runner(KIMObject):
     def processed_infile(self,subject):
         """ Process the input file, with template, and return a file object to the result """
         template.process(self.infile_path,subject,self)
-        return open(os.path.join(self.path,TEMP_INPUT_FILE))
+        return open(os.path.join(self.path,cf.TEMP_INPUT_FILE))
 
     def subjectname_processed_infile(self,subject):
         template.process(self.infile_path, subject, self, modelonly=True)
-        return open(os.path.join(self.path, TEMP_INPUT_FILE))
+        return open(os.path.join(self.path, cf.TEMP_INPUT_FILE))
 
-    def dependencies(self, subject=None):
+    def runtime_dependencies(self, subject=None):
         """ go ahead and append the subject to single test items """
         if self.depfile:
-            raw, out = loadedn(self.depfile), []
+            raw, out = cf.loadedn(self.depfile), []
             for dep in raw:
                 newdep = dep
 
@@ -360,7 +380,7 @@ class Runner(KIMObject):
 
     @property
     def template(self):
-        return template_environment.get_template(os.path.join(self.path, TEMPLATE_FILE))
+        return template_environment.get_template(os.path.join(self.path, cf.TEMPLATE_FILE))
 
 
 
@@ -487,9 +507,9 @@ class Test(Runner):
         return [] if not self.test_drivers else [self.test_drivers]
 
 #------------------------------------------
-# VerificationTest(Check)
+# TestVerification(Check)
 #------------------------------------------
-class VerificationTest(Test):
+class TestVerification(Test):
     """ A kim test, it is a KIMObject, plus
 
         Settings:
@@ -507,21 +527,21 @@ class VerificationTest(Test):
                 a dictionary of its output file, mapping strings to
                 Property objects
     """
-    required_leader = "VT"
+    required_leader = "TV"
     makeable = True
     subject_type = Test
     result_leader = "VR"
-    runner_name = "verification-test"
+    runner_name = "test-verification"
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Test, with a kim_code """
-        super(VerificationTest,self).__init__(kim_code,*args,**kwargs)
+        super(TestVerification,self).__init__(kim_code,*args,**kwargs)
 
 
 #------------------------------------------
-# VerificationModel(Check)
+# ModelVerification(Check)
 #------------------------------------------
-class VerificationModel(Test):
+class ModelVerification(Test):
     """ A kim test, it is a KIMObject, plus
 
         Settings:
@@ -539,15 +559,15 @@ class VerificationModel(Test):
                 a dictionary of its output file, mapping strings to
                 Property objects
     """
-    required_leader = "VM"
+    required_leader = "MV"
     makeable = True
     subject_type = Model
     result_leader = "VR"
-    runner_name = "verification-model"
+    runner_name = "model-verification"
 
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the Test, with a kim_code """
-        super(VerificationModel,self).__init__(kim_code,*args,**kwargs)
+        super(ModelVerification,self).__init__(kim_code,*args,**kwargs)
 
 
 #==========================================
@@ -574,7 +594,7 @@ class TestDriver(KIMObject):
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the TestDriver, with a kim_code """
         super(TestDriver,self).__init__(kim_code,*args,**kwargs)
-        self.executable = os.path.join(self.path, TEST_EXECUTABLE)
+        self.executable = os.path.join(self.path, cf.TEST_EXECUTABLE)
 
     def __call__(self,*args,**kwargs):
         """ Make the TestDriver callable, executing its executable in its own directory,
@@ -633,7 +653,7 @@ class VirtualMachine(KIMObject):
 #--------------------------------------------
 # two letter codes to the associated class
 code_to_model = {"TE": Test, "MO": Model, "TD": TestDriver,
-    "VT": VerificationTest, "VM": VerificationModel,
+    "TV": TestVerification, "MV": ModelVerification,
      "MD": ModelDriver }
 
 def kim_obj(kim_code, *args, **kwargs):

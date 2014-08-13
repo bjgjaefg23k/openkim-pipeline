@@ -1,25 +1,23 @@
 """
-Some scripts that let us run tests and the like
+Module that contains the tools required to perform a pipeline computation.
+The main object is Computation, which takes a runner and subject and 
+runs them against each other
 """
 import os
-import sys
 import time
-import simplejson
-import signal
-import itertools
-import subprocess, threading
+import subprocess
+import threading
 import shutil
+import json
 from contextlib import contextmanager
-import ConfigParser
+
 import kimunits
 import kimquery
-import json
-
-from config import *
 import kimobjects
+
+import config as cf
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("compute")
-
 
 #================================================================
 # a class to be able to timeout on a command
@@ -72,7 +70,7 @@ class Command(object):
 # the actual computation class
 #================================================================
 class Computation(object):
-    def __init__(self, runner=None, subject=None, result_code=""):
+    def __init__(self, runner=None, subject=None, result_code="", verify=True):
         """
         A pipeline computation object that utilizes all of the pipeline
         machinery to calculate a result (test or verification or otherwise).
@@ -82,6 +80,8 @@ class Computation(object):
             * subject : A Test or Model depending on the runner
             * result_code : if provided, the result will be moved
                 to the appropriate location
+            * verify : whether the result should be verified against
+                the property definitions held by official repo
         """
         self.runner = runner
         self.subject = subject
@@ -89,9 +89,10 @@ class Computation(object):
         self.runtime = None
         self.result_code = result_code
         self.info_dict = None
+        self.verify = verify
 
         self.result_path = os.path.join(self.runner_temp.result_leader.lower(), self.result_code)
-        self.full_result_path = os.path.join(KIM_REPOSITORY_DIR, self.result_path)
+        self.full_result_path = os.path.join(cf.KIM_REPOSITORY_DIR, self.result_path)
 
     def _create_tempdir(self):
         """ Create a temporary running directory and copy over the test contents """
@@ -101,13 +102,13 @@ class Computation(object):
 
     def _create_output_dir(self):
         """ Make sure that the ``output`` directory exists for results """
-        outputdir = os.path.join(self.runner_temp.path,OUTPUT_DIR)
+        outputdir = os.path.join(self.runner_temp.path,cf.OUTPUT_DIR)
         if not os.path.exists(outputdir):
             os.makedirs(outputdir)
 
     def _clean_old_run(self):
         """ Delete old temporary files if they exist """
-        for flname in INTERMEDIATE_FILES:
+        for flname in cf.INTERMEDIATE_FILES:
             try:
                 os.remove(flname)
             except OSError as e:
@@ -160,8 +161,8 @@ class Computation(object):
         # run the runner in its own directory
         with self.runner_temp.in_dir():
             with self.runner_temp.processed_infile(self.subject) as kim_stdin_file,  \
-                    open(STDOUT_FILE,'w') as stdout_file, \
-                    open(STDERR_FILE,'w') as stderr_file:
+                    open(cf.STDOUT_FILE,'w') as stdout_file, \
+                    open(cf.STDERR_FILE,'w') as stderr_file:
                 start_time = time.time()
 
                 logger.info("launching run...")
@@ -169,23 +170,23 @@ class Computation(object):
                         stdout=stdout_file,stderr=stderr_file)
 
                 try:
-                    self.retcode = process.run(timeout=RUNNER_TIMEOUT)
+                    self.retcode = process.run(timeout=cf.RUNNER_TIMEOUT)
                 except PipelineTimeout:
                     logger.error("runner %r timed out",self.runner)
-                    raise PipelineTimeout, "your executable timed out at %r hours" % (RUNNER_TIMEOUT / 3600)
+                    raise PipelineTimeout, "your executable timed out at %r hours" % (cf.RUNNER_TIMEOUT / 3600)
 
                 end_time = time.time()
 
         # It seems the runner didn't finish
         if process.poll() is None:
             process.kill()
-            raise KIMRuntimeError, "Your test did not respond to timeout request and did not exit"
+            raise cf.KIMRuntimeError, "Your test did not respond to timeout request and did not exit"
 
         self.runtime = end_time - start_time
         logger.info("Run completed in %r seconds" % self.runtime)
         if self.retcode != 0:
             logger.error("Runner returned error code %r, %r" % (self.retcode, os.strerror(self.retcode)) )
-            raise KIMRuntimeError("Executable %r returned error code %r" % (self.runner_temp, self.retcode))
+            raise cf.KIMRuntimeError("Executable %r returned error code %r" % (self.runner_temp, self.retcode))
 
     def process_output(self):
         """
@@ -195,25 +196,26 @@ class Computation(object):
         """
         # Short-circuit if we already have a results.edn
         with self.runner_temp.in_dir():
-            if not os.path.isfile(RESULT_FILE):
-                raise KIMRuntimeError, "The test did not produce a %s output file." % RESULT_FILE
+            if not os.path.isfile(cf.RESULT_FILE):
+                raise cf.KIMRuntimeError, "The test did not produce a %s output file." % cf.RESULT_FILE
 
         # now, let's check whether that was actual a valid test result
         logger.debug("Checking the output EDN for validity")
-        with self.runner_temp.in_dir(), open(RESULT_FILE, 'r') as f:
+        with self.runner_temp.in_dir(), open(cf.RESULT_FILE, 'r') as f:
             try:
-                doc = loadedn(f)
+                doc = cf.loadedn(f)
                 doc = kimunits.add_si_units(doc)
             except Exception as e:
-                raise KIMRuntimeError, "Test did not produce valid EDN %s" % RESULT_FILE
+                raise cf.KIMRuntimeError, "Test did not produce valid EDN %s" % cf.RESULT_FILE
 
-            valid, reply = test_result_valid(RESULT_FILE)
-            if not valid:
-                raise KIMRuntimeError, "Test result did not conform to property definition\n%r" % reply
+            if self.verify:
+                valid, reply = test_result_valid(cf.RESULT_FILE)
+                if not valid:
+                    raise cf.KIMRuntimeError, "Test result did not conform to property definition\n%r" % reply
 
         logger.debug("Adding units to result file")
-        with self.runner_temp.in_dir(), open(RESULT_FILE, 'w') as f:
-            json.dump(doc, f, separators=(' ', ' '), indent=4)
+        with self.runner_temp.in_dir(), open(cf.RESULT_FILE, 'w') as f:
+            cf.dumpedn(doc, f)
 
         logger.debug("Made it through EDN read, everything looks good")
 
@@ -233,14 +235,12 @@ class Computation(object):
 
         # get the information from the timing script
         with self.runner_temp.in_dir():
-            if os.path.exists(STDERR_FILE):
-                with open(STDERR_FILE) as stderr_file:
+            if os.path.exists(cf.STDERR_FILE):
+                with open(cf.STDERR_FILE) as stderr_file:
                     stderr = stderr_file.read()
                 time_str = stderr.splitlines()[-1]
-                time_dat = simplejson.loads(time_str)
+                time_dat = json.loads(time_str)
                 info_dict.update(time_dat)
-
-        logger.debug("Added metadata:\n{}".format(simplejson.dumps(info_dict,indent=4)))
 
         logger.debug("Caching profile information")
         self.info_dict = info_dict
@@ -261,15 +261,15 @@ class Computation(object):
         """
         if error:
             self.result_path = os.path.join("er", self.result_code)
-            self.full_result_path = os.path.join(KIM_REPOSITORY_DIR, self.result_path)
+            self.full_result_path = os.path.join(cf.KIM_REPOSITORY_DIR, self.result_path)
 
         logger.debug("Copying kim.log")
         with self.runner_temp.in_dir():
             if os.path.exists("./kim.log"):
-                shutil.copy2("./kim.log", KIMLOG_FILE)
+                shutil.copy2("./kim.log", cf.KIMLOG_FILE)
 
         # create the kimspec.edn file for the test results
-        logger.debug("Create %s file" % CONFIG_FILE)
+        logger.debug("Create %s file" % cf.CONFIG_FILE)
         kimspec = {}
         kimspec[self.runner.runner_name] = self.runner.kim_code
         kimspec[self.subject.subject_name] = self.subject.kim_code
@@ -281,13 +281,13 @@ class Computation(object):
         if self.result_code:
             pipelinespec['UUID'] = self.result_code
 
-        with self.runner_temp.in_dir(), open(os.path.join(OUTPUT_DIR,CONFIG_FILE),'w') as f:
-            json.dump(kimspec, f, separators=(' ', ' '), indent=4)
-        with self.runner_temp.in_dir(), open(os.path.join(OUTPUT_DIR,PIPELINESPEC_FILE),'w') as f:
-            json.dump(pipelinespec, f, separators=(' ', ' '), indent=4)
+        with self.runner_temp.in_dir(), open(os.path.join(cf.OUTPUT_DIR,cf.CONFIG_FILE),'w') as f:
+            cf.dumpedn(kimspec, f)
+        with self.runner_temp.in_dir(), open(os.path.join(cf.OUTPUT_DIR,cf.PIPELINESPEC_FILE),'w') as f:
+            cf.dumpedn(pipelinespec, f)
 
         logger.debug("Result path = %s", self.full_result_path)
-        outputdir = os.path.join(self.runner_temp.path,OUTPUT_DIR)
+        outputdir = os.path.join(self.runner_temp.path,cf.OUTPUT_DIR)
 
         # short circuit moving over the result tree if we have not trcode
         if not self.result_code:
@@ -330,7 +330,7 @@ class Computation(object):
                 self.gather_profiling_info(extrainfo)
                 self.write_result(error=True)
 
-                files = [STDOUT_FILE, STDERR_FILE, KIMLOG_FILE]
+                files = [cf.STDOUT_FILE, cf.STDERR_FILE, cf.KIMLOG_FILE]
                 tails = last_output_lines(self.runner_temp, files)
 
                 outs = trace+"\n"
@@ -338,7 +338,7 @@ class Computation(object):
                     outs += f+":\n"
                     outs += "".join(["-"]*(len(f)+1))+"\n"
                     outs += append_newline(t)+"\n"
-                raise PipelineRuntimeError(e, outs)
+                raise cf.PipelineRuntimeError(e, outs)
 
 #================================================================
 # helper functions

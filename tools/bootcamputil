@@ -1,0 +1,66 @@
+#!/usr/bin/env python
+import glob
+import os
+import subprocess
+import shutil
+
+import kimapi
+
+from config import *
+from logger import logging
+logger = logging.getLogger("kimitems")
+join = os.path.join
+
+def install_examples():
+    inst = {"model_drivers": "md", "models": "mo", "openkim_tests": "te"}
+    exdir = join(KIM_API_DIR, "examples")
+
+    with kimapi.in_dir(join(exdir, "example_legos")):
+        with open(kimapi.MAKE_LOG, 'a') as log:
+            subprocess.check_call(['make'], stdout=log, stderr=log)
+
+    for itemdir, dest in inst.iteritems():
+        src = join(exdir, itemdir)
+        dst = join(KIM_REPOSITORY_DIR, dest)
+
+        copylist = (
+            sub for sub in os.listdir(src) if os.path.isdir(join(src,sub))
+        )
+        for copy in copylist:
+            srcdir = join(src, copy)
+            dstdir = join(dst, copy)
+            shutil.copytree(srcdir, dstdir)
+
+def buildall():
+    leaders = ['md', 'mo', 'td', 'te']
+    kimapi.make_config()
+    for lead in leaders:
+        paths = (
+            sub for sub in glob.glob(join(KIM_REPOSITORY_DIR, lead, "*"))
+                if os.path.isdir(sub)
+        )
+
+        for path in paths:
+            print path
+            with kimapi.in_dir(path), open(kimapi.MAKE_LOG, 'w') as log:
+                subprocess.check_call(['make'], stdout=log, stderr=log)
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description=
+        """Utility to build examples for the bootcamp exercises"""
+    )
+
+    parser.add_argument("--build", action='store_true',
+        help="build the packages in the local repository")
+
+    parser.add_argument("--install-examples", action='store_true',
+        help="install the KIM API examples from the kim-api package")
+
+    args = vars(parser.parse_args())
+    if args.get("build"):
+        buildall()
+    elif args.get("install_examples"):
+        install_examples()
+    else:
+        parser.print_help()

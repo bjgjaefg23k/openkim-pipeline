@@ -1,26 +1,22 @@
 import pymongo
-import os, re
-import kimunits
+import os
+import re
 import datetime
-from ConfigParser import ConfigParser
 
-from config import *
 import database
+import config as cf
 from logger import logging
 logger = logging.getLogger('pipeline').getChild('mongodb')
 
 client = pymongo.MongoClient(host='db0')
 db = client[MONGODB]
 
-PATH_RESULT = RSYNC_LOCAL_ROOT
-PATH_APPROVED = RSYNC_LOCAL_ROOT
-
-#PATH_RESULT = os.path.join(RSYNC_LOCAL_ROOT, "results")
-#PATH_APPROVED = os.path.join(RSYNC_LOCAL_ROOT, "approved")
+PATH_RESULT = cf.RSYNC_LOCAL_ROOT
+PATH_APPROVED = cf.RSYNC_LOCAL_ROOT
 
 def config_edn(flname):
     with open(flname) as f:
-        doc = loadedn(f)
+        doc = cf.loadedn(f)
         doc.setdefault("created_on", str(datetime.datetime.fromtimestamp(os.path.getctime(flname))))
         return doc
 
@@ -75,9 +71,9 @@ def kimcode_to_dict(kimcode):
             "inserted_on": str(datetime.datetime.utcnow()),
             "latest": True,
             }
-    if foo['type'] in ('te','mo','md','vt','vm'):
+    if foo['type'] in ('te','mo','md','tv','mv'):
         foo['makeable'] = True
-    if foo['type'] in ('te','vt','vm'):
+    if foo['type'] in ('te','tv','mv'):
         foo['runner'] = True
     if foo['type'] in ('te','mo'):
         foo['subject'] = True
@@ -86,7 +82,7 @@ def kimcode_to_dict(kimcode):
     else:
         foo['driver'] = False
 
-    specpath = os.path.join(PATH_APPROVED,leader,kimcode,CONFIG_FILE)
+    specpath = os.path.join(PATH_APPROVED,leader,kimcode,cf.CONFIG_FILE)
     spec = config_edn(specpath)
 
     if foo['type'] == 'te':
@@ -116,12 +112,12 @@ def uuid_to_dict(leader,uuid):
             "latest": True,
             }
 
-    specpath = os.path.join(PATH_RESULT,leader,uuid,CONFIG_FILE)
+    specpath = os.path.join(PATH_RESULT,leader,uuid,cf.CONFIG_FILE)
     spec = config_edn(specpath)
 
     pipespec = {}
     try:
-        pipespecpath = os.path.join(PATH_RESULT,leader,uuid,PIPELINESPEC_FILE)
+        pipespecpath = os.path.join(PATH_RESULT,leader,uuid,cf.PIPELINESPEC_FILE)
         pipespec = config_edn(pipespecpath)
     except:
         pass
@@ -225,11 +221,11 @@ def insert_one_result(leader, kimcode):
         return
     try:
         with open(os.path.join(PATH_RESULT,leader,kimcode,'results.edn')) as f:
-            edn_docs = loadedn(f)
+            edn_docs = cf.loadedn(f)
             edn_docs = edn_docs if isinstance(edn_docs, list) else [edn_docs]
             for doc in edn_docs:
                 stuff = doc_to_dict(doc,leader,kimcode)
-                db.data.insert(kimunits.add_si_units(stuff))
+                db.data.insert(stuff)
         deprecate_similar_objects('data', stuff, ['meta.runner.kimcode', 'meta.subject.kimcode'])
     except:
         logger.info("Could not read document for %s/%s", leader, kimcode)
@@ -247,11 +243,11 @@ def insert_one_reference_data(leader, kimcode):
         return
     try:
         with open(os.path.join(PATH_APPROVED,leader,kimcode,kimcode+'.edn')) as f:
-            edn_docs = loadedn(f)
+            edn_docs = cf.loadedn(f)
             edn_docs = edn_docs if isinstance(edn_docs, list) else [edn_docs]
             for doc in edn_docs:
                 stuff = doc_to_dict(doc,leader,kimcode)
-                db.data.insert(kimunits.add_si_units(stuff))
+                db.data.insert(stuff)
     except:
         logger.info("Could not read document for %s/%s", leader, kimcode)
         stuff = doc_to_dict({}, leader, kimcode)
@@ -259,7 +255,7 @@ def insert_one_reference_data(leader, kimcode):
 
 def insert_objs():
     logger.info("Filling with objects")
-    leaders = ('te','vt','vm','mo','md','td')
+    leaders = ('te','tv','mv','mo','md','td')
     for leader in leaders:
         for i,folder in enumerate(os.listdir(os.path.join(PATH_APPROVED,leader))):
             if folder.startswith("Make"):

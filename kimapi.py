@@ -3,22 +3,26 @@ Methods that deal with the KIM API directly.  Currently these are methods
 that build the libraries and use the Python interface kimservice
 to test if tests and models match.
 """
-from config import *
+import os
+from subprocess import check_output, check_call, CalledProcessError
+from contextlib import contextmanager
+from packaging import version
+from functools import partial
+
+import config as cf
+from config import __pipeline_version_spec__, __kim_api_version_spec__
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("kimapi")
-
-from subprocess import check_output, check_call
-from contextlib import contextmanager
 
 #======================================
 # API build utilities
 #======================================
-MAKE_LOG = os.path.join(KIM_LOG_DIR, "make.log")
+MAKE_LOG = os.path.join(cf.KIM_LOG_DIR, "make.log")
 
 @contextmanager
-def in_api_dir():
+def in_dir(path):
     cwd = os.getcwd()
-    os.chdir(KIM_API_DIR)
+    os.chdir(path)
     try:
         yield
     except Exception as e:
@@ -26,20 +30,63 @@ def in_api_dir():
     finally:
         os.chdir(cwd)
 
+in_api_dir = partial(in_dir, path=cf.KIM_API_DIR)
+
+def make_config():
+    with open(os.path.join(cf.KIM_REPOSITORY_DIR, "md", "Makefile.KIM_Config"), 'w') as f:
+        check_call(["kim-api-build-config", "--makefile-kim-config"], stdout=f)
+    with open(os.path.join(cf.KIM_REPOSITORY_DIR, "mo", "Makefile.KIM_Config"), 'w') as f:
+        check_call(["kim-api-build-config", "--makefile-kim-config"], stdout=f)
+
+def make_clean():
+    logger.debug("Cleaning build objects...")
+    make_config()
+    with in_api_dir():
+        with open(MAKE_LOG, 'a') as log:
+            try:
+                check_call(["make", "clean"], stdout=log, stderr=log)
+            except CalledProcessError as e:
+                raise cf.KIMBuildError("Could not `make clean` for KIM API")
+
 def make_all():
     logger.debug("Building everything...")
-    with in_api_dir():
-        with open(MAKE_LOG, "a") as log:
-            check_call(["make", "clean"], stdout=log, stderr=log)
-            check_call(["make"], stdout=log, stderr=log)
+    make_config()
+    make_api()
+
+    import kimobjects
+    for o in kimobjects.TestDriver.all():
+        o.make()
+    for o in kimobjects.Test.all():
+        o.make()
+    for o in kimobjects.ModelDriver.all():
+        o.make()
+    for o in kimobjects.Model.all():
+        o.make()
 
 def make_api():
     logger.debug("Building the API...")
+    make_config()
     with in_api_dir():
         with open(MAKE_LOG, "a") as log:
-            check_call(["make", "kim-api-clean"], stdout=log, stderr=log)
-            check_call(["make", "config"], stdout=log, stderr=log)
-            check_call(["make", "kim-api-libs"], stdout=log, stderr=log)
+            try:
+                check_call(["make", "config"], stdout=log, stderr=log)
+                check_call(["make", "kim-api-libs"], stdout=log, stderr=log)
+            except CalledProcessError as e:
+                raise cf.KIMBuildError("Could not build kim-api-libs, check %s" % MAKE_LOG)
+
+def make_object(obj):
+    if (not version.Version(obj.kim_api_version)
+            in version.Specifier(__kim_api_version_spec__)):
+        logger.debug("KIM API version does not match object's, skipping build")
+        return
+
+    with obj.in_dir():
+        with open(MAKE_LOG, 'a') as log:
+            try:
+                check_call(['make'], stdout=log, stderr=log)
+            except CalledProcessError as e:
+                raise cf.KIMBuildError("Could not build %r, check %s" % (obj, MAKE_LOG))
+
 
 #======================================
 # Some kim api wrapped things
@@ -53,9 +100,9 @@ except ImportError as e:
 def valid_match_util(test,model):
     """ Check to see if a test and model mach by using Ryan's utility """
     logger.debug("invoking Ryan's utility for (%r,%r)",test,model)
-    test_dotkim = os.path.join(test.path, DOTKIM_FILE)
-    model_dotkim = os.path.join(model.path, DOTKIM_FILE)
-    out = check_output([KIM_API_CHECK_MATCH_UTIL,test_dotkim,model_dotkim])
+    test_dotkim = os.path.join(test.path, cf.DOTKIM_FILE)
+    model_dotkim = os.path.join(model.path, cf.DOTKIM_FILE)
+    out = check_output([cf.KIM_API_CHECK_MATCH_UTIL,test_dotkim,model_dotkim])
     if out == "MATCH\n":
         return True
     return False
@@ -86,7 +133,7 @@ def valid_match_codes(test,model):
         match = False
     else:
         logger.error("We seem to have a Kim init error on (%r,%r)", test, model)
-        raise KIMRuntimeError
+        raise cf.KIMRuntimeError
         match = False
 
     if match:
@@ -99,4 +146,15 @@ def valid_match(test,model):
 
         Tests through ``kimservice.KIM_API_init``, running in its own forked process
     """
-    return valid_match_codes(test, model)
+    ver = version.Version
+    ver_pipspec = version.Specifier(__pipeline_version_spec__)
+    ver_kimspec = version.Specifier(__kim_api_version_spec__)
+
+    version_match = (
+        ver(test.kim_api_version) in ver_kimspec and
+        ver(model.kim_api_version) in ver_kimspec and
+        ver(test.pipeline_api_version) in ver_pipspec
+    )
+
+    logger.debug("Checking match for (%r, %r), version match %r" % (test,model,version_match))
+    return version_match and valid_match_codes(test, model)
