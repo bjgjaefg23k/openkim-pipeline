@@ -6,9 +6,12 @@ As well as parsing and handling kim_codes
 Currently these calls mostly glob on the database, could be replaced by something more elegant later
 
 """
-from config import *
-import re, os, glob, operator
+import re
+import os
+import glob
+import operator
 
+import config as cf
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("database")
 
@@ -45,7 +48,7 @@ def kim_code_finder(name,leader,num,version):
     """ Do a glob to look for possible matches
         returns a list of possible matches, where the matches are kim_codes """
     logger.debug("looking up kim_code for (%r,%r,%r,%r)", name,leader,num,version)
-    start_path = os.path.join(KIM_REPOSITORY_DIR,leader.lower())
+    start_path = os.path.join(cf.KIM_REPOSITORY_DIR,leader.lower())
     name = name
     version = version or '*'
     kim_code = format_kim_code(name,leader,num,version)
@@ -58,7 +61,7 @@ def kim_code_finder(name,leader,num,version):
     if len(short_possibilities) == 0:
         #none found
         logger.error("Failed to find any matches for %r", kim_code)
-        raise PipelineSearchError, "Failed to find any matches for {}".format(kim_code)
+        raise cf.PipelineSearchError, "Failed to find any matches for {}".format(kim_code)
     return short_possibilities
 
 def look_for_name(leader,num,version):
@@ -73,7 +76,7 @@ def look_for_name(leader,num,version):
         return name
     #must be multiple possibilities
     logger.error("Found multiple names for %r", partial)
-    raise PipelineTemplateError, "Found multiple matches for {}".format(partial)
+    raise cf.PipelineTemplateError, "Found multiple matches for {}".format(partial)
 
 def get_latest_version(name,leader,num):
     """ Get the latest version of the kim code in the database,
@@ -103,7 +106,7 @@ def get_leader(kimcode):
 
 def get_leader_by_search(kimcode):
     for lead in LEADERS_OBJS+LEADERS_DATA:
-        if len(glob.glob(os.path.join(KIM_REPOSITORY_DIR, lead, kimcode))):
+        if len(glob.glob(os.path.join(cf.KIM_REPOSITORY_DIR, lead, kimcode))):
             return lead.upper()
     return None
 
@@ -131,7 +134,7 @@ def format_kim_code(name,leader,num,version):
 def uuid_type(uuid):
     tries = ['tr', 'vr', 'er']
     for leader in tries:
-        if os.path.exists(os.path.join(RSYNC_LOCAL_ROOT, leader, uuid)):
+        if os.path.exists(os.path.join(cf.RSYNC_LOCAL_ROOT, leader, uuid)):
             return leader
     return None
 

@@ -1,15 +1,19 @@
-from config import *
-import network
-import database
-import rsync_tools
-from logger import logging
-logger = logging.getLogger("pipeline").getChild("gateway")
+import json
+import re
+import time
 
-import simplejson, re, time, os, time
-from mongodb import db, insert_one_result, insert_one_object
 from threading import Thread
 from datetime import datetime
 from bson.json_util import dumps
+
+import network
+import database
+import rsync_tools
+from mongodb import db, insert_one_result, insert_one_object
+
+import config as cf
+from logger import logging
+logger = logging.getLogger("pipeline").getChild("gateway")
 
 regex = r"(?:([_a-zA-Z][_a-zA-Z0-9]*?)__)?([A-Z]{2})_([0-9]{10,12})(?:_([0-9]{3}))?"
 RSYNC_FLAGS = "-rtpgoDOL -uzRhEc --progress --stats"
@@ -23,16 +27,16 @@ class Gateway(object):
 
     def connect_to_daemon(self):
         self.bean.connect()
-        self.bean.watch(TUBE_WEB_UPDATES, TUBE_RESULTS, TUBE_ERRORS)
+        self.bean.watch(cf.TUBE_WEB_UPDATES, cf.TUBE_RESULTS, cf.TUBE_ERRORS)
 
     def process_messages(self):
         while 1:
             request = self.bean.reserve()
             tube = request.stats()['tube']
-            if tube == TUBE_WEB_UPDATES:
+            if tube == cf.TUBE_WEB_UPDATES:
                 logger.debug("processing %r" % request.body)
                 try:
-                    job = simplejson.loads(request.body)
+                    job = json.loads(request.body)
                     approved = True if job['status'] == 'approved' else False
                     rsync_tools.gateway_full_read()
 
@@ -42,18 +46,18 @@ class Gateway(object):
                         insert_one_result(leader, kimcode)
                     else:
                         insert_one_object(kimcode)
-                    self.bean.send_msg(TUBE_UPDATES, request.body)
+                    self.bean.send_msg(cf.TUBE_UPDATES, request.body)
                 except Exception as e:
                     logger.error("%r" % e)
-            elif tube == TUBE_RESULTS or tube == TUBE_ERRORS:
+            elif tube == cf.TUBE_RESULTS or tube == cf.TUBE_ERRORS:
                 logger.debug("processing %r" % request.body)
                 try:
-                    kimcode = simplejson.loads(request.body)['jobid']
+                    kimcode = json.loads(request.body)['jobid']
                     leader = database.uuid_type(kimcode)
                     rsync_tools.gateway_write_result(leader, kimcode)
                 except Exception as e:
                     logger.error("%r" % e)
-                self.bean.send_msg(TUBE_WEB_RESULTS, request.body)
+                self.bean.send_msg(cf.TUBE_WEB_RESULTS, request.body)
 
             request.delete()
 
@@ -61,7 +65,7 @@ class Gateway(object):
 # storing and relaying messages from boxes
 #==================================================
 def s2d(s):
-    return simplejson.loads(s)
+    return json.loads(s)
 
 def get_leader(kimcode):
     name, leader, code, version = re.match(regex, kimcode).groups()
@@ -132,10 +136,10 @@ class WebCommunicator(network.Communicator):
 
         # in process sockets to send data to the websockets
         self.sock_jobs = self.con.socket(network.zmq.PUB)
-        self.sock_jobs.bind("tcp://127.0.0.1:%i" % GATEWAY_PORT_JOBS)
+        self.sock_jobs.bind("tcp://127.0.0.1:%i" % cf.nGATEWAY_PORT_JOBS)
 
         self.sock_logs = self.con.socket(network.zmq.PUB)
-        self.sock_logs.bind("tcp://127.0.0.1:%i" % GATEWAY_PORT_LOGS)
+        self.sock_logs.bind("tcp://127.0.0.1:%i" % cf.GATEWAY_PORT_LOGS)
 
     def run(self):
         while 1:
@@ -159,7 +163,7 @@ class WebCommunicator(network.Communicator):
                 else:
                     dic = s2d(message[1])
                     trimmed = save_job(message[0], dic)
-                    self.sock_jobs.send(simplejson.dumps({dic['jobid']: trimmed}))
+                    self.sock_jobs.send(json.dumps({dic['jobid']: trimmed}))
 
             except Exception as e:
                 raise

@@ -2,8 +2,8 @@
 """ Simple wrapper for udunits2-bin for converting arbitrary units to SI units """
 VERSION = 0.3
 
-import subprocess
 import re
+import subprocess
 import warnings
 warnings.simplefilter("ignore")
 

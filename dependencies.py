@@ -36,15 +36,11 @@ If we are told that a new test result has come in:
 
 Local dependency resolution
 """
-
-from config import *
 import kimobjects
 import kimquery
+
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("dependencies")
-
-import json
-from collections import Iterable
 
 def result_inqueue(test, model):
     query = {"database": "job", "test": str(test), "model": str(model),
@@ -70,6 +66,12 @@ def result_pair(uuid):
              "project": ["runner.kimcode", "subject.kimcode"]}
     return (kimobjects.kim_obj(a) for a in kimquery.query(query, decode=True))
 
+def list2obj(l):
+    return (
+        kimobjects.kim_obj(l[0], search=True),
+        kimobjects.kim_obj(l[1], search=True)
+    )
+
 def get_run_list(target, depth=0, tree=False, display=False):
     if hasattr(target, '__iter__'):
         # we have a (test,model) pair which needs updating
@@ -81,8 +83,7 @@ def get_run_list(target, depth=0, tree=False, display=False):
 
         for dep in deps:
             if hasattr(dep, '__iter__'):
-                tmp_te = kimobjects.kim_obj(dep[0], search=True)
-                tmp_mo = kimobjects.kim_obj(dep[1], search=True)
+                tmp_te, tmp_mo = list2obj(dep)
 
                 if not result_exists(tmp_te, tmp_mo):
                     # there are results that need be collected, wait for them
@@ -97,6 +98,7 @@ def get_run_list(target, depth=0, tree=False, display=False):
         if satisfied:
             if not result_exists(te, mo):
                 return [(te, mo)]
+            logger.debug("Result exists for (%r, %r), skipping..." % (te, mo))
             return []
         return list(torun)
 
@@ -110,8 +112,7 @@ def get_run_list(target, depth=0, tree=False, display=False):
 
             for dep in deps:
                 if hasattr(dep, '__iter__'):
-                    tmpte = kimobjects.kim_obj(dep[0], search=True)
-                    tmpmo = kimobjects.kim_obj(dep[1], search=True)
+                    tmpte, tmpmo = list2obj(dep)
 
                     if te == tmpte and mo == tmpmo:
                         for m in get_run_list((test,mo),

@@ -19,29 +19,29 @@ Has a base ``KIMObject`` class and
 classes, all of which inherit from ``KIMObject`` and aim to know how to handle themselves.
 
 """
-from template import template_environment
-import database
-import kimapi
-from config import *
-from config import __kim_api_version_spec__
-from logger import logging
-logger = logging.getLogger("pipeline").getChild("kimobjects")
-
-from packaging import version
-from contextlib import contextmanager
 import template
 import shutil
 import subprocess
-import re
 import dircache
-import simplejson
 import glob
+import os
+from packaging import version
+from contextlib import contextmanager
+
+import database
+import kimapi
+from template import template_environment
+
+import config as cf
+from config import __kim_api_version_spec__
+from logger import logging
+logger = logging.getLogger("pipeline").getChild("kimobjects")
 
 #------------------------------------------------
 # Base KIMObject
 #------------------------------------------------
 
-class KIMObject(simplejson.JSONEncoder):
+class KIMObject(object):
     """ The base KIMObject that all things inherit from
 
     Attributes:
@@ -131,7 +131,7 @@ class KIMObject(simplejson.JSONEncoder):
 
         self.kim_code_id = database.strip_name(self.kim_code)
         self.kim_code_short = database.strip_version(self.kim_code)
-        self.parent_dir = os.path.join(KIM_REPOSITORY_DIR, self.kim_code_leader.lower())
+        self.parent_dir = os.path.join(cf.KIM_REPOSITORY_DIR, self.kim_code_leader.lower())
         if subdir is not None:
             self.path = os.path.join(self.parent_dir, subdir)
         else:
@@ -179,8 +179,8 @@ class KIMObject(simplejson.JSONEncoder):
     def kimfile_name(self):
         postfix = ''
         with self.in_dir():
-            if os.path.exists(DOTKIM_FILE):
-                postfix = DOTKIM_FILE
+            if os.path.exists(cf.DOTKIM_FILE):
+                postfix = cf.DOTKIM_FILE
             else:
                 ll = glob.glob("*.kim")
                 if len(ll):
@@ -240,7 +240,7 @@ class KIMObject(simplejson.JSONEncoder):
             if not version.Version(self.kim_api_version) in version.Specifier(__kim_api_version_spec__):
                 return
             with self.in_dir():
-                with open(os.path.join(KIM_LOG_DIR, "make.log"), "a") as log:
+                with open(os.path.join(cf.KIM_LOG_DIR, "make.log"), "a") as log:
                     logger.debug("Attempting to make %r: %r", self.__class__.__name__, self.kim_code)
                     try:
                         subprocess.check_call(['make'], stdout=log, stderr=log)
@@ -261,7 +261,7 @@ class KIMObject(simplejson.JSONEncoder):
     def all(cls):
         """ Return a generator of all of this type """
         logger.debug("Attempting to find all %r...", cls.__name__)
-        type_dir = os.path.join(KIM_REPOSITORY_DIR, cls.required_leader.lower() )
+        type_dir = os.path.join(cf.KIM_REPOSITORY_DIR, cls.required_leader.lower() )
         kim_codes = (
             subpath for subpath in dircache.listdir(type_dir) if (
                 os.path.isdir(os.path.join(type_dir, subpath))
@@ -275,13 +275,13 @@ class KIMObject(simplejson.JSONEncoder):
 
     @property
     def kimspec(self):
-        specfile = os.path.join(self.path,CONFIG_FILE)
+        specfile = os.path.join(self.path,cf.CONFIG_FILE)
         if not os.path.exists(specfile):
             return None
 
         spec = {}
         with open(specfile) as f:
-            spec = loadedn(f)
+            spec = cf.loadedn(f)
         return spec
 
     @property
@@ -328,9 +328,9 @@ class Runner(KIMObject):
 
     def __init__(self,kim_code,*args,**kwargs):
         super(Runner,self).__init__(kim_code,*args,**kwargs)
-        self.executable = os.path.join(self.path,TEST_EXECUTABLE)
-        self.infile_path = os.path.join(self.path,INPUT_FILE)
-        self.depfile_path = os.path.join(self.path,DEPENDENCY_FILE)
+        self.executable = os.path.join(self.path,cf.TEST_EXECUTABLE)
+        self.infile_path = os.path.join(self.path,cf.INPUT_FILE)
+        self.depfile_path = os.path.join(self.path,cf.DEPENDENCY_FILE)
 
     def __call__(self,*args,**kwargs):
         """ Calling a runner object executes its executable in
@@ -363,16 +363,16 @@ class Runner(KIMObject):
     def processed_infile(self,subject):
         """ Process the input file, with template, and return a file object to the result """
         template.process(self.infile_path,subject,self)
-        return open(os.path.join(self.path,TEMP_INPUT_FILE))
+        return open(os.path.join(self.path,cf.TEMP_INPUT_FILE))
 
     def subjectname_processed_infile(self,subject):
         template.process(self.infile_path, subject, self, modelonly=True)
-        return open(os.path.join(self.path, TEMP_INPUT_FILE))
+        return open(os.path.join(self.path, cf.TEMP_INPUT_FILE))
 
     def runtime_dependencies(self, subject=None):
         """ go ahead and append the subject to single test items """
         if self.depfile:
-            raw, out = loadedn(self.depfile), []
+            raw, out = cf.loadedn(self.depfile), []
             for dep in raw:
                 newdep = dep
 
@@ -387,7 +387,7 @@ class Runner(KIMObject):
 
     @property
     def template(self):
-        return template_environment.get_template(os.path.join(self.path, TEMPLATE_FILE))
+        return template_environment.get_template(os.path.join(self.path, cf.TEMPLATE_FILE))
 
 
 
@@ -601,7 +601,7 @@ class TestDriver(KIMObject):
     def __init__(self,kim_code,*args,**kwargs):
         """ Initialize the TestDriver, with a kim_code """
         super(TestDriver,self).__init__(kim_code,*args,**kwargs)
-        self.executable = os.path.join(self.path, TEST_EXECUTABLE)
+        self.executable = os.path.join(self.path, cf.TEST_EXECUTABLE)
 
     def __call__(self,*args,**kwargs):
         """ Make the TestDriver callable, executing its executable in its own directory,

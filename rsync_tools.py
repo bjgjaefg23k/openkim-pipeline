@@ -2,29 +2,30 @@
 Simple set of tools for having rsync commands go through
 """
 
-from config import *
+import config as cf
 from logger import logging
 logger = logging.getLogger("pipeline").getChild("rsync_tools")
 
 import os
-import subprocess, tempfile
+import subprocess
+import tempfile
 from database import parse_kim_code
 from functools import partial
 
 # --delete ensures that we delete files that aren't on remote
 RSYNC_FLAGS  = "-vvrLhzREc --progress --stats -e "
-RSYNC_FLAGS += "'ssh -i "+GLOBAL_KEY+" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'"
-RSYNC_FLAGS += " --exclude-from="+RSYNC_EXCLUDE_FILE
+RSYNC_FLAGS += "'ssh -i "+cf.GLOBAL_KEY+" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'"
+RSYNC_FLAGS += " --exclude-from="+cf.RSYNC_EXCLUDE_FILE
 
-RSYNC_ADDRESS = RSYNC_USER+"@"+RSYNC_HOST
-RSYNC_PATH = RSYNC_ADDRESS+":"+RSYNC_REMOTE_ROOT
-RSYNC_LOG_FILE_FLAG = "--log-file={}/rsync.log".format(KIM_LOG_DIR)
-RSYNC_LOG_PIPE_FLAG = " >> {} 2>&1".format(KIM_LOG_DIR+"/rsync_stdout.log")
+RSYNC_ADDRESS = cf.RSYNC_USER+"@"+cf.RSYNC_HOST
+RSYNC_PATH = RSYNC_ADDRESS+":"+cf.RSYNC_REMOTE_ROOT
+RSYNC_LOG_FILE_FLAG = "--log-file={}/rsync.log".format(cf.KIM_LOG_DIR)
+RSYNC_LOG_PIPE_FLAG = " >> {} 2>&1".format(cf.KIM_LOG_DIR+"/rsync_stdout.log")
 
-if PIPELINE_GATEWAY:
+if cf.PIPELINE_GATEWAY:
     READ_PENDING  = os.path.join(RSYNC_PATH, "/curators-to-pipeline-interface/pending/./")
     READ_APPROVED = os.path.join(RSYNC_PATH, "/curators-to-pipeline-interface/approved/./")
-    if PIPELINE_DEBUG:
+    if cf.PIPELINE_DEBUG:
         WRITE_RESULTS = os.path.join(RSYNC_PATH, "/pipeline/test-result-uploads-dbg/incoming/./")
     else:
         WRITE_RESULTS = os.path.join(RSYNC_PATH, "/pipeline/test-result-uploads/incoming/./")
@@ -56,10 +57,10 @@ def rsync_command(files, read=True, path=None, delete=False):
             logger.info("running rsync for files: %r",files)
             if read:    
                 cmd = " ".join(["rsync", flags, full_path, RSYNC_LOG_FILE_FLAG,
-                    "--files-from={}".format(tmp.name), RSYNC_LOCAL_ROOT, RSYNC_LOG_PIPE_FLAG])
+                    "--files-from={}".format(tmp.name), cf.RSYNC_LOCAL_ROOT, RSYNC_LOG_PIPE_FLAG])
             else:
                 cmd = " ".join(["rsync", flags, RSYNC_LOG_FILE_FLAG,
-                    "--files-from={}".format(tmp.name), RSYNC_LOCAL_ROOT, full_path, RSYNC_LOG_PIPE_FLAG])
+                    "--files-from={}".format(tmp.name), cf.RSYNC_LOCAL_ROOT, full_path, RSYNC_LOG_PIPE_FLAG])
             logger.debug("rsync command = %r",cmd)
             out = subprocess.check_call(cmd, shell=True)
         except subprocess.CalledProcessError as e:
@@ -81,7 +82,7 @@ def rsync_command_read_wildcard(files,path=None):
         try:
             logger.info("running rsync for files: %r",filename)
             cmd = " ".join(["rsync", flags, full_path, RSYNC_LOG_FILE_FLAG,
-                            RSYNC_LOCAL_ROOT, RSYNC_LOG_PIPE_FLAG])
+                            cf.RSYNC_LOCAL_ROOT, RSYNC_LOG_PIPE_FLAG])
             logger.debug("rsync command = %r",cmd)
             out = subprocess.check_call(cmd, shell=True)
         except subprocess.CalledProcessError as e:

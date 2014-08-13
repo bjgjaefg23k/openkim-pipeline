@@ -3,20 +3,21 @@ Methods that deal with the KIM API directly.  Currently these are methods
 that build the libraries and use the Python interface kimservice
 to test if tests and models match.
 """
-from config import *
-from config import __pipeline_version_spec__, __kim_api_version_spec__
-from logger import logging
-logger = logging.getLogger("pipeline").getChild("kimapi")
-
+import os
 from subprocess import check_output, check_call
 from contextlib import contextmanager
 from packaging import version
 from functools import partial
 
+import config as cf
+from config import __pipeline_version_spec__, __kim_api_version_spec__
+from logger import logging
+logger = logging.getLogger("pipeline").getChild("kimapi")
+
 #======================================
 # API build utilities
 #======================================
-MAKE_LOG = os.path.join(KIM_LOG_DIR, "make.log")
+MAKE_LOG = os.path.join(cf.KIM_LOG_DIR, "make.log")
 
 @contextmanager
 def in_dir(path):
@@ -29,12 +30,12 @@ def in_dir(path):
     finally:
         os.chdir(cwd)
 
-in_api_dir = partial(in_dir, path=KIM_API_DIR)
+in_api_dir = partial(in_dir, path=cf.KIM_API_DIR)
 
 def make_config():
-    with open(os.path.join(KIM_REPOSITORY_DIR, "md", "Makefile.KIM_Config"), 'w') as f:
+    with open(os.path.join(cf.KIM_REPOSITORY_DIR, "md", "Makefile.KIM_Config"), 'w') as f:
         check_call(["kim-api-build-config", "--makefile-kim-config"], stdout=f)
-    with open(os.path.join(KIM_REPOSITORY_DIR, "mo", "Makefile.KIM_Config"), 'w') as f:
+    with open(os.path.join(cf.KIM_REPOSITORY_DIR, "mo", "Makefile.KIM_Config"), 'w') as f:
         check_call(["kim-api-build-config", "--makefile-kim-config"], stdout=f)
 
 def make_all():
@@ -73,9 +74,9 @@ except ImportError as e:
 def valid_match_util(test,model):
     """ Check to see if a test and model mach by using Ryan's utility """
     logger.debug("invoking Ryan's utility for (%r,%r)",test,model)
-    test_dotkim = os.path.join(test.path, DOTKIM_FILE)
-    model_dotkim = os.path.join(model.path, DOTKIM_FILE)
-    out = check_output([KIM_API_CHECK_MATCH_UTIL,test_dotkim,model_dotkim])
+    test_dotkim = os.path.join(test.path, cf.DOTKIM_FILE)
+    model_dotkim = os.path.join(model.path, cf.DOTKIM_FILE)
+    out = check_output([cf.KIM_API_CHECK_MATCH_UTIL,test_dotkim,model_dotkim])
     if out == "MATCH\n":
         return True
     return False
@@ -106,7 +107,7 @@ def valid_match_codes(test,model):
         match = False
     else:
         logger.error("We seem to have a Kim init error on (%r,%r)", test, model)
-        raise KIMRuntimeError
+        raise cf.KIMRuntimeError
         match = False
 
     if match:
@@ -129,4 +130,5 @@ def valid_match(test,model):
         ver(test.pipeline_api_version) in ver_pipspec
     )
 
+    logger.debug("Checking match for (%r, %r), version match %r" % (test,model,version_match))
     return version_match and valid_match_codes(test, model)

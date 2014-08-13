@@ -24,7 +24,7 @@ import time
 import simplejson
 import uuid
 
-from config import *
+import config as cf
 import network
 import rsync_tools
 import compute
@@ -50,12 +50,12 @@ def getboxinfo():
     info = {}
     for thing in things:
         try:
-            info[thing] = CONF[thing.upper()]
+            info[thing] = cf.CONF[thing.upper()]
         except Exception as e:
             info[thing] = None
 
     info['cpucount'] = cpu_count()
-    info['setuphash'] = Popen("cd "+CONF["PIPELINEDIR"]+"; git log -n 1 | grep commit | sed s/commit\ //", 
+    info['setuphash'] = Popen("cd "+cf.CONF["PIPELINEDIR"]+"; git log -n 1 | grep commit | sed s/commit\ //", 
         stdout=PIPE, shell=True).communicate()[0]
 
     try:
@@ -65,7 +65,7 @@ def getboxinfo():
         info['ipaddr'] = None
 
     try:
-        with open(CONF["FILE_BENCHMARK"]) as f:
+        with open(cf.CONF["FILE_BENCHMARK"]) as f:
             content = f.read()
             lps = re.search(r"([0-9\.]+\slps)", content)
             MWIPS = re.search(r"([0-9\.]+\sMWIPS)", content)
@@ -172,16 +172,16 @@ class Agent(object):
         if hasattr(self, 'job') and self.job is not None:
             self.job.delete()
             if hasattr(self, 'jobmsg') and self.jobmsg is not None:
-                self.job_message(self.jobmsg, errors="Caught SIGINT and killed", tube=TUBE_ERRORS)
+                self.job_message(self.jobmsg, errors="Caught SIGINT and killed", tube=cf.TUBE_ERRORS)
         self.disconnect()
 
-    def job_message(self, jobmsg, errors=None, tube=TUBE_RESULTS):
+    def job_message(self, jobmsg, errors=None, tube=cf.TUBE_RESULTS):
         """ Send back a job message """
         jobmsg.results = None
         jobmsg.errors = "%s" % errors
         jobmsg.update(self.boxinfo)
 
-        if len(jobmsg.errors) > PIPELINE_MSGSIZE:
+        if len(jobmsg.errors) > cf.PIPELINE_MSGSIZE:
             jobmsg.errors = "too long"
 
         msg = simplejson.dumps(jobmsg)
@@ -235,7 +235,7 @@ class Director(Agent):
         """
         # connect and grab the job thread
         self.connect()
-        self.bean.watch(TUBE_UPDATES)
+        self.bean.watch(cf.TUBE_UPDATES)
 
         while True:
             self.logger.info("Director Waiting for message...")
@@ -247,7 +247,7 @@ class Director(Agent):
 
             # got a request to update a model or test
             # from the website (or other trusted place)
-            if request.stats()['tube'] == TUBE_UPDATES:
+            if request.stats()['tube'] == cf.TUBE_UPDATES:
                 # update the repository,send it out as a job to compute
                 try:
                     rsync_tools.director_approved_read()
@@ -370,7 +370,7 @@ class Director(Agent):
 
             msg = network.Message(job=(str(te),str(mo)), jobid=trid,
                         depends=tuple(depids), status=status)
-            self.job_message(msg, tube=TUBE_JOBS)
+            self.job_message(msg, tube=cf.TUBE_JOBS)
 
 
     def get_result_code(self):
@@ -388,7 +388,7 @@ class Worker(Agent):
     def run(self):
         """ Start to listen, tunnels should be open and ready """
         self.connect()
-        self.bean.watch(TUBE_JOBS)
+        self.bean.watch(cf.TUBE_JOBS)
 
         """ Endless loop that awaits jobs to run """
         while True:
@@ -423,7 +423,7 @@ class Worker(Agent):
             except InvalidKIMID as e:
                 # we were not given a valid kimid
                 self.logger.error("Could not parse {} as a valid KIMID".format(jobmsg.job[0]))
-                self.job_message(jobmsg, errors=e, tube=TUBE_ERRORS)
+                self.job_message(jobmsg, errors=e, tube=cf.TUBE_ERRORS)
                 job.delete()
                 continue
 
@@ -456,15 +456,15 @@ class Worker(Agent):
                     with self.rsynclock:
                         rsync_tools.worker_write(comp.result_path)
                     if errormsg:
-                        self.job_message(jobmsg, errors=e, tube=TUBE_ERRORS)
+                        self.job_message(jobmsg, errors=e, tube=cf.TUBE_ERRORS)
                     else:
-                        self.job_message(jobmsg, tube=TUBE_RESULTS)
+                        self.job_message(jobmsg, tube=cf.TUBE_RESULTS)
 
                 job.delete()
 
             except Exception as e:
                 self.logger.exception("Failed to initalize run, deleting... %r" % e)
-                self.job_message(jobmsg, errors=e, tube=TUBE_ERRORS)
+                self.job_message(jobmsg, errors=e, tube=cf.TUBE_ERRORS)
                 job.delete()
 
             self.job = None
@@ -520,16 +520,17 @@ if __name__ == "__main__":
     args = vars(parser.parse_args())
 
     import sys
-    if PIPELINE_REMOTE:
+    if cf.PIPELINE_REMOTE:
         logger.info("REMOTE MODE: ON")
 
-    if PIPELINE_DEBUG:
+    if cf.PIPELINE_DEBUG:
         logger.info("DEBUG MODE: ON")
 
-    if PIPELINE_GATEWAY:
+    if cf.PIPELINE_GATEWAY:
         logger.info("GATEWAY MODE: ON")
 
-    network.open_ports(BEAN_PORT, PORT_RX, PORT_TX, GLOBAL_USER, GLOBAL_HOST, GLOBAL_IP)
+    network.open_ports(cf.BEAN_PORT, cf.PORT_RX, cf.PORT_TX,
+            cf.GLOBAL_USER, cf.GLOBAL_HOST, cf.GLOBAL_IP)
 
     manager = BuilderManager()
     manager.start()

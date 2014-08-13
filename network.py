@@ -7,24 +7,25 @@ Any of the classes below rely on a secure public key to open an ssh
 tunnel to the remote host.  It then connects to the beanstalkd
 across this tunnel.
 """
-from config import *
-from logger import logging, log_formatter
-logger = logging.getLogger("pipeline").getChild("network")
-
+import zmq
+import time
+import simplejson
 import beanstalkc as bean
-import time, simplejson
 from subprocess import Popen
 from threading import Thread
-import zmq
+
+import config as cf
+from logger import logging, log_formatter
+logger = logging.getLogger("pipeline").getChild("network")
 
 # TODO: switch this over to provy / fabric framework 
 # ssh -f (run in the background) -N (only port forwarding) pipeline
 # and using .ssh/config
 
-def open_ports(port=BEAN_PORT, rx=PORT_RX, tx=PORT_TX, user=GLOBAL_USER, 
-        addr=GLOBAL_HOST, ip=GLOBAL_IP):
+def open_ports(port=cf.BEAN_PORT, rx=cf.PORT_RX, tx=cf.PORT_TX, user=cf.GLOBAL_USER, 
+        addr=cf.GLOBAL_HOST, ip=cf.GLOBAL_IP):
     try:
-        bsd = bean.Connection(ip, port, GLOBAL_TOUT)
+        bsd = bean.Connection(ip, port, cf.GLOBAL_TOUT)
         bsd.close()
     except bean.SocketError:
         st  = ""
@@ -40,10 +41,10 @@ def open_ports(port=BEAN_PORT, rx=PORT_RX, tx=PORT_TX, user=GLOBAL_USER,
 #==================================================================
 class BeanstalkConnection(object):
     def __init__(self, ):
-        self.ip       = GLOBAL_IP
-        self.port     = BEAN_PORT
-        self.timeout  = PIPELINE_TIMEOUT
-        self.msg_size = PIPELINE_MSGSIZE
+        self.ip       = cf.GLOBAL_IP
+        self.port     = cf.BEAN_PORT
+        self.timeout  = cf.PIPELINE_TIMEOUT
+        self.msg_size = cf.PIPELINE_MSGSIZE
 
     def connect(self):
         try:
@@ -51,7 +52,7 @@ class BeanstalkConnection(object):
         except bean.SocketError:
             # We failed to connect, this is really bad
             logger.error("Failed to connect to beanstalk queue after launching ssh")
-            raise bean.SocketError("Failed to connect to %s" % GLOBAL_HOST)
+            raise bean.SocketError("Failed to connect to %s" % cf.GLOBAL_HOST)
  
     def disconnect(self):
         if self.bsd:
@@ -77,8 +78,8 @@ class Communicator(Thread):
         self.con = zmq.Context()
 
         # decide on the port order
-        self.port_tx = PORT_TX
-        self.port_rx = PORT_RX 
+        self.port_tx = cf.PORT_TX
+        self.port_rx = cf.PORT_RX 
  
         super(Communicator, self).__init__()
         self.daemon = True
@@ -90,7 +91,7 @@ class Communicator(Thread):
         self.sock_tx = self.con.socket(zmq.PUB)
         self.sock_rx = self.con.socket(zmq.SUB)
         self.sock_rx.setsockopt(zmq.SUBSCRIBE, "")
-        if PIPELINE_GATEWAY:
+        if cf.PIPELINE_GATEWAY:
             try:
                 self.sock_tx.bind("tcp://127.0.0.1:"+str(self.port_tx))
                 self.sock_rx.bind("tcp://127.0.0.1:"+str(self.port_rx))
@@ -143,7 +144,7 @@ class NetworkHandler(logging.Handler):
         err_message = self.format(record)
         message = self.info.copy()
         message['message'] = err_message
-        self.comm.send_msg(TUBE_LOGS,message)
+        self.comm.send_msg(cf.TUBE_LOGS,message)
 
 def addNetworkHandler(comm, boxinfo):
     # add in the beanstalk logger if applicable
