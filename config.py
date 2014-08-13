@@ -167,6 +167,12 @@ class PipelineResultsError(Exception):
 class KIMRuntimeError(Exception):
     """ General purpose KIM Api Error, used if an invocation of the KIM_API doesn't behave """
 
+class KIMBuildError(Exception):
+    """ Error to throw when a build command fails """
+
+class RsyncRuntimeError(Exception):
+    """ Generic error to throw when rsync fails """
+
 class PipelineFileMissing(Exception):
     """ If a file we rely on is missing """
 

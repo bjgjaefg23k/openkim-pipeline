@@ -237,15 +237,7 @@ class KIMObject(object):
                 dr.make()
 
         if self.makeable:
-            if not version.Version(self.kim_api_version) in version.Specifier(__kim_api_version_spec__):
-                return
-            with self.in_dir():
-                with open(os.path.join(cf.KIM_LOG_DIR, "make.log"), "a") as log:
-                    logger.debug("Attempting to make %r: %r", self.__class__.__name__, self.kim_code)
-                    try:
-                        subprocess.check_call(['make'], stdout=log, stderr=log)
-                    except Exception as e:
-                        raise subprocess.CalledProcessError("Could not build %r" % self, e)
+            kimapi.make_object(self)
         else:
             logger.warning("%r:%r is not makeable", self.__class__.__name__, self.kim_code)
 
@@ -264,7 +256,8 @@ class KIMObject(object):
         type_dir = os.path.join(cf.KIM_REPOSITORY_DIR, cls.required_leader.lower() )
         kim_codes = (
             subpath for subpath in dircache.listdir(type_dir) if (
-                os.path.isdir(os.path.join(type_dir, subpath))
+                os.path.isdir(os.path.join(type_dir, subpath)) and
+                database.iskimcode(subpath)
             )
         )
         for x in kim_codes:

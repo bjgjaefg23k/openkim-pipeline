@@ -65,7 +65,7 @@ def rsync_command(files, read=True, path=None, delete=False):
             out = subprocess.check_call(cmd, shell=True)
         except subprocess.CalledProcessError as e:
             logger.exception("RSYNC FAILED!")
-            raise subprocess.CalledProcessError("Rsync command failed", e)
+            cf.RsyncRuntimeError("Rsync command failed `%s`" % cmd)
 
 def rsync_command_read_wildcard(files,path=None):
     """ run rsync, syncing the files (or folders) listed in files, assumed to be paths or partial
@@ -87,7 +87,7 @@ def rsync_command_read_wildcard(files,path=None):
             out = subprocess.check_call(cmd, shell=True)
         except subprocess.CalledProcessError as e:
             logger.exception("RSYNC FAILED!")
-            raise subprocess.CalledProcessError("Rsync command failed", e)
+            cf.RsyncRuntimeError("Rsync command failed `%s`" % cmd)
 
 #======================================
 # Helper methods

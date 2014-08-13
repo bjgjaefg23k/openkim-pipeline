@@ -78,6 +78,14 @@ def search(args):
         print "No objects found matching your query"
         sys.exit(0)
 
+    if len(out) > 30:
+        print "Your search returned %r kim items." % len(out),
+        print "Do you want to continue? [y/N]?",
+        ans = raw_input()
+        if ans.lower() != 'y':
+            print "Exiting..."
+            sys.exit(0)
+
     return out
 
 def local_search(pack):
@@ -131,21 +139,16 @@ def build_obj(o):
     obj = kimobjects.kim_obj(o)
     obj.make()
 
+#========================================================
+# these are the main actions that can be run
+# args are interpreted starting in these functions
+#========================================================
 def action_build():
     print "Building all packages..."
     kimapi.make_all()
 
 def action_install(args, dobuild=True):
-    results = search(args)
-    if len(results) > 30:
-        print "You are about to download %r kim objects." % len(results),
-        print "Do you want to continue? [y/N]?",
-        ans = raw_input()
-        if ans.lower() != 'y':
-            print "Exiting..."
-            return
-
-    for s in results:
+    for s in search(args):
         install(s, args['force'])
 
         if dobuild:
@@ -172,6 +175,9 @@ def action_remove(args):
         else:
             print "KIM object not found: %s" % s
 
+#========================================================
+# main : argparse and interpreting user interaction
+#========================================================
 if __name__ == "__main__":
     _global_url = 'https://query.openkim.org'
     _global_url_debug = 'http://query.openkim.org:8081'

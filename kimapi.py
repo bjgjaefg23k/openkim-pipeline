@@ -4,7 +4,7 @@ that build the libraries and use the Python interface kimservice
 to test if tests and models match.
 """
 import os
-from subprocess import check_output, check_call
+from subprocess import check_output, check_call, CalledProcessError
 from contextlib import contextmanager
 from packaging import version
 from functools import partial
@@ -38,6 +38,16 @@ def make_config():
     with open(os.path.join(cf.KIM_REPOSITORY_DIR, "mo", "Makefile.KIM_Config"), 'w') as f:
         check_call(["kim-api-build-config", "--makefile-kim-config"], stdout=f)
 
+def make_clean():
+    logger.debug("Cleaning build objects...")
+    make_config()
+    with in_api_dir():
+        with open(MAKE_LOG, 'a') as log:
+            try:
+                check_call(["make", "cleaner"], stdout=log, stderr=log)
+            except CalledProcessError as e:
+                raise cf.KIMBuildError("Could not `make clean` for KIM API")
+
 def make_all():
     logger.debug("Building everything...")
     make_config()
@@ -58,9 +68,25 @@ def make_api():
     make_config()
     with in_api_dir():
         with open(MAKE_LOG, "a") as log:
-            check_call(["make", "kim-api-clean"], stdout=log, stderr=log)
-            check_call(["make", "config"], stdout=log, stderr=log)
-            check_call(["make", "kim-api-libs"], stdout=log, stderr=log)
+            try:
+                check_call(["make", "aconfig"], stdout=log, stderr=log)
+                check_call(["make", "kim-api-libs"], stdout=log, stderr=log)
+            except CalledProcessError as e:
+                raise cf.KIMBuildError("Could not build kim-api-libs, check %s" % MAKE_LOG)
+
+def make_object(obj):
+    if (not version.Version(obj.kim_api_version)
+            in version.Specifier(__kim_api_version_spec__)):
+        logger.debug("KIM API version does not match object's, skipping build")
+        return
+
+    with obj.in_dir():
+        with open(MAKE_LOG, 'a') as log:
+            try:
+                check_call(['make'], stdout=log, stderr=log)
+            except CalledProcessError as e:
+                raise cf.KIMBuildError("Could not build %r, check %s" % (obj, MAKE_LOG))
+
 
 #======================================
 # Some kim api wrapped things
