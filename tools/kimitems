@@ -128,7 +128,7 @@ def install(obj, force=False):
         print "%s already exists, replacing" % install_dir
         shutil.rmtree(install_dir)
 
-    print "Installing %s ..." % obj
+    print "Installing %s to %s..." % (obj, install_dir)
     tar.extractall(path=leader_dir)
 
     tar.close()

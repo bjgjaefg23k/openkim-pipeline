@@ -1,0 +1,132 @@
+<head>
+    <title>OpenKIM VM</title>
+</head>
+<html>
+    <body>
+        <center><h1>Intro to OpenKIM VM v1.0</h1>
+            <h2>Codename: Longbranch Pennywhistle</h2></center>
+        <h2>Goals</h2>
+        <p>The design of our VM was based on several constraints:</p>
+        <ul>
+            <li>A well defined set of software (including versions) that can be described by a single number.</li>
+            <li>Ability to support the distributed hardware on which the pipeline runs.</li>
+            <li>Flexibility in setup and usage.</li>
+        </ul>
+
+        <h2>Casper</h2>
+        <p>The casper live boot system is a set of initial ramdisk (initrd) scripts that get run before mounting
+        the root filesystem when the grub boot line contains 'boot=casper'.  From that point, the casper
+        scripts created a union filesystem which mounts a read-only filesystem along with a cow (copy-on-write)
+        filesystem on top of it to allow changes.  </p>
+        
+        <p>In the case of our box, the read-only filesystem is called
+        filesystem.squashfs and is located in the directory /casper of the boot partition.  The write enabled
+        filesystems are chosen due to the filename convention as well or by the disk label.  There are three
+        write filesystems enabled for our box:</p>
+        <ul>
+            <li>/ - mounted by /casper-rw or label casper-rw</li>
+            <li>/home - mounted by /home-rw or label home-rw</li>
+            <li>/pipeline - mounted by /pipeline-rw or label pipeline-rw</li>
+        </ul>
+
+        <p>We chose these three so that we can erase most of the box but still maintain a small persistent
+        directory for certain configuration files that need to be maintained between boots.  In order to 
+        erase these filesystems, it has to be done before boot through grub cmdline parameters.  If the 
+        word 'delete' is in the line, both casper-rw and home-rw are erased if present.</p>
+
+        <h2>4 VM packages</h2>
+        <p>The casper system is provided through 4 different packaging mechanisms:</p>
+        <ul>
+          <li><b>iso</b> - a standard live-cd iso.  This method by default does not provide persistence,
+            but rather can be provided by creating a persistent filesystem in a file in the boot root.
+            
+            To use this method, you can use your favorite USB boot CD creator, or you can create it
+            manually.
+            
+            <pre>
+            mkdir -p isoloop workdir
+            mount /dev/sdX? ./workdir
+            
+            # copy contents of iso to new drive
+            mount -o loop opnkim-vm.iso ./isoloop
+            cp -a ./isoloop/* ./workdir
+            umount ./isoloop
+
+            # create persistence file
+            dd if=/dev/zero of=./workdir/casper-rw bs=1M count=16
+            mkfs.ext2 -F ./workdir/casper-rw
+
+            # make sure that this partition can boot
+            grub-install --root-directory ./workdir/boot /dev/sdX?
+            umount ./workdir   </pre>
+
+            In addition, we can boot directly from the iso copied to a partition.  In this case, we
+            cannot use file persistence (though disk label persistence is still available).  We have 
+            made available a grub configuration for this purpose, which be found 
+            <a href="https://github.com/openkim/openkim-pipeline-setup/blob/casper/static/foruser/grub2.fromiso">here</a>
+            <pre>
+            mkdir -p workdir
+            mount /dev/sdX? ./workdir
+
+            cp -a ./openkim-vm.iso ./workdir
+            grub-install --root-directory ./workdir/boot /dev/sdX?
+            cp -a ./grub.cfg ./workdir/boot/grub
+
+            umount ./workdir  </pre>
+
+            If this is too much, you can also launch an entirely non-persistent box through 
+            <pre>
+            qemu-system-x86_64 -cdrom openkim-vm.iso</pre>
+            <br/></li>
+
+         <li><b>Vagrant</b> - in this method, we employ some heavy lifters in the virtualization community
+            to ease the use of the box.  You can read about Vagrant <a href="http://vagrantup.com">here</a>.  
+            <h3>Option One</h3>
+                Use the <a href="http://pipeline.openkim.org/vm/v1/Vagrantfile">Vagrantfile</a>. Put it in a directory, and run 'vagrant up'.
+
+            <h3>Option Two</h3>
+
+            To start a box, one should grab our Vagrantfile and place it in a new directory, then run
+
+            <pre>
+            vagrant up   </pre>
+            This VM provides a read-write filesystem that holds our casper squashfs as well as a partition labeled
+            pipeline-rw for the persistence files and a partition labeled casper-rw for the COW filesystem.  Also
+            included is a swap of around 1G just in case.
+            <br/></li>
+
+         <li><b>raw</b> - here, we have provided a raw disk image that can be used in many different 
+            places.  It contains the same partitions listed in the vagrant box, but does not need virtualization
+            to run.  You can install this box to a disk by using
+
+            <pre>
+            dd if=./openkim-vm.raw of=/dev/sdX   </pre>
+            and make sure that the bootable flag is set in the primary partition.  If the partition table does not 
+            updated automatically, then you can force the write by running
+
+            <pre>
+            parted /dev/sdX
+            (parted) w   </pre>
+            
+            Again, qemu is available to launch an easy virtual machine using
+            <pre>
+            qemu-system-x86_64 -hda ./openkim-vm.raw </pre><br/></li>
+
+         <li><b>vmdk</b> - finally, the last format is the native format of VirtualBox, and open source
+            virtualization program.  You can use this format by creating a new VM (via GUI or your favorite method)
+            and adding this file as a disk.
+            
+            Finally, qemu is again available for a quick launch by
+            <pre>
+            qemu-system-x86_64 -hda ./openkim-vm.vmdk </pre><br/></li>
+        </ul>
+
+        <h2>Afer launching</h2>
+        <p>After creating your vm, you can interact with it like any other linux system through the tty or
+        by ssh.  To grab the proper software, run 
+        <pre>sudo /pipeline/runsetup </pre>This will pull all of the openkim software that is needed for
+        development or running the pipeline.  To become a worker, you should run
+        <pre>sudo /pipeline/runsecure</pre> and answer all of the questions that follow.</p>
+
+    </body>
+</html>
