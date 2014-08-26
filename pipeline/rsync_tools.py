@@ -15,7 +15,6 @@ from functools import partial
 # --delete ensures that we delete files that aren't on remote
 RSYNC_FLAGS  = "-vvrLhzREc --progress --stats -e "
 RSYNC_FLAGS += "'ssh -i "+cf.GLOBAL_KEY+" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'"
-RSYNC_FLAGS += " --exclude-from="+cf.RSYNC_EXCLUDE_FILE
 
 RSYNC_ADDRESS = cf.RSYNC_USER+"@"+cf.RSYNC_HOST
 RSYNC_PATH = RSYNC_ADDRESS+":"+cf.RSYNC_REMOTE_ROOT
