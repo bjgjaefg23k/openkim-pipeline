@@ -24,5 +24,6 @@ setup(
         'Jinja2==2.7.3',
         'pymongo==2.7.2',
         "pyzmq==14.3.1",
+        "numpy==1.8.2",
     ]
 )
