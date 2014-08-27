@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 
-from distutils.core import setup
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
+
 import glob
 
 setup(
@@ -12,4 +16,13 @@ setup(
     url='http://www.python.org/sigs/distutils-sig/',
     packages=['pipeline'],
     scripts=glob.glob("tools/*"),
+    install_requires=[
+        'simplejson==3.6.3',
+        'pyzmq==14.3.1',
+        'beanstalkc==0.4.0',
+        'Pygments==1.6',
+        'Jinja2==2.7.3',
+        'pymongo==2.7.2',
+        "pyzmq==14.3.1",
+    ]
 )
