@@ -1,5 +1,6 @@
 *.pyc
 logs/*
+pipeline/logs/*
 *.json
 *.tmp
 kim.log

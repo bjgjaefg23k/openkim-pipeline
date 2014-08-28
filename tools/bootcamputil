@@ -4,10 +4,10 @@ import os
 import subprocess
 import shutil
 
-import kimapi
+from pipeline import kimapi
 
-from config import *
-from logger import logging
+from pipeline from config import *
+from pipeline.logger import logging
 logger = logging.getLogger("kimitems")
 join = os.path.join
 

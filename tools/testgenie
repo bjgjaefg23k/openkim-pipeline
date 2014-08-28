@@ -44,11 +44,11 @@ Or you can verify them all
 import argparse
 VERSION = 0.1
 
-import kimquery
-import kimobjects
-import database
-from config import *
-from logger import logging
+from pipeline import kimquery
+from pipeline import kimobjects
+from pipeline import database
+from pipeline.config import *
+from pipeline.logger import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("testgenie")
 
@@ -256,7 +256,4 @@ with open(os.path.abspath(os.path.join(tdpath,'..',generator_file))) as f:
                 filename_extension = filename_extension )
         gentests.append(newtestpath)
         print newtestpath
-
-
-
 

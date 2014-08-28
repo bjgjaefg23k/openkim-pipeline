@@ -21,7 +21,7 @@ from multiprocessing import cpu_count, Process, Lock
 from multiprocessing.managers import BaseManager
 import sys
 import time
-import simplejson
+import json
 import uuid
 
 import config as cf
@@ -184,7 +184,7 @@ class Agent(object):
         if len(jobmsg.errors) > cf.PIPELINE_MSGSIZE:
             jobmsg.errors = "too long"
 
-        msg = simplejson.dumps(jobmsg)
+        msg = json.dumps(jobmsg)
         self.bean.send_msg(tube, msg)
         self.comm.send_msg(tube, msg)
 
@@ -251,7 +251,7 @@ class Director(Agent):
                 # update the repository,send it out as a job to compute
                 try:
                     rsync_tools.director_approved_read()
-                    self.push_jobs(simplejson.loads(request.body))
+                    self.push_jobs(json.loads(request.body))
                 except Exception as e:
                     self.logger.exception("Director had an error on update")
 
@@ -406,7 +406,7 @@ class Worker(Agent):
             try:
                 jobmsg = network.Message(string=job.body)
                 pending = True if jobmsg == "pending" else False
-            except simplejson.JSONDecodeError:
+            except ValueError:
                 # message is not JSON decodeable
                 self.logger.error("Did not recieve valid JSON, {}".format(job.body))
                 job.delete()
@@ -483,7 +483,7 @@ class Site(Agent):
 
     def send_update(self, kimid):
         self.logger.info("Pushing jobs")
-        self.bean.send_msg("web_updates", simplejson.dumps({"kimid": kimid, "priority":"normal", "status":"approved"}))
+        self.bean.send_msg("web_updates", json.dumps({"kimid": kimid, "priority":"normal", "status":"approved"}))
 
 
 class APIAgent(Agent):
@@ -508,18 +508,7 @@ def signal_handler(): #signal, frame):
         p.join(timeout=1)
     sys.exit(1)
 
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(description=
-        """OpenKIM pipeline executable.  Depending on the role, this executable
-        will connect to the pipeline infrastructure and perform work as a worker,
-        director, or emulating the role of the website."""
-    )
-    parser.add_argument("role", type=str, help="Pipeline role to assume {worker|director|site}")
-    parser.add_argument("kimid", type=str, nargs='?', help="If acting as site, the kimid to update")
-    args = vars(parser.parse_args())
-
-    import sys
+def main(role='worker', kimid=''):
     if cf.PIPELINE_REMOTE:
         logger.info("REMOTE MODE: ON")
 
@@ -537,43 +526,37 @@ if __name__ == "__main__":
     builder = manager.BuilderBot()
     rsynclock = Lock()
 
-    if args['role']:
-        # directors are not multithreaded for build safety
-        if args['role'] == "director":
-            director = Director(num=0)
-            logger.info("Building KIM API...")
-            director.make_api()
-            director.run()
+    # directors are not multithreaded for build safety
+    if role == "director":
+        director = Director(num=0)
+        logger.info("Building KIM API...")
+        director.make_api()
+        director.run()
 
-        # workers can be multi-threaded so launch the appropriate
-        # number of worker threads
-        elif args['role'] == "worker":
-            thrds = cpu_count()
-            for i in range(thrds):
-                pipe[i] = Worker(num=i, builder=builder, rsynclock=rsynclock)
+    # workers can be multi-threaded so launch the appropriate
+    # number of worker threads
+    elif role == "worker":
+        thrds = cpu_count()
+        for i in range(thrds):
+            pipe[i] = Worker(num=i, builder=builder, rsynclock=rsynclock)
 
-                if i == 0:
-                    logger.info("Building KIM API as worker 0")
-                    pipe[i].make_api()
+            if i == 0:
+                logger.info("Building KIM API as worker 0")
+                pipe[i].make_api()
 
-                procs[i] = Process(target=Worker.run, args=(pipe[i],), name='worker-%i'%i)
-                #procs[i].daemon = True
-                procs[i].start()
+            procs[i] = Process(target=Worker.run, args=(pipe[i],), name='worker-%i'%i)
+            procs[i].start()
 
-            try:
-                while True:
-                    for i in range(thrds):
-                        procs[i].join(timeout=1.0)
-            except (KeyboardInterrupt, SystemExit):
-                signal_handler()
+        try:
+            while True:
+                for i in range(thrds):
+                    procs[i].join(timeout=1.0)
+        except (KeyboardInterrupt, SystemExit):
+            signal_handler()
 
-        # site is a one off for testing
-        elif args['role'] == "site":
-            obj = Site()
-            obj.run()
-            obj.send_update(args['kimid'])
-
-        elif args['role'] == "agent":
-            obj = APIAgent()
-            obj.run()
+    # site is a one off for testing
+    elif role == "site":
+        obj = Site()
+        obj.run()
+        obj.send_update(kimid)
 

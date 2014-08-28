@@ -17,7 +17,6 @@ setup(
     packages=['pipeline'],
     scripts=glob.glob("tools/*"),
     install_requires=[
-        'simplejson==3.6.3',
         'pyzmq==14.3.1',
         'beanstalkc==0.4.0',
         'Pygments==1.6',

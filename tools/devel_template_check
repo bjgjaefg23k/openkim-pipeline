@@ -10,10 +10,10 @@ import json
 import yaml
 import os
 
-import kimobjects
-import template
+from pipeline import kimobjects
+from pipeline import template
 
-from logger import logging
+from pipeline.logger import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("testgenie")
 

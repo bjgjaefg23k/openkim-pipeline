@@ -2,7 +2,7 @@
 """ Simple wrapper for udunits2-bin for converting arbitrary units to SI units """
 import argparse
 
-import kimunits
+from pipeline import kimunits
 
 parser = argparse.ArgumentParser(description="KIM wrapper for UDUNITS2")
 parser.add_argument('source-value', type=str, help="value in original units")

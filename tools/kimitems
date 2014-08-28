@@ -9,14 +9,14 @@ import glob
 import uuid
 import subprocess
 
-import kimquery
-import database
-import kimapi
-import kimobjects
+from pipeline import kimquery
+from pipeline import database
+from pipeline import kimapi
+from pipeline import kimobjects
 
-from config import *
-from config import __pipeline_version__
-from logger import logging
+from pipeline.config import *
+from pipeline.config import __pipeline_version__
+from pipeline.logger import logging
 logger = logging.getLogger("kimitems")
 join = os.path.join
 

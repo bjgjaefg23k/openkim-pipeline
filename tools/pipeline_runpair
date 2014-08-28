@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-import database
-import kimobjects
-from compute import Computation
+from pipeline import database
+from pipeline import kimobjects
+from pipeline.compute import Computation
 import sys
-from config import *
-from logger import logging
-from pipeline import Director
+from pipeline.config import *
+from pipeline.logger import logging
+from pipeline.pipeline import Director
 logger = logging.getLogger("pipeline").getChild("development")
 
 if __name__ == "__main__":
