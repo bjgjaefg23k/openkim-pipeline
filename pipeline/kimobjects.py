@@ -28,6 +28,7 @@ import os
 from packaging import version
 from contextlib import contextmanager
 
+import util
 import database
 import kimapi
 from template import template_environment
@@ -274,7 +275,7 @@ class KIMObject(object):
 
         spec = {}
         with open(specfile) as f:
-            spec = cf.loadedn(f)
+            spec = util.loadedn(f)
         return spec
 
     @property
@@ -365,7 +366,7 @@ class Runner(KIMObject):
     def runtime_dependencies(self, subject=None):
         """ go ahead and append the subject to single test items """
         if self.depfile:
-            raw, out = cf.loadedn(self.depfile), []
+            raw, out = util.loadedn(self.depfile), []
             for dep in raw:
                 newdep = dep
 

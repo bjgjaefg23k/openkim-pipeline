@@ -144,7 +144,7 @@ class NetworkHandler(logging.Handler):
         err_message = self.format(record)
         message = self.info.copy()
         message['message'] = err_message
-        self.comm.send_msg(cf.TUBE_LOGS,message)
+        #self.comm.send_msg(cf.TUBE_LOGS,message)
 
 def addNetworkHandler(comm, boxinfo):
     # add in the beanstalk logger if applicable

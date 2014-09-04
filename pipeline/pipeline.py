@@ -44,8 +44,10 @@ def getboxinfo():
     """
     import urllib
     import re
-    things = ['pipeline_sitename', 'pipeline_username', 'boxtype',
-            'vmversion', 'setupargs', 'gitbranch', 'githost', 'gitname', 'uuid']
+    things = [
+        'pipeline_sitename', 'pipeline_username', 'boxtype',
+        'vmversion', 'setupargs', 'gitbranch', 'githost', 'gitname', 'uuid'
+    ]
 
     info = {}
     for thing in things:
@@ -197,17 +199,6 @@ class Agent(object):
                 self.logger.error("could not make kim")
                 raise RuntimeError, "Could not build entire repository"
             return 0
-
-    def make_api(self):
-        self.logger.debug("Building the API...")
-        with kimapi.in_api_dir():
-            try:
-                kimapi.make_api()
-            except CalledProcessError as e:
-                self.logger.error("Could not make KIM API")
-                raise RuntimeError, "Could not make KIM API"
-            return 0
-
 
 #==================================================================
 # director class for the pipeline
@@ -509,17 +500,18 @@ def signal_handler(): #signal, frame):
     sys.exit(1)
 
 def main(role='worker', kimid=''):
-    if cf.PIPELINE_REMOTE:
-        logger.info("REMOTE MODE: ON")
-
     if cf.PIPELINE_DEBUG:
         logger.info("DEBUG MODE: ON")
 
     if cf.PIPELINE_GATEWAY:
         logger.info("GATEWAY MODE: ON")
 
-    network.open_ports(cf.BEAN_PORT, cf.PORT_RX, cf.PORT_TX,
-            cf.GLOBAL_USER, cf.GLOBAL_HOST, cf.GLOBAL_IP)
+    if cf.PIPELINE_LOCAL:
+        logger.info("LOCAL MODE: ON")
+
+    if not cf.PIPELINE_LOCAL:
+        network.open_ports(cf.BEAN_PORT, cf.PORT_RX, cf.PORT_TX,
+                cf.GLOBAL_USER, cf.GLOBAL_HOST, cf.GLOBAL_IP)
 
     manager = BuilderManager()
     manager.start()
@@ -530,7 +522,6 @@ def main(role='worker', kimid=''):
     if role == "director":
         director = Director(num=0)
         logger.info("Building KIM API...")
-        director.make_api()
         director.run()
 
     # workers can be multi-threaded so launch the appropriate
@@ -542,7 +533,6 @@ def main(role='worker', kimid=''):
 
             if i == 0:
                 logger.info("Building KIM API as worker 0")
-                pipe[i].make_api()
 
             procs[i] = Process(target=Worker.run, args=(pipe[i],), name='worker-%i'%i)
             procs[i].start()
