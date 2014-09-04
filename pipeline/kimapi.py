@@ -67,8 +67,6 @@ def make_object(obj):
 #======================================
 # Some kim api wrapped things
 #======================================
-import kimservice
-
 def valid_match_util(test,model):
     """ Check to see if a test and model mach by using Ryan's utility """
     logger.debug("invoking Ryan's utility for (%r,%r)",test,model)
@@ -85,7 +83,8 @@ def valid_match_codes(test,model):
 
         Tests through ``kimservice.KIM_API_init``, running in its own forked process
     """
-    #logger.debug("attempting to match %r with %r",testname,modelname)
+    import kimservice
+
     logger.debug("invoking KIMAPI for (%r,%r)",test,model)
     pid = os.fork()
     if (pid==0):

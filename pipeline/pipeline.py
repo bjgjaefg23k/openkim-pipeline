@@ -34,6 +34,7 @@ import kimapi
 import dependencies
 
 from logger import logging
+from config import __pipeline_version__
 logger = logging.getLogger("pipeline").getChild("pipeline")
 
 def getboxinfo():
@@ -51,20 +52,16 @@ def getboxinfo():
 
     info = {}
     for thing in things:
-        try:
-            info[thing] = cf.CONF[thing.upper()]
-        except Exception as e:
-            info[thing] = None
+        info[thing] = cf.CONF.get(thing.upper(), '')
 
     info['cpucount'] = cpu_count()
-    info['setuphash'] = Popen("cd "+cf.CONF["PIPELINEDIR"]+"; git log -n 1 | grep commit | sed s/commit\ //", 
-        stdout=PIPE, shell=True).communicate()[0]
+    info['pipeline_version'] = __pipeline_version__
 
     try:
         info['ipaddr'] = urllib.urlopen("http://pipeline.openkim.org/ip").read()
     except IOError as e:
         logger.error("pipeline.openkim.org could not be reached for ip")
-        info['ipaddr'] = None
+        info['ipaddr'] = ''
 
     try:
         with open(cf.CONF["FILE_BENCHMARK"]) as f:
