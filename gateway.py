@@ -54,7 +54,14 @@ class Gateway(object):
                 try:
                     kimcode = json.loads(request.body)['jobid']
                     leader = database.uuid_type(kimcode)
+                    if database.isuuid(kimcode):
+                        leader = database.uuid_type(kimcode)
+                        insert_one_result(leader, kimcode)
                     rsync_tools.gateway_write_result(leader, kimcode)
+
+                    if tube == TUBE_RESULTS:
+                        self.bean.send_msg("web_updates", json.dumps({"kimid": kimcode, "priority": "normal", "status": "approved"}))
+
                 except Exception as e:
                     logger.error("%r" % e)
                 self.bean.send_msg(cf.TUBE_WEB_RESULTS, request.body)

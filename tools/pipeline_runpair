@@ -30,6 +30,6 @@ if __name__ == "__main__":
     
     if not args['inplace']:
         d = Director()
-        Computation(runner, subject, d.get_result_code()).run()
+        Computation(runner, subject, d.get_result_code(runner, subject)).run()
     else:
         Computation(runner, subject).run()

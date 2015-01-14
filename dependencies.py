@@ -94,11 +94,15 @@ def get_run_list(target, depth=0, tree=False, display=False):
                         for dep in get_run_list((tmp_te, tmp_mo),
                                         depth=depth+1, display=display):
                             torun.add(dep)
+                    else:
+                        logger.debug("Dependency is already in queue, skipping (%r, %r)" % (tmp_te, tmp_mo))
+                else:
+                    logger.debug("Dependency already exists for (%r, %r), skipping" % (tmp_te, tmp_mo))
 
         if satisfied:
             if not result_exists(te, mo):
                 return [(te, mo)]
-            logger.debug("Result exists for (%r, %r), skipping..." % (te, mo))
+            logger.debug("Result already exists for (%r, %r), skipping..." % (te, mo))
             return []
         return list(torun)
 

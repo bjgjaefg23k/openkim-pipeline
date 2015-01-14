@@ -21,7 +21,7 @@ import config as cf
 
 __all__ = ['LogLexer']
 
-FILELEVEL = logging.INFO
+FILELEVEL = logging.DEBUG
 
 class LogStyle(Style):
     background_color = "#000000"

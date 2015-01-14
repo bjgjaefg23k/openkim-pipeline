@@ -255,9 +255,18 @@ def insert_one_reference_data(leader, kimcode):
 
 def insert_objs():
     logger.info("Filling with objects")
-    leaders = ('te','tv','mv','mo','md','td')
+    leaders = ('te','mo','md','td')
     for leader in leaders:
         for i,folder in enumerate(os.listdir(os.path.join(PATH_APPROVED,leader))):
+            if folder.startswith("Make"):
+                continue
+            insert_one_object(folder)
+
+def insert_verifiers():
+    logger.info("Filling with verifiers")
+    leaders = ('tv', 'mv')
+    for leader in leaders:
+        for i,folder in enumerate(os.listdir(os.path.join(PATH_APPROVED, leader))):
             if folder.startswith("Make"):
                 continue
             insert_one_object(folder)

@@ -136,10 +136,7 @@ def valid_match_codes(test,model):
         raise cf.KIMRuntimeError
         match = False
 
-    if match:
-        return True
-    else:
-        return False
+    return match
 
 def valid_match(test,model):
     """ Test to see if a test and model match using the kim API, returns bool

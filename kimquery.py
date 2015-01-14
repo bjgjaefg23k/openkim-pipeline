@@ -1,7 +1,7 @@
 import urllib
 import urllib2
 import itertools
-from config import PipelineQueryError
+from config import PipelineQueryError, PIPELINE_DEBUG
 import json
 import os
 
@@ -45,7 +45,10 @@ def query_mongo(query, url="", decode=False):
     # set up the globals for how to interact with the website
     prepare_dns()
 
-    url = url or 'https://query.openkim.org/api'
+    if PIPELINE_DEBUG:
+        url = url or 'http://query.openkim.org:8081/api'
+    else:
+        url = url or 'https://query.openkim.org/api'
     user_agent = "OpenKIM Pipeline (http://pipeline.openkim.org/)"
     header = {'User-Agent' : user_agent, "Content-type": "application/x-www-form-urlencoded"}
     data = urllib.urlencode(dict((key,json.dumps(val)) for (key,val) in query.iteritems()))

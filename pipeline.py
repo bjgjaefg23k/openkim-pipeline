@@ -250,6 +250,7 @@ class Director(Agent):
             if request.stats()['tube'] == cf.TUBE_UPDATES:
                 # update the repository,send it out as a job to compute
                 try:
+                    self.logger.info("Director got message %r", self.job.body)
                     rsync_tools.director_approved_read()
                     self.push_jobs(simplejson.loads(request.body))
                 except Exception as e:
@@ -274,6 +275,7 @@ class Director(Agent):
         priority_factor = self.priority_to_number(update['priority'])
 
         if database.isuuid(kimid):
+            self.logger.info("Got result id, checking for dependencies...")
             priority = int(priority_factor*1000000)
             self.check_dependencies_and_push(kimid, priority, status)
             return
@@ -357,13 +359,14 @@ class Director(Agent):
         for test, model in zip(tests, models):
             if not checkmatch or (checkmatch and kimapi.valid_match(test, model)):
                 priority = int(priority_factor*database.test_model_to_priority(test, model) * 1000000)
+                logger.debug("About to push (%r, %r), checking dependencies" % (test, model))
                 self.check_dependencies_and_push((test,model), priority, status)
 
     def check_dependencies_and_push(self, target, priority, status):
         """ Check dependencies, and push them first if necessary """
         # run the test in its own directory
         for te, mo in dependencies.get_run_list(target):
-            trid = self.get_result_code()
+            trid = self.get_result_code(te, mo)
             depids = (str(item) for item in te.dependencies + mo.dependencies)
 
             self.logger.info("Submitting job <%s, %s, %s> priority %i" % (te, mo, trid, priority))
@@ -373,8 +376,8 @@ class Director(Agent):
             self.job_message(msg, tube=cf.TUBE_JOBS)
 
 
-    def get_result_code(self):
-        return str(uuid.uuid1( uuid.UUID(self.boxinfo['uuid']).int >> 80 ))
+    def get_result_code(self, te, mo):
+        return te.kim_code_id+"-and-"+mo.kim_code_id+'-'+str(int(time.time()))
 
 
 #==================================================================

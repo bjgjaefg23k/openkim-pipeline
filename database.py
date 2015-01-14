@@ -20,7 +20,7 @@ logger = logging.getLogger("pipeline").getChild("database")
 #-------------------------------------------------
 #KIMID matcher  ( optional name             __) (prefix  ) ( number  )( opt version )
 RE_KIMID    = r"(?:([_a-zA-Z][_a-zA-Z0-9]*?)__)?([A-Z]{2})_([0-9]{12})(?:_([0-9]{3}))?"
-RE_UUID     = r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"
+RE_UUID     = r"([A-Z]{2}_[0-9]{12}_[0-9]{3}-and-[A-Z]{2}_[0-9]{12}_[0-9]{3}-[0-9]{5,})"
 
 LEADERS_OBJS = ["mo", "md", "te", "td", "tv", "mv"]
 LEADERS_DATA = ["tr", "vr", "rd", "er"]

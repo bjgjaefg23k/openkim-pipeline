@@ -31,7 +31,7 @@ def open_ports(port=cf.BEAN_PORT, rx=cf.PORT_RX, tx=cf.PORT_TX, user=cf.GLOBAL_U
         st  = ""
         st += "screen -dm ssh -i {} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "  
         st +=                 "-L{}:{}:{}   -L{}:{}:{}  -L{}:{}:{}  {}@{}"
-        ssh = Popen(st.format(GLOBAL_KEY, port,ip,port,  
+        ssh = Popen(st.format(cf.GLOBAL_KEY, port,ip,port,  
                 rx,ip,rx,  tx,ip,tx,   user,addr), shell=True)
         logger.info("Waiting to open ports via ssh tunnels")
         time.sleep(1)

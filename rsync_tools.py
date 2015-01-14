@@ -13,7 +13,7 @@ from database import parse_kim_code
 from functools import partial
 
 # --delete ensures that we delete files that aren't on remote
-RSYNC_FLAGS  = "-vvrLhzREc --progress --stats -e "
+RSYNC_FLAGS  = "-vvrLhzREct --progress --stats -e "
 RSYNC_FLAGS += "'ssh -i "+cf.GLOBAL_KEY+" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'"
 RSYNC_FLAGS += " --exclude-from="+cf.RSYNC_EXCLUDE_FILE
 
@@ -45,7 +45,7 @@ def rsync_command(files, read=True, path=None, delete=False):
         full_path = RSYNC_PATH + path + "/./"
     else:
         full_path = RSYNC_PATH
-    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+    with tempfile.NamedTemporaryFile(delete=True) as tmp:
         tmp.file.write("\n".join(files))
         tmp.file.close()
         flags = RSYNC_FLAGS
