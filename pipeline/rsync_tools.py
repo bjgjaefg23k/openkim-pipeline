@@ -14,7 +14,8 @@ from functools import partial
 
 # --delete ensures that we delete files that aren't on remote
 RSYNC_FLAGS  = "-vvrLhzREct --progress --stats -e "
-RSYNC_FLAGS += "'ssh -i "+cf.GLOBAL_KEY+" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'"
+SSH_FLAGS    = "ssh -i "+cf.GLOBAL_KEY+" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+RSYNC_FLAGS += "'"+SSH_FLAGS+"'"
 
 RSYNC_ADDRESS = cf.RSYNC_USER+"@"+cf.RSYNC_HOST
 RSYNC_PATH = RSYNC_ADDRESS+":"+cf.RSYNC_REMOTE_ROOT
@@ -93,6 +94,16 @@ def rsync_command_read_wildcard(files,path=None):
         except subprocess.CalledProcessError as e:
             logger.exception("RSYNC FAILED!")
             cf.RsyncRuntimeError("Rsync command failed `%s`" % cmd)
+
+def ssh_touch_done(leader, uuid):
+    remote_file = j(cf.RSYNC_REMOTE_ROOT, "./"+WRITE_RESULTS, leader.lower(), uuid, "upload_complete.txt")
+    cmd = " ".join([SSH_FLAGS, RSYNC_ADDRESS, '"touch '+remote_file+'"'])
+    try:
+        logger.info("Touching flag file, upload complete for %r" % uuid)
+        subprocess.check_call(cmd, shell=True)
+    except subprocess.CalledProcessError as e:
+        logger.exception("Touch failed!")
+        cf.RsyncRuntimeError("Touch command failed `%s`" % cmd)
 
 #======================================
 # Helper methods
