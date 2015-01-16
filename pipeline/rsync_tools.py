@@ -96,8 +96,10 @@ def rsync_command_read_wildcard(files,path=None):
             cf.RsyncRuntimeError("Rsync command failed `%s`" % cmd)
 
 def ssh_touch_done(leader, uuid):
+    logfile = j(cf.LOG_DIR, "ssh.log")
     remote_file = j(cf.RSYNC_REMOTE_ROOT, "./"+WRITE_RESULTS, leader.lower(), uuid, "upload_complete.txt")
-    cmd = " ".join([SSH_FLAGS, RSYNC_ADDRESS, '"touch '+remote_file+'"'])
+    cmd = " ".join([SSH_FLAGS, RSYNC_ADDRESS, '"touch '+remote_file+'"', ">> %s 2>&1" % logfile])
+
     try:
         logger.info("Touching flag file, upload complete for %r" % uuid)
         subprocess.check_call(cmd, shell=True)

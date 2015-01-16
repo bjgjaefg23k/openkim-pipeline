@@ -58,8 +58,9 @@ class Gateway(object):
                         leader = database.uuid_type(kimcode)
                         insert_one_result(leader, kimcode)
                     rsync_tools.gateway_write_result(leader, kimcode)
+                    rsync_tools.ssh_touch_done(leader, kimcode)
 
-                    if tube == TUBE_RESULTS:
+                    if tube == cf.TUBE_RESULTS:
                         self.bean.send_msg("web_updates", json.dumps({"kimid": kimcode, "priority": "normal", "status": "approved"}))
 
                 except Exception as e:
