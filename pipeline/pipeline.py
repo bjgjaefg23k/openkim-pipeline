@@ -189,13 +189,12 @@ class Agent(object):
 
     def make_all(self):
         self.logger.debug("Building everything...")
-        with kimapi.in_api_dir():
-            try:
-                kimapi.make_all()
-            except CalledProcessError as e:
-                self.logger.error("could not make kim")
-                raise RuntimeError, "Could not build entire repository"
-            return 0
+        try:
+            kimapi.make_all()
+        except CalledProcessError as e:
+            self.logger.error("could not make kim")
+            raise RuntimeError, "Could not build entire repository"
+        return 0
 
 #==================================================================
 # director class for the pipeline

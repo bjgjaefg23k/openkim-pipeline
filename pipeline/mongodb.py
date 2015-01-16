@@ -10,7 +10,7 @@ from logger import logging
 logger = logging.getLogger('pipeline').getChild('mongodb')
 
 client = pymongo.MongoClient(host='db0')
-db = client[MONGODB]
+db = client[cf.MONGODB]
 
 PATH_RESULT = cf.RSYNC_LOCAL_ROOT
 PATH_APPROVED = cf.RSYNC_LOCAL_ROOT

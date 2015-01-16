@@ -143,7 +143,7 @@ class WebCommunicator(network.Communicator):
 
         # in process sockets to send data to the websockets
         self.sock_jobs = self.con.socket(network.zmq.PUB)
-        self.sock_jobs.bind("tcp://127.0.0.1:%i" % cf.nGATEWAY_PORT_JOBS)
+        self.sock_jobs.bind("tcp://127.0.0.1:%i" % cf.GATEWAY_PORT_JOBS)
 
         self.sock_logs = self.con.socket(network.zmq.PUB)
         self.sock_logs.bind("tcp://127.0.0.1:%i" % cf.GATEWAY_PORT_LOGS)
