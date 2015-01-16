@@ -1,0 +1,6 @@
+In order to make pipeline a proper chip package:
+
+* move configuration to a better location that does not depend on the /pipeline
+folder, and probably in a better format:
+    - we don't need bash to read this file in the long term hopefully
+    - can switch from local to remote easily

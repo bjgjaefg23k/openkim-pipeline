@@ -9,7 +9,7 @@ across this tunnel.
 """
 import zmq
 import time
-import simplejson
+import json
 import beanstalkc as bean
 from subprocess import Popen
 from threading import Thread
@@ -126,7 +126,7 @@ class Communicator(Thread):
                 pass
 
     def send_msg(self, tube, msg):
-        self.sock_tx.send(simplejson.dumps([tube, msg]))
+        self.sock_tx.send(json.dumps([tube, msg]))
 
 
 #==================================================================
@@ -144,7 +144,7 @@ class NetworkHandler(logging.Handler):
         err_message = self.format(record)
         message = self.info.copy()
         message['message'] = err_message
-        self.comm.send_msg(cf.TUBE_LOGS,message)
+        #self.comm.send_msg(cf.TUBE_LOGS,message)
 
 def addNetworkHandler(comm, boxinfo):
     # add in the beanstalk logger if applicable
@@ -161,7 +161,7 @@ class Message(dict):
         super(Message, self).__init__()
         dic = kwargs
         if kwargs.has_key('string'):
-            dic = simplejson.loads(kwargs['string'])
+            dic = json.loads(kwargs['string'])
         for key in dic.keys():
             self[key] = dic[key]
 
@@ -174,4 +174,4 @@ class Message(dict):
         self[name] = value
 
     def __repr__(self):
-        return simplejson.dumps(self)
+        return json.dumps(self)

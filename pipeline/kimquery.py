@@ -72,7 +72,7 @@ def query_mongo(query, url="", decode=False):
 def query_property_validator(filename, url=""):
     prepare_dns()
 
-    url = url or "http://pipeline.openkim.org:5005/"
+    url = url or "http://query.openkim.org:5005/"
     user_agent = "OpenKIM Pipeline (http://pipeline.openkim.org/)"
     header = {'User-Agent' : user_agent, "Content-type": "application/x-www-form-urlencoded"}
     #data = urllib.urlencode(open(filename).read())

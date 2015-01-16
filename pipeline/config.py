@@ -11,9 +11,6 @@ and this module is imported in star from at the top of all of the scripts::
 """
 import os
 import re
-import clj
-import json
-from functools import partial
 
 def tostr(cls):
     return ".".join(map(str, cls))
@@ -50,13 +47,10 @@ CONF = read_environment(ENVIRONMENT_FILE)
 CONF.update(read_environment(CONF["FILE_CONF_EXTRA"]))
 
 # Setting up global truths - provide these with environment variables!
-PIPELINE_REMOTE    = False  # are we even connected remotely
+PIPELINE_LOCAL     = False  # are we even connected remotely
 PIPELINE_GATEWAY   = False  # are we running as the gateway
 PIPELINE_DEBUG     = False  # which pipeline to use - production or debug
 PIPELINE_DEBUG_VBS = False  # do we want all information to print
-
-if os.environ.has_key("PIPELINE_REMOTE"):
-    PIPELINE_REMOTE = True
 
 if os.environ.has_key("PIPELINE_DEBUG"):
     PIPELINE_DEBUG = True
@@ -64,16 +58,19 @@ if os.environ.has_key("PIPELINE_DEBUG"):
 if os.environ.has_key("PIPELINE_GATEWAY"):
     PIPELINE_GATEWAY = True
 
+if os.environ.has_key("PIPELINE_LOCAL"):
+    PIPELINE_LOCAL = True
+
 #===============================
 # KIM FLAGS
 #===============================
 HOME               = os.path.expanduser('~')
+PIPELINE_HOME      = os.path.join(HOME, ".kim-pipeline")
+PIPELINE_ENV_FILE  = os.path.join(PIPELINE_HOME, "environment.py")
+
+LOG_DIR            = os.path.join(PIPELINE_HOME, "logs")
 KIM_REPOSITORY_DIR = os.path.join(HOME,"openkim-repository")
 KIM_PIPELINE_DIR   = os.path.abspath(os.path.dirname(__file__))
-KIM_LOG_DIR        = os.path.join(KIM_PIPELINE_DIR, "logs")
-KIM_API_DIR        = os.path.join(HOME,"kim-api")
-KIM_API_LIB_DIR    = os.path.join(KIM_API_DIR,"KIM_API")
-KIM_API_CHECK_MATCH_UTIL = os.path.join(KIM_API_LIB_DIR,"kim-api-descriptor-file-match")
 
 OUTPUT_DIR      = "output"
 TEST_EXECUTABLE = "runner"
@@ -112,7 +109,6 @@ RSYNC_USER = "pipeline"
 RSYNC_HOST = "pipeline.openkim.org"
 RSYNC_LOCAL_ROOT = KIM_REPOSITORY_DIR
 RSYNC_REMOTE_ROOT = GATEWAY_ROOT
-RSYNC_EXCLUDE_FILE = KIM_PIPELINE_DIR+"/.rsync-exclude"
 
 if PIPELINE_DEBUG:
     BEAN_PORT = 14174
@@ -136,6 +132,10 @@ if PIPELINE_GATEWAY:
     RSYNC_HOST = "shared-repository.openkim.org"
     GLOBAL_KEY = "/home/openkim/data/id_ecdsa_pipeline"
     KIM_REPOSITORY_DIR = RSYNC_LOCAL_ROOT
+
+    if PIPELINE_LOCAL:
+        RSYNC_LOCAL_ROOT = KIM_REPOSITORY_DIR
+        RSYNC_REMOTE_ROOT = KIM_REPOSITORY_DIR
 
 TUBE_WEB_UPDATES = "web_updates"
 TUBE_WEB_RESULTS = "web_results"
@@ -212,38 +212,4 @@ def success(func, *args, **kwargs):
         return 1
     except Exception as e:
         return 0
-
-#=======================================
-# FIXME - this is by no means long-term
-# temporary loc for edn2json
-#=======================================
-jedns = partial(json.dumps, separators=(' ', ' '), indent=4)
-
-def replace_nones(o):
-    if isinstance(o, list):
-        return [ replace_nones(i) for i in o ]
-    elif isinstance(o, dict):
-        return { k:replace_nones(v) for k,v in o.iteritems() }
-    else:
-        return o if o is not None else ''
-
-def loadedn(f):
-    """ this function tries to load something as edn: file, filename, string """
-    if isinstance(f, basestring):
-        try:
-            f = open(f)
-        except IOError as e:
-            return clj.loads(f)
-    return clj.load(f)
-
-def dumpedn(o, f, allow_nils=True):
-    if not allow_nils:
-        o = replace_nones(o)
-    o = jedns(o)
-
-    if isinstance(f, basestring):
-        with open(f, 'w') as fi:
-            fi.write(o)
-    else:
-        f.write(o)
 

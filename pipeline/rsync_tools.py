@@ -15,12 +15,11 @@ from functools import partial
 # --delete ensures that we delete files that aren't on remote
 RSYNC_FLAGS  = "-vvrLhzREct --progress --stats -e "
 RSYNC_FLAGS += "'ssh -i "+cf.GLOBAL_KEY+" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'"
-RSYNC_FLAGS += " --exclude-from="+cf.RSYNC_EXCLUDE_FILE
 
 RSYNC_ADDRESS = cf.RSYNC_USER+"@"+cf.RSYNC_HOST
 RSYNC_PATH = RSYNC_ADDRESS+":"+cf.RSYNC_REMOTE_ROOT
-RSYNC_LOG_FILE_FLAG = "--log-file={}/rsync.log".format(cf.KIM_LOG_DIR)
-RSYNC_LOG_PIPE_FLAG = " >> {} 2>&1".format(cf.KIM_LOG_DIR+"/rsync_stdout.log")
+RSYNC_LOG_FILE_FLAG = "--log-file={}/rsync.log".format(cf.LOG_DIR)
+RSYNC_LOG_PIPE_FLAG = " >> {} 2>&1".format(cf.LOG_DIR+"/rsync_stdout.log")
 
 if cf.PIPELINE_GATEWAY:
     READ_PENDING  = os.path.join(RSYNC_PATH, "/curators-to-pipeline-interface/pending/./")
@@ -41,6 +40,9 @@ def rsync_command(files, read=True, path=None, delete=False):
     """ run rsync, syncing the files (or folders) listed in files, assumed to be paths or partial
     paths from the RSYNC_LOCAL_ROOT
     """
+    if cf.PIPELINE_LOCAL:
+        return
+
     if path:
         full_path = RSYNC_PATH + path + "/./"
     else:
@@ -71,6 +73,9 @@ def rsync_command_read_wildcard(files,path=None):
     """ run rsync, syncing the files (or folders) listed in files, assumed to be paths or partial
     paths from the RSYNC_LOCAL_ROOT
     """
+    if cf.PIPELINE_LOCAL:
+        return
+
     for filename in files:
         if path:
             full_path = RSYNC_PATH + path + "/./"

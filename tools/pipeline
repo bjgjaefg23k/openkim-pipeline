@@ -1,4 +1,15 @@
-#!/bin/bash
-. /pipeline/environment
-python $PIPELINEDIR/pipeline.py "$@"
+#!/usr/bin/env python
+from pipeline.pipeline import main
 
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description=
+        """OpenKIM pipeline executable.  Depending on the role, this executable
+        will connect to the pipeline infrastructure and perform work as a worker,
+        director, or emulating the role of the website."""
+    )
+    parser.add_argument("role", type=str, help="Pipeline role to assume {worker|director|site}")
+    parser.add_argument("kimid", type=str, nargs='?', help="If acting as site, the kimid to update")
+    args = vars(parser.parse_args())
+
+    main(role=args['role'], kimid=args['kimid'])

@@ -11,6 +11,7 @@ import shutil
 import json
 from contextlib import contextmanager
 
+import util
 import kimunits
 import kimquery
 import kimobjects
@@ -203,7 +204,7 @@ class Computation(object):
         logger.debug("Checking the output EDN for validity")
         with self.runner_temp.in_dir(), open(cf.RESULT_FILE, 'r') as f:
             try:
-                doc = cf.loadedn(f)
+                doc = util.loadedn(f)
                 doc = kimunits.add_si_units(doc)
             except Exception as e:
                 raise cf.KIMRuntimeError, "Test did not produce valid EDN %s" % cf.RESULT_FILE
@@ -215,7 +216,7 @@ class Computation(object):
 
         logger.debug("Adding units to result file")
         with self.runner_temp.in_dir(), open(cf.RESULT_FILE, 'w') as f:
-            cf.dumpedn(doc, f)
+            util.dumpedn(doc, f)
 
         logger.debug("Made it through EDN read, everything looks good")
 
@@ -282,9 +283,9 @@ class Computation(object):
             pipelinespec['UUID'] = self.result_code
 
         with self.runner_temp.in_dir(), open(os.path.join(cf.OUTPUT_DIR,cf.CONFIG_FILE),'w') as f:
-            cf.dumpedn(kimspec, f)
+            util.dumpedn(kimspec, f)
         with self.runner_temp.in_dir(), open(os.path.join(cf.OUTPUT_DIR,cf.PIPELINESPEC_FILE),'w') as f:
-            cf.dumpedn(pipelinespec, f)
+            util.dumpedn(pipelinespec, f)
 
         logger.debug("Result path = %s", self.full_result_path)
         outputdir = os.path.join(self.runner_temp.path,cf.OUTPUT_DIR)

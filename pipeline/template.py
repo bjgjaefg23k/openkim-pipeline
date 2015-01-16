@@ -18,7 +18,6 @@ are available
     * asedata - the dictionary of reference data contained within ASE
 """
 import os
-import ase.data
 import jinja2
 import json
 import clj
@@ -88,7 +87,6 @@ template_environment.globals.update(
             "path": path,
             "query": query,
             "convert": convert,
-            "asedata": ase.data,
             "parse_kim_code": database.parse_kim_code,
             "kimfinder": kimfinder,
             "formatkimcode": database.format_kim_code,

@@ -15,6 +15,8 @@ from pygments.formatters import get_formatter_by_name
 from pygments.style import Style
 import sys
 import os
+
+import util
 import logging
 import logging.handlers
 import config as cf
@@ -145,7 +147,8 @@ def createLogger():
         log_formatter = logging.Formatter('%(filename)s:%(lineno)d _ %(asctime)s - %(levelname)s - %(name)s - %(message)s')
 
     #create a rotating file handler
-    rotfile_handler = logging.handlers.RotatingFileHandler(os.path.join(cf.KIM_LOG_DIR,"pipeline.log"),
+    util.mkdir_ext(cf.LOG_DIR)
+    rotfile_handler = logging.handlers.RotatingFileHandler(os.path.join(cf.LOG_DIR,"pipeline.log"),
             mode='a', backupCount=5, maxBytes=10*1024*1024)
     rotfile_handler.setLevel(FILELEVEL)
     rotfile_handler.setFormatter(log_formatter)

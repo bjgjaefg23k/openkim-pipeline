@@ -3,6 +3,7 @@ import os
 import re
 import datetime
 
+import util
 import database
 import config as cf
 from logger import logging
@@ -16,7 +17,7 @@ PATH_APPROVED = cf.RSYNC_LOCAL_ROOT
 
 def config_edn(flname):
     with open(flname) as f:
-        doc = cf.loadedn(f)
+        doc = util.loadedn(f)
         doc.setdefault("created_on", str(datetime.datetime.fromtimestamp(os.path.getctime(flname))))
         return doc
 
@@ -221,7 +222,7 @@ def insert_one_result(leader, kimcode):
         return
     try:
         with open(os.path.join(PATH_RESULT,leader,kimcode,'results.edn')) as f:
-            edn_docs = cf.loadedn(f)
+            edn_docs = util.loadedn(f)
             edn_docs = edn_docs if isinstance(edn_docs, list) else [edn_docs]
             for doc in edn_docs:
                 stuff = doc_to_dict(doc,leader,kimcode)
@@ -243,7 +244,7 @@ def insert_one_reference_data(leader, kimcode):
         return
     try:
         with open(os.path.join(PATH_APPROVED,leader,kimcode,kimcode+'.edn')) as f:
-            edn_docs = cf.loadedn(f)
+            edn_docs = util.loadedn(f)
             edn_docs = edn_docs if isinstance(edn_docs, list) else [edn_docs]
             for doc in edn_docs:
                 stuff = doc_to_dict(doc,leader,kimcode)

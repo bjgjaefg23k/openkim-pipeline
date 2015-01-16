@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 import os
 
-import compute
-import kimobjects
-from pipeline import Director
-from config import *
-from logger import logging
+from pipeline import compute
+from pipeline import kimobjects
+from pipeline.pipeline import Director
+from pipeline.config import *
+from pipeline.logger import logging
 logger = logging.getLogger("pipeline")
 
 def run_verifiers(kimobj):

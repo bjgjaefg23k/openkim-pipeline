@@ -36,7 +36,7 @@ def parse_kim_code(kim_code):
     elif reuuid:
         return reuuid.groups()
     else:
-        raise InvalidKIMID, "{}: is not a valid KIMID or UUID".format(kim_code)
+        raise cf.InvalidKIMID, "{}: is not a valid KIMID or UUID".format(kim_code)
 
 def isuuid(kimcode):
     return re.match(RE_UUID, kimcode) is not None
