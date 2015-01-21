@@ -283,9 +283,9 @@ class Computation(object):
             pipelinespec['UUID'] = self.result_code
 
         with self.runner_temp.in_dir(), open(os.path.join(cf.OUTPUT_DIR,cf.CONFIG_FILE),'w') as f:
-            util.dumpedn(kimspec, f)
+            util.dumpedn(kimspec, f, allow_nils=False)
         with self.runner_temp.in_dir(), open(os.path.join(cf.OUTPUT_DIR,cf.PIPELINESPEC_FILE),'w') as f:
-            util.dumpedn(pipelinespec, f)
+            util.dumpedn(pipelinespec, f, allow_nils=False)
 
         logger.debug("Result path = %s", self.full_result_path)
         outputdir = os.path.join(self.runner_temp.path,cf.OUTPUT_DIR)
