@@ -280,6 +280,7 @@ class Computation(object):
         if self.info_dict:
             pipelinespec['profiling'] = self.info_dict
         if self.result_code:
+            kimspec['test-result-id'] = self.result_code
             pipelinespec['UUID'] = self.result_code
 
         with self.runner_temp.in_dir(), open(os.path.join(cf.OUTPUT_DIR,cf.CONFIG_FILE),'w') as f:
